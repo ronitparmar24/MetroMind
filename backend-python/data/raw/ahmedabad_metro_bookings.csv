@@ -1,0 +1,501 @@
+station,hour,day_of_week,passengers,is_peak,is_weekend,actual_crowd,bucket
+Shahpur,18,0,5,True,False,96,Medium
+Vastral,12,5,1,False,True,97,Medium
+Ranip,13,6,3,False,True,127,Medium
+Old High Court,18,2,4,True,False,294,High
+Vastral,11,2,3,False,False,87,Medium
+Kalupur Railway Station,11,4,6,False,False,222,High
+Paldi,11,3,4,False,False,191,High
+AEC,16,6,1,False,True,173,High
+AEC,7,6,3,False,True,96,Medium
+APMC,12,5,4,False,True,127,Medium
+CTM Cross Road,20,1,3,False,False,138,Medium
+Shreyas,19,4,4,True,False,174,High
+Vastral,13,1,5,False,False,31,Low
+Shahpur,10,5,2,True,True,77,Medium
+Kankaria,8,3,4,True,False,137,Medium
+Shreyas,6,5,6,False,True,44,Low
+Shahpur,14,6,6,False,True,37,Low
+Doordarshan Kendra,20,0,6,False,False,111,Medium
+Shreyas,22,6,2,False,True,49,Low
+Apparel Park,22,4,2,False,False,60,Medium
+Thaltej,17,6,2,True,True,16,Low
+Motera Stadium,16,3,1,False,False,136,Medium
+Shahpur,17,6,3,True,True,77,Medium
+Gheekanta,8,5,4,True,True,184,High
+Kalupur Railway Station,10,1,6,True,False,262,High
+Shreyas,22,6,5,False,True,69,Medium
+Kankaria,12,4,6,False,False,92,Medium
+CTM Cross Road,17,3,5,True,False,116,Medium
+Kalupur,9,1,2,True,False,273,High
+AEC,13,0,1,False,False,153,High
+Kankaria East,13,0,1,False,False,98,Medium
+Paldi,14,5,4,False,True,131,Medium
+SSG Hospital,10,5,5,True,True,72,Medium
+Chandkheda,19,1,1,True,False,249,High
+Old High Court,19,2,4,True,False,249,High
+Kankaria East,9,0,4,True,False,168,High
+Vastral Gam,9,1,2,True,False,248,High
+Kankaria,11,2,4,False,False,140,Medium
+Paldi,8,3,5,True,False,335,High
+Motera Stadium,8,6,2,True,True,182,High
+Doordarshan Kendra,19,3,4,True,False,142,Medium
+Kankaria East,11,3,1,False,False,120,Medium
+Odhav,14,6,4,False,True,125,Medium
+GNLU,10,1,3,True,False,288,High
+SSG Hospital,7,4,6,False,False,39,Low
+Kankaria East,7,4,4,False,False,78,Medium
+Doordarshan Kendra,7,4,1,False,False,97,Medium
+Kalupur Railway Station,13,3,1,False,False,190,High
+Paldi,7,4,1,False,False,165,High
+APMC,14,1,6,False,False,192,High
+APMC,13,2,4,False,False,202,High
+Usmanpura,16,6,1,False,True,132,Medium
+Motera Stadium,20,4,5,False,False,161,High
+SSG Hospital,22,2,2,False,False,87,Medium
+Nirant Cross Road,8,1,3,True,False,154,High
+Apparel Park,22,0,6,False,False,92,Medium
+Apparel Park,9,1,3,True,False,102,Medium
+Thaltej,14,2,5,False,False,73,Medium
+SSG Hospital,16,1,6,False,False,72,Medium
+GNLU,14,6,1,False,True,95,Medium
+Gheekanta,19,6,3,True,True,188,High
+Vadaj,14,1,6,False,False,126,Medium
+Kalupur,19,4,1,True,False,323,High
+Thaltej,7,6,3,False,True,91,Medium
+Thaltej,19,1,1,True,False,73,Medium
+Ranip,17,1,6,True,False,207,High
+Paldi,9,2,5,True,False,322,High
+Thaltej,13,6,2,False,True,24,Low
+Gujarat University,19,0,2,True,False,193,High
+Jivraj Mehta Hospital,13,2,2,False,False,46,Low
+Old High Court,18,6,1,True,True,223,High
+Usmanpura,17,2,2,True,False,200,High
+AEC,6,5,2,False,True,86,Medium
+Kalupur Railway Station,14,2,6,False,False,214,High
+CTM Cross Road,16,0,1,False,False,123,Medium
+Shreyas,7,0,5,False,False,74,Medium
+Kankaria,17,5,3,True,True,36,Low
+Shahpur,18,4,2,True,False,141,Medium
+Shreyas,7,5,4,False,True,131,Medium
+Commerce Six Roads,17,3,1,True,False,96,Medium
+Vastral Gam,16,5,1,False,True,105,Medium
+Apparel Park,19,2,4,True,False,66,Medium
+Rabari Colony,10,1,4,True,False,245,High
+Gujarat University,15,3,5,False,False,105,Medium
+Motera Stadium,15,2,2,False,False,113,Medium
+APMC,20,3,4,False,False,189,High
+SSG Hospital,22,3,6,False,False,93,Medium
+Vastral Gam,8,6,2,True,True,176,High
+Apparel Park,13,6,2,False,True,48,Low
+Chandkheda,8,3,4,True,False,266,High
+Commerce Six Roads,18,3,4,True,False,97,Medium
+Motera Stadium,9,6,4,True,True,200,High
+AEC,11,6,6,False,True,96,Medium
+Paldi,9,3,2,True,False,298,High
+Usmanpura,22,4,5,False,False,123,Medium
+Kalupur,22,3,5,False,False,224,High
+Kalupur,11,5,4,False,True,77,Medium
+Amraiwadi,22,3,6,False,False,157,High
+Paldi,14,3,1,False,False,195,High
+Vastral Gam,16,4,1,False,False,136,Medium
+Vadaj,10,1,4,True,False,162,High
+Kalupur Railway Station,19,3,3,True,False,255,High
+Usmanpura,19,0,2,True,False,231,High
+Sabarmati,18,3,1,True,False,117,Medium
+Nirant Cross Road,15,6,4,False,True,120,Medium
+Jivraj Mehta Hospital,13,3,2,False,False,13,Low
+Amraiwadi,19,3,1,True,False,179,High
+CTM Cross Road,11,6,4,False,True,103,Medium
+Vadaj,6,3,5,False,False,112,Medium
+Kankaria,10,6,4,True,True,113,Medium
+Gujarat University,7,2,4,False,False,115,Medium
+Vastral Gam,18,2,4,True,False,265,High
+Shreyas,8,3,1,True,False,136,Medium
+Nirant Cross Road,13,5,1,False,True,65,Medium
+Ranip,6,1,2,False,False,120,Medium
+Paldi,10,3,6,True,False,264,High
+Shahpur,12,3,6,False,False,71,Medium
+Shahpur,11,2,1,False,False,100,Medium
+Sabarmati,15,4,6,False,False,119,Medium
+Commerce Six Roads,8,4,6,True,False,79,Medium
+Paldi,9,5,3,True,True,233,High
+Shahpur,7,2,5,False,False,39,Low
+Kankaria,17,0,5,True,False,162,High
+Jivraj Mehta Hospital,21,0,4,False,False,69,Medium
+Vastral,20,5,2,False,True,12,Low
+Amraiwadi,21,3,4,False,False,161,High
+Amraiwadi,16,6,2,False,True,105,Medium
+Kalupur,13,6,4,False,True,113,Medium
+Odhav,16,0,4,False,False,205,High
+SSG Hospital,17,6,3,True,True,76,Medium
+Vastral Gam,14,4,6,False,False,185,High
+Commerce Six Roads,8,1,6,True,False,69,Medium
+Jivraj Mehta Hospital,21,4,2,False,False,57,Medium
+GNLU,20,6,1,False,True,73,Medium
+Gheekanta,15,1,4,False,False,145,Medium
+Vastral,21,4,5,False,False,57,Medium
+Nirant Cross Road,19,5,5,True,True,90,Medium
+Amraiwadi,15,2,2,False,False,183,High
+Shahpur,12,2,1,False,False,68,Medium
+Gujarat University,12,1,6,False,False,57,Medium
+Chandkheda,14,5,5,False,True,157,High
+Rabari Colony,9,6,2,True,True,176,High
+Rabari Colony,13,2,2,False,False,158,High
+Vadaj,14,0,1,False,False,163,High
+Rabari Colony,10,5,4,True,True,185,High
+Rabari Colony,21,3,4,False,False,176,High
+Vastral Gam,11,0,3,False,False,189,High
+Kalupur Railway Station,18,3,1,True,False,287,High
+Kankaria East,10,1,5,True,False,148,Medium
+Paldi,9,4,4,True,False,296,High
+AEC,22,3,4,False,False,172,High
+Kankaria,15,4,5,False,False,96,Medium
+Kankaria East,9,6,2,True,True,79,Medium
+Gheekanta,11,1,2,False,False,138,Medium
+Kalupur Railway Station,11,0,4,False,False,161,High
+Rabari Colony,7,1,3,False,False,185,High
+Rabari Colony,20,0,6,False,False,175,High
+Commerce Six Roads,19,0,5,True,False,118,Medium
+AEC,10,2,2,True,False,242,High
+Apparel Park,15,3,1,False,False,68,Medium
+Usmanpura,15,5,4,False,True,134,Medium
+GNLU,20,0,5,False,False,149,Medium
+Ranip,19,5,3,True,True,97,Medium
+AEC,6,6,6,False,True,101,Medium
+Amraiwadi,7,6,2,False,True,56,Medium
+Amraiwadi,11,4,4,False,False,150,Medium
+GNLU,8,3,3,True,False,221,High
+Old High Court,11,2,4,False,False,214,High
+GNLU,15,5,4,False,True,128,Medium
+Usmanpura,8,2,3,True,False,181,High
+APMC,9,6,4,True,True,218,High
+Motera Stadium,20,3,1,False,False,107,Medium
+Commerce Six Roads,22,2,5,False,False,65,Medium
+Kankaria East,12,2,5,False,False,49,Low
+Vadaj,15,3,6,False,False,111,Medium
+Paldi,11,2,5,False,False,200,High
+Motera Stadium,19,0,2,True,False,290,High
+Usmanpura,9,5,2,True,True,148,Medium
+GNLU,15,4,6,False,False,153,High
+Chandkheda,13,3,5,False,False,229,High
+Thaltej,18,1,5,True,False,34,Low
+Kalupur Railway Station,14,6,4,False,True,136,Medium
+Vastral Gam,22,2,1,False,False,152,High
+GNLU,10,3,5,True,False,267,High
+Chandkheda,17,2,5,True,False,261,High
+APMC,12,5,2,False,True,91,Medium
+Odhav,13,6,4,False,True,183,High
+Odhav,18,5,6,True,True,217,High
+Thaltej,21,0,2,False,False,24,Low
+Old High Court,20,0,5,False,False,199,High
+Usmanpura,6,5,2,False,True,64,Medium
+Thaltej,8,3,3,True,False,119,Medium
+Vastral Gam,18,5,1,True,True,200,High
+Odhav,16,5,6,False,True,88,Medium
+GNLU,7,4,1,False,False,166,High
+Rabari Colony,13,5,1,False,True,166,High
+Kankaria,9,6,6,True,True,111,Medium
+Doordarshan Kendra,15,0,1,False,False,77,Medium
+APMC,7,2,3,False,False,160,High
+Jivraj Mehta Hospital,11,1,2,False,False,84,Medium
+Gheekanta,18,4,6,True,False,235,High
+Thaltej,13,3,6,False,False,130,Medium
+Shreyas,20,2,6,False,False,144,Medium
+Rabari Colony,11,0,4,False,False,176,High
+Nirant Cross Road,15,5,4,False,True,63,Medium
+Apparel Park,12,3,4,False,False,30,Low
+Old High Court,13,3,5,False,False,184,High
+Rabari Colony,6,6,6,False,True,140,Medium
+CTM Cross Road,14,0,5,False,False,141,Medium
+Kankaria East,21,6,3,False,True,24,Low
+AEC,17,1,6,True,False,234,High
+Vadaj,9,5,6,True,True,146,Medium
+Ranip,15,6,4,False,True,96,Medium
+Vadaj,8,2,3,True,False,184,High
+Jivraj Mehta Hospital,11,1,2,False,False,86,Medium
+Vastral,22,4,3,False,False,22,Low
+Doordarshan Kendra,14,6,4,False,True,87,Medium
+Vastral Gam,9,3,1,True,False,231,High
+Thaltej,13,6,6,False,True,31,Low
+Vastral,8,6,4,True,True,5,Low
+Motera Stadium,14,4,1,False,False,106,Medium
+Shreyas,18,6,6,True,True,107,Medium
+Vastral,9,5,2,True,True,44,Low
+APMC,13,5,1,False,True,128,Medium
+Usmanpura,15,5,4,False,True,107,Medium
+Ranip,15,3,1,False,False,104,Medium
+Old High Court,13,4,2,False,False,177,High
+Jivraj Mehta Hospital,10,3,6,True,False,128,Medium
+Old High Court,21,4,4,False,False,222,High
+Vastral,12,3,4,False,False,72,Medium
+Paldi,17,0,6,True,False,256,High
+Nirant Cross Road,7,3,3,False,False,155,High
+Commerce Six Roads,9,6,4,True,True,84,Medium
+Sabarmati,7,6,3,False,True,77,Medium
+Paldi,10,6,5,True,True,225,High
+SSG Hospital,12,6,2,False,True,115,Medium
+Vastral Gam,10,6,5,True,True,224,High
+Thaltej,10,4,3,True,False,97,Medium
+Gujarat University,9,5,1,True,True,156,High
+Paldi,16,0,2,False,False,220,High
+Shreyas,7,1,6,False,False,77,Medium
+Kalupur Railway Station,21,3,3,False,False,207,High
+Old High Court,20,4,2,False,False,208,High
+Apparel Park,20,5,1,False,True,39,Low
+Kankaria East,21,6,4,False,True,51,Medium
+Kalupur,8,0,3,True,False,274,High
+Thaltej,8,1,3,True,False,67,Medium
+APMC,18,4,5,True,False,231,High
+Rabari Colony,20,4,5,False,False,125,Medium
+Shahpur,12,3,4,False,False,94,Medium
+AEC,19,2,4,True,False,187,High
+APMC,19,2,6,True,False,288,High
+Shreyas,17,1,6,True,False,146,Medium
+Gheekanta,8,3,1,True,False,226,High
+Vastral,10,4,1,True,False,89,Medium
+Vastral Gam,9,3,3,True,False,216,High
+Kankaria,7,2,5,False,False,104,Medium
+SSG Hospital,10,5,4,True,True,105,Medium
+AEC,9,2,5,True,False,192,High
+AEC,19,6,5,True,True,196,High
+Sabarmati,14,0,2,False,False,87,Medium
+Vastral Gam,17,0,2,True,False,286,High
+Thaltej,18,0,2,True,False,91,Medium
+Gheekanta,22,1,4,False,False,74,Medium
+Jivraj Mehta Hospital,20,2,2,False,False,40,Low
+Gheekanta,7,1,2,False,False,189,High
+Kankaria East,8,2,4,True,False,118,Medium
+Kalupur,19,2,2,True,False,238,High
+Shahpur,17,3,1,True,False,98,Medium
+GNLU,22,5,3,False,True,157,High
+Ranip,13,3,5,False,False,117,Medium
+SSG Hospital,10,6,3,True,True,99,Medium
+Rabari Colony,16,0,1,False,False,141,Medium
+Vadaj,18,4,6,True,False,179,High
+AEC,22,4,6,False,False,154,High
+Ranip,19,0,4,True,False,136,Medium
+Kalupur Railway Station,16,4,4,False,False,157,High
+Jivraj Mehta Hospital,15,0,4,False,False,51,Medium
+Sabarmati,16,1,5,False,False,50,Low
+Vastral,8,3,1,True,False,134,Medium
+Paldi,19,4,4,True,False,270,High
+Apparel Park,16,1,3,False,False,56,Medium
+Doordarshan Kendra,8,4,6,True,False,162,High
+Nirant Cross Road,17,5,6,True,True,136,Medium
+Thaltej,13,0,2,False,False,63,Medium
+Thaltej,8,1,6,True,False,114,Medium
+GNLU,20,6,5,False,True,115,Medium
+APMC,16,1,4,False,False,140,Medium
+Kalupur Railway Station,21,3,6,False,False,192,High
+Kankaria East,17,4,1,True,False,159,High
+Apparel Park,20,3,1,False,False,113,Medium
+Kalupur Railway Station,8,4,5,True,False,319,High
+Odhav,20,4,5,False,False,241,High
+Ranip,20,6,5,False,True,55,Medium
+Commerce Six Roads,16,4,4,False,False,5,Low
+Kalupur,9,6,3,True,True,186,High
+Gheekanta,22,5,2,False,True,153,High
+Kalupur,22,4,5,False,False,190,High
+Doordarshan Kendra,17,2,3,True,False,96,Medium
+Kankaria East,16,0,3,False,False,124,Medium
+Old High Court,18,2,3,True,False,292,High
+Thaltej,16,0,5,False,False,20,Low
+Thaltej,17,2,6,True,False,86,Medium
+Gheekanta,15,4,4,False,False,126,Medium
+Vastral Gam,10,5,6,True,True,189,High
+Gheekanta,19,4,3,True,False,188,High
+Sabarmati,17,2,2,True,False,169,High
+GNLU,12,1,2,False,False,153,High
+Thaltej,8,2,1,True,False,58,Medium
+Ranip,16,6,5,False,True,67,Medium
+Vadaj,18,1,2,True,False,198,High
+Doordarshan Kendra,20,0,4,False,False,132,Medium
+Vastral,13,3,5,False,False,70,Medium
+Kalupur,13,4,2,False,False,227,High
+Apparel Park,21,6,2,False,True,5,Low
+Kalupur,20,6,3,False,True,178,High
+Odhav,22,4,4,False,False,248,High
+Vadaj,14,0,6,False,False,107,Medium
+Chandkheda,17,4,1,True,False,250,High
+Shahpur,15,0,2,False,False,37,Low
+Amraiwadi,20,4,2,False,False,148,Medium
+AEC,20,2,1,False,False,139,Medium
+Jivraj Mehta Hospital,7,3,5,False,False,52,Medium
+Gheekanta,17,1,1,True,False,253,High
+APMC,9,6,6,True,True,150,Medium
+Vadaj,7,2,4,False,False,76,Medium
+Vadaj,21,3,5,False,False,131,Medium
+Shreyas,12,6,2,False,True,64,Medium
+Kankaria,9,6,3,True,True,117,Medium
+Paldi,19,5,5,True,True,225,High
+Usmanpura,8,0,4,True,False,212,High
+Paldi,10,2,4,True,False,296,High
+Motera Stadium,17,1,5,True,False,185,High
+Gheekanta,22,2,1,False,False,176,High
+Sabarmati,18,6,4,True,True,128,Medium
+Vastral,14,5,1,False,True,65,Medium
+Nirant Cross Road,8,2,2,True,False,156,High
+Vastral Gam,10,0,3,True,False,194,High
+Vastral Gam,11,6,6,False,True,65,Medium
+Gujarat University,10,0,6,True,False,206,High
+Usmanpura,7,2,2,False,False,163,High
+Ranip,16,2,5,False,False,103,Medium
+CTM Cross Road,21,2,1,False,False,107,Medium
+Nirant Cross Road,7,6,6,False,True,55,Medium
+Vastral Gam,14,0,3,False,False,129,Medium
+Kalupur,18,2,2,True,False,279,High
+GNLU,21,2,5,False,False,160,High
+Kankaria,8,3,5,True,False,177,High
+Gujarat University,15,2,1,False,False,169,High
+Apparel Park,20,4,6,False,False,82,Medium
+Kankaria,11,5,4,False,True,71,Medium
+Nirant Cross Road,19,2,6,True,False,168,High
+Kankaria East,8,5,6,True,True,65,Medium
+Doordarshan Kendra,6,1,5,False,False,110,Medium
+Kalupur,7,1,1,False,False,182,High
+Vastral,18,4,1,True,False,165,High
+Thaltej,20,2,3,False,False,52,Medium
+Vadaj,22,2,4,False,False,123,Medium
+APMC,14,1,1,False,False,191,High
+Odhav,9,2,3,True,False,294,High
+Kalupur,12,4,3,False,False,141,Medium
+Commerce Six Roads,9,1,1,True,False,5,Low
+Kalupur,11,5,4,False,True,179,High
+APMC,17,5,1,True,True,180,High
+Rabari Colony,15,6,2,False,True,104,Medium
+Gujarat University,17,4,2,True,False,129,Medium
+Shahpur,12,6,2,False,True,53,Medium
+Vastral,17,3,5,True,False,157,High
+Vadaj,8,0,3,True,False,140,Medium
+Chandkheda,22,3,4,False,False,201,High
+Kalupur Railway Station,10,2,6,True,False,330,High
+Nirant Cross Road,10,6,5,True,True,128,Medium
+Gujarat University,10,3,5,True,False,204,High
+Shahpur,22,1,3,False,False,66,Medium
+Doordarshan Kendra,11,2,6,False,False,101,Medium
+Rabari Colony,8,2,2,True,False,331,High
+Amraiwadi,10,5,3,True,True,139,Medium
+Doordarshan Kendra,10,1,6,True,False,127,Medium
+Vastral Gam,7,6,1,False,True,174,High
+Shreyas,12,6,5,False,True,99,Medium
+Jivraj Mehta Hospital,6,3,6,False,False,31,Low
+Apparel Park,21,1,6,False,False,48,Low
+CTM Cross Road,15,3,1,False,False,100,Medium
+Jivraj Mehta Hospital,21,3,2,False,False,56,Medium
+Vastral Gam,10,2,6,True,False,198,High
+Nirant Cross Road,18,1,3,True,False,242,High
+Old High Court,16,1,4,False,False,223,High
+Thaltej,9,0,3,True,False,119,Medium
+Odhav,19,1,2,True,False,318,High
+APMC,12,6,2,False,True,56,Medium
+GNLU,22,3,4,False,False,187,High
+Gheekanta,18,4,4,True,False,207,High
+Paldi,12,4,3,False,False,223,High
+Chandkheda,15,4,1,False,False,180,High
+Old High Court,19,1,3,True,False,292,High
+Vastral,7,3,1,False,False,31,Low
+Commerce Six Roads,17,4,3,True,False,127,Medium
+Amraiwadi,9,1,1,True,False,229,High
+CTM Cross Road,17,6,3,True,True,85,Medium
+Thaltej,12,4,5,False,False,53,Medium
+CTM Cross Road,22,0,1,False,False,153,High
+Chandkheda,22,3,2,False,False,184,High
+Vadaj,16,4,3,False,False,166,High
+Apparel Park,16,4,5,False,False,139,Medium
+GNLU,15,3,1,False,False,131,Medium
+Jivraj Mehta Hospital,15,6,6,False,True,84,Medium
+Sabarmati,21,2,6,False,False,105,Medium
+AEC,7,4,4,False,False,100,Medium
+Doordarshan Kendra,22,5,6,False,True,21,Low
+Thaltej,13,0,5,False,False,24,Low
+Shahpur,12,0,4,False,False,65,Medium
+SSG Hospital,19,4,5,True,False,147,Medium
+Chandkheda,7,5,2,False,True,82,Medium
+Chandkheda,22,3,3,False,False,168,High
+Gujarat University,20,4,3,False,False,87,Medium
+Shreyas,21,1,2,False,False,77,Medium
+Amraiwadi,15,1,3,False,False,148,Medium
+GNLU,16,3,3,False,False,115,Medium
+Amraiwadi,15,0,5,False,False,129,Medium
+CTM Cross Road,17,6,2,True,True,86,Medium
+Rabari Colony,7,2,6,False,False,233,High
+Shreyas,21,1,2,False,False,123,Medium
+Amraiwadi,14,1,1,False,False,112,Medium
+Paldi,7,5,5,False,True,113,Medium
+AEC,13,0,1,False,False,110,Medium
+Old High Court,10,0,5,True,False,324,High
+Doordarshan Kendra,19,5,4,True,True,75,Medium
+Rabari Colony,16,2,6,False,False,176,High
+Kankaria East,8,5,5,True,True,101,Medium
+Ranip,11,3,2,False,False,147,Medium
+Ranip,18,6,4,True,True,122,Medium
+Rabari Colony,7,0,3,False,False,219,High
+Old High Court,16,2,4,False,False,237,High
+GNLU,10,6,5,True,True,167,High
+Usmanpura,14,1,1,False,False,120,Medium
+Shreyas,11,0,6,False,False,133,Medium
+Vastral Gam,15,4,6,False,False,158,High
+CTM Cross Road,19,4,3,True,False,142,Medium
+Gheekanta,18,5,1,True,True,169,High
+APMC,13,0,3,False,False,187,High
+Odhav,13,3,3,False,False,218,High
+Motera Stadium,14,5,3,False,True,97,Medium
+Paldi,7,5,1,False,True,122,Medium
+Apparel Park,9,5,3,True,True,67,Medium
+Vastral,13,1,2,False,False,49,Low
+Vastral,19,5,5,True,True,90,Medium
+Chandkheda,12,6,2,False,True,103,Medium
+Gheekanta,22,3,5,False,False,118,Medium
+Vastral,8,4,1,True,False,157,High
+Commerce Six Roads,10,1,3,True,False,109,Medium
+Kalupur,9,5,2,True,True,180,High
+Kalupur,7,3,2,False,False,144,Medium
+Jivraj Mehta Hospital,20,4,1,False,False,31,Low
+Apparel Park,6,3,3,False,False,44,Low
+Motera Stadium,12,4,1,False,False,175,High
+Kalupur Railway Station,7,0,4,False,False,207,High
+Ranip,15,3,2,False,False,104,Medium
+Jivraj Mehta Hospital,17,3,4,True,False,58,Medium
+Odhav,18,0,6,True,False,350,High
+Vadaj,17,0,2,True,False,164,High
+CTM Cross Road,22,1,6,False,False,163,High
+Sabarmati,15,3,6,False,False,87,Medium
+Kankaria,18,6,2,True,True,116,Medium
+Amraiwadi,12,5,1,False,True,127,Medium
+Ranip,19,4,1,True,False,148,Medium
+Ranip,20,4,6,False,False,109,Medium
+Kankaria East,13,5,1,False,True,45,Low
+SSG Hospital,7,1,5,False,False,100,Medium
+Rabari Colony,13,6,6,False,True,86,Medium
+APMC,13,2,2,False,False,154,High
+AEC,19,2,3,True,False,294,High
+Gujarat University,19,4,4,True,False,223,High
+Kankaria East,17,5,6,True,True,68,Medium
+Jivraj Mehta Hospital,19,1,3,True,False,134,Medium
+Odhav,11,6,5,False,True,78,Medium
+Apparel Park,10,6,4,True,True,73,Medium
+Kankaria East,19,3,5,True,False,107,Medium
+Shreyas,12,2,6,False,False,85,Medium
+Gheekanta,20,6,3,False,True,148,Medium
+Commerce Six Roads,7,2,4,False,False,90,Medium
+Ranip,8,1,5,True,False,141,Medium
+Chandkheda,12,6,3,False,True,83,Medium
+Apparel Park,6,1,2,False,False,75,Medium
+Chandkheda,13,5,5,False,True,117,Medium
+SSG Hospital,18,1,5,True,False,121,Medium
+Usmanpura,17,2,3,True,False,238,High
+Vastral,22,3,4,False,False,150,Medium
+Chandkheda,16,1,3,False,False,222,High
+APMC,19,0,5,True,False,291,High
+Sabarmati,14,4,5,False,False,58,Medium
+Jivraj Mehta Hospital,15,1,2,False,False,58,Medium
+Paldi,21,4,6,False,False,225,High
+Vastral Gam,14,6,4,False,True,152,High
+GNLU,20,1,6,False,False,153,High
+Nirant Cross Road,11,1,6,False,False,89,Medium
+Kankaria East,22,0,1,False,False,85,Medium
+Kankaria East,6,3,2,False,False,103,Medium
+Thaltej,6,1,5,False,False,45,Low
+Usmanpura,17,0,5,True,False,171,High
+Chandkheda,21,0,1,False,False,119,Medium
