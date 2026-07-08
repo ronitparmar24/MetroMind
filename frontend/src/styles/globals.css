@@ -386,4 +386,26 @@ input, select, textarea {
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .page { padding: var(--space-md); }
   :root { --sidebar-width: 0px; }
+  
+  .page-title { font-size: 1.4rem; }
+  .page-subtitle { font-size: 0.85rem; }
+  
+  /* Stack booking form into single column on mobile */
+  .btn-lg { padding: 14px 20px; font-size: 0.95rem; }
+  
+  /* Touch-friendly form inputs */
+  .form-input { padding: 14px 16px; font-size: 16px; /* Prevents zoom on iOS */ }
+  
+  /* Stack stat cards into 2-column on mobile */
+  .grid-4 { grid-template-columns: repeat(2, 1fr); gap: var(--space-md); }
 }
+
+@media (max-width: 480px) {
+  .page { padding: var(--space-sm) var(--space-md); }
+  .page-title { font-size: 1.2rem; }
+  .grid-4 { grid-template-columns: 1fr; }
+  
+  /* Full-width buttons on very small screens */
+  .btn { width: 100%; text-align: center; }
+}
+

@@ -1,0 +1,70 @@
+# MetroMind Docker Compose
+# One-command startup for all three services + MongoDB
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:7
+    container_name: metromind-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  # Django Intelligence API (port 8000)
+  intelligence-api:
+    build:
+      context: ./backend-python
+      dockerfile: Dockerfile
+    container_name: metromind-django
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=metromind.settings.dev
+      - NODE_SERVICE_URL=http://product-api:5000
+    depends_on:
+      - mongo
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate &&
+             python apps/predict/ml/train.py &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  # Node/Express Product API (port 5000)
+  product-api:
+    build:
+      context: ./backend-node
+      dockerfile: Dockerfile
+    container_name: metromind-node
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/metromind
+      - JWT_SECRET=supersecretkey_change_in_prod
+      - JWT_EXPIRES_IN=7d
+      - DJANGO_API_URL=http://intelligence-api:8000
+      - CLIENT_URL=http://localhost:3000
+      - NODE_ENV=development
+    depends_on:
+      - mongo
+      - intelligence-api
+    restart: unless-stopped
+
+  # React Frontend (port 3000)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: metromind-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_NODE_API_URL=http://localhost:5000
+    depends_on:
+      - product-api
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

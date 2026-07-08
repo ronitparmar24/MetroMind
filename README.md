@@ -8,7 +8,7 @@
 ┌──────────────┐     ┌──────────────────┐     ┌──────────────────────┐
 │   React SPA  │────▶│  Node/Express    │────▶│  Django/DRF          │
 │   (Vite)     │     │  "Product API"   │     │  "Intelligence API"  │
-│   :5173      │     │  :5000           │     │  :8000               │
+│   :3000      │     │  :5000           │     │  :8000               │
 │              │◀────│  JWT Auth, CRUD  │◀────│  ML Predictions      │
 │              │     │  MongoDB         │     │  Analytics, EDA      │
 └──────────────┘     └──────────────────┘     └──────────────────────┘
@@ -28,7 +28,7 @@ This mirrors how tightly-coupled-but-independently-deployable microservices are 
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| Frontend | React + Vite | React 18 / Vite 5 |
+| Frontend | React + Vite | React 19 / Vite 8 |
 | Routing | React Router | v6 |
 | HTTP Client | Axios | 1.6 |
 | Charts | Recharts | 2 |
@@ -51,7 +51,7 @@ This mirrors how tightly-coupled-but-independently-deployable microservices are 
 ```bash
 cd frontend
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:3000
 ```
 
 ### Terminal 2 — Node Backend
@@ -81,16 +81,40 @@ python apps/predict/ml/train.py
 ```
 This regenerates `model.pkl`, `scaler.pkl`, and `feature_names.json` from the CSV dataset in `data/raw/`.
 
+## Docker (One-Command Startup)
+```bash
+docker-compose up --build
+```
+This starts MongoDB, Django (port 8000), Node (port 5000), and React (port 3000) automatically.
+
+## Jupyter Notebooks
+The `backend-python/notebooks/` directory contains four data science notebooks:
+1. `01_eda.ipynb` — Exploratory Data Analysis with heatmaps and distributions
+2. `02_regression.ipynb` — Crowd count prediction (Linear, Ridge, Lasso, RF, GBR)
+3. `03_classification.ipynb` — Crowd bucket classification with hyperparameter tuning
+4. `04_deep_learning.ipynb` — MLP neural network comparison
+
 ## Project Structure
 ```
 metromind/
-├── frontend/          React (Vite) SPA — port 5173
-├── backend-node/      Node.js + Express, "Product API" — port 5000
-├── backend-python/    Django + DRF, "Intelligence API" — port 8000
+├── frontend/              React (Vite) SPA — port 3000
+│   ├── src/pages/         24 feature pages
+│   ├── src/components/    Reusable UI components
+│   ├── src/styles/        Design system (glassmorphism + animations)
+│   └── public/            PWA manifest + service worker
+├── backend-node/          Node.js + Express, "Product API" — port 5000
+│   ├── src/models/        11 Mongoose models
+│   ├── src/controllers/   12 route controllers
+│   └── src/utils/         Fare engine, QR, PDF, CO₂ calc
+├── backend-python/        Django + DRF, "Intelligence API" — port 8000
+│   ├── apps/predict/ml/   ML pipeline (train, predict, evaluate)
+│   ├── apps/analytics/    Heatmap, peaks, charts
+│   └── notebooks/         4 Jupyter notebooks (EDA, regression, classification, DL)
+├── docker-compose.yml     One-command startup
 ├── .gitignore
-├── README.md
-└── docker-compose.yml
+└── README.md
 ```
 
 ## License
 MIT
+
