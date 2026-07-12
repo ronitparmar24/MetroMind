@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import GlassCard from '../components/common/GlassCard';
 import StatCard from '../components/common/StatCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import EcoLeaderboard from '../components/charts/EcoLeaderboard';
 import { getSpending } from '../api/analytics.api';
 import { formatCurrency } from '../utils/formatters';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -94,6 +95,11 @@ export default function Spending() {
           </ResponsiveContainer>
         </GlassCard>
       )}
+
+      {/* Eco Leaderboard */}
+      <div style={{ marginTop: 'var(--space-xl)' }}>
+        <EcoLeaderboard />
+      </div>
     </div>
   );
 }

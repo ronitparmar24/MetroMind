@@ -2,8 +2,14 @@
 import { useTheme } from '../hooks/useTheme';
 import GlassCard from '../components/common/GlassCard';
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light', icon: '☀️' },
+  { value: 'dark', label: 'Dark', icon: '🌙' },
+  { value: 'system', label: 'System', icon: '💻' },
+];
+
 export default function Settings() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, preference, setTheme } = useTheme();
 
   return (
     <div className="page">
@@ -13,35 +19,55 @@ export default function Settings() {
       </div>
 
       <GlassCard style={{ maxWidth: '600px', padding: '28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--border-color)' }}>
-          <div>
-            <h4 style={{ fontWeight: 600 }}>Theme</h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Switch between dark and light mode</p>
+        {/* Theme Selection */}
+        <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border-color)' }}>
+          <div style={{ marginBottom: '12px' }}>
+            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Theme</h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              Choose your preferred appearance
+            </p>
           </div>
-          <button className="btn btn-secondary" onClick={toggleTheme} id="settings-theme-toggle">
-            {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`btn ${preference === opt.value ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTheme(opt.value)}
+                id={`theme-${opt.value}`}
+                style={{ flex: 1 }}
+              >
+                {opt.icon} {opt.label}
+              </button>
+            ))}
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '8px' }}>
+            Currently showing: <strong style={{ color: 'var(--text-primary)' }}>{theme}</strong> mode
+            {preference === 'system' && ' (from system preference)'}
+          </p>
         </div>
 
+        {/* Notifications */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--border-color)' }}>
           <div>
-            <h4 style={{ fontWeight: 600 }}>Notifications</h4>
+            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Notifications</h4>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Booking and wallet alerts</p>
           </div>
           <span className="badge badge-success">Enabled</span>
         </div>
 
+        {/* Language */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--border-color)' }}>
           <div>
-            <h4 style={{ fontWeight: 600 }}>Language</h4>
+            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Language</h4>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Interface language</p>
           </div>
           <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>English</span>
         </div>
 
+        {/* App Version */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0' }}>
           <div>
-            <h4 style={{ fontWeight: 600 }}>App Version</h4>
+            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>App Version</h4>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>MetroMind v1.0.0</p>
           </div>
           <span className="badge badge-info">Latest</span>

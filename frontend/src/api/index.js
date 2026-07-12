@@ -5,7 +5,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_NODE_API_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_NODE_API_URL || '',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -23,16 +23,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — redirect to /login on 401
+// Response interceptor — on 401, clear stale token only.
+// AuthGuard handles the actual redirect to /login for protected routes.
+// This prevents the interceptor from hijacking public pages like Landing.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('metromind_token');
       localStorage.removeItem('metromind_user');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
     }
     return Promise.reject(error);
   }

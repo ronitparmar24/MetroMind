@@ -1,6 +1,6 @@
 // frontend/src/pages/BookTicket.jsx
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import StationSelector from '../components/booking/StationSelector';
 import TimeSlotPicker from '../components/booking/TimeSlotPicker';
 import GroupPassengerForm from '../components/booking/GroupPassengerForm';
@@ -14,14 +14,25 @@ import { STATIONS } from '../constants/stations';
 import { calculateFare } from '../utils/fareEngine';
 
 export default function BookTicket() {
-  const [source, setSource] = useState('');
-  const [destination, setDestination] = useState('');
+  const location = useLocation();
+  const prefilled = location.state || {};
+
+  const [source, setSource] = useState(prefilled.source || '');
+  const [destination, setDestination] = useState(prefilled.destination || '');
   const [travelDate, setTravelDate] = useState(new Date().toISOString().split('T')[0]);
   const [travelTime, setTravelTime] = useState('');
   const [passengers, setPassengers] = useState([{ name: '', age: '' }]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
+
+  // Show a toast if pre-filled from JourneyPlanner
+  useEffect(() => {
+    if (prefilled.source && prefilled.destination) {
+      toast.success(`Route pre-filled: ${prefilled.source} → ${prefilled.destination}${prefilled.viaStation ? ` via ${prefilled.viaStation}` : ''}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hour = travelTime ? parseInt(travelTime.split(':')[0]) : new Date().getHours();
   const { prediction } = useCrowd(source, hour);

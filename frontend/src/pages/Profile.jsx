@@ -1,6 +1,7 @@
 // frontend/src/pages/Profile.jsx
 import { useAuth } from '../hooks/useAuth';
 import GlassCard from '../components/common/GlassCard';
+import PersonalityCard from '../components/common/PersonalityCard';
 import { formatDate } from '../utils/formatters';
 
 export default function Profile() {
@@ -22,6 +23,9 @@ export default function Profile() {
         <h1 className="page-title">Profile 👤</h1>
         <p className="page-subtitle">Your MetroMind account details</p>
       </div>
+
+      {/* Commute Personality — appears above the details card */}
+      <PersonalityCard />
 
       <GlassCard style={{ maxWidth: '600px', padding: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '28px' }}>

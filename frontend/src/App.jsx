@@ -7,7 +7,8 @@ import AuthGuard from './components/common/AuthGuard';
 import DashboardLayout from './components/common/DashboardLayout';
 import SOSButton from './components/common/SOSButton';
 
-// Auth pages
+// Public pages
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -43,12 +44,12 @@ export default function App() {
           <ToastProvider>
             <Routes>
               {/* Public routes */}
+              <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
 
-              {/* Protected routes */}
+              {/* Protected routes — inside DashboardLayout */}
               <Route
-                path="/"
                 element={
                   <AuthGuard>
                     <DashboardLayout />
@@ -56,7 +57,6 @@ export default function App() {
                   </AuthGuard>
                 }
               >
-                <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="book" element={<BookTicket />} />
                 <Route path="tickets" element={<MyTickets />} />
@@ -81,8 +81,8 @@ export default function App() {
                 <Route path="emergency" element={<EmergencySOS />} />
               </Route>
 
-              {/* Catch-all */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              {/* Catch-all → landing page */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ToastProvider>
         </AuthProvider>

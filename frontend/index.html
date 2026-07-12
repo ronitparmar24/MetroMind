@@ -1,10 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Inline theme init: runs BEFORE CSS to prevent flash of wrong theme -->
+    <script>
+      (function() {
+        var pref = localStorage.getItem('mm_theme') || 'system';
+        var theme;
+        if (pref === 'system') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } else {
+          theme = pref;
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="MetroMind — Intelligent Urban Transit Ticket Booking for Gujarat Metro Rail Corporation (GMRC), Ahmedabad. Book tickets, track crowd levels, and travel smart." />
-    <meta name="theme-color" content="#0a0e1a" />
+    <meta name="theme-color" content="#f8fafc" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚇</text></svg>" />

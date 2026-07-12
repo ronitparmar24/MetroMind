@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { getWallet } from '../api/wallet.api';
 
 export function useWallet() {
-  const [data, setData] = useState({ balance: 0, recentTransactions: [] });
+  const [data, setData] = useState({ balance: 0, recentTransactions: [], prediction: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -16,6 +16,7 @@ export function useWallet() {
         balance: res.data.wallet.balance,
         currency: res.data.wallet.currency,
         recentTransactions: res.data.recentTransactions,
+        prediction: res.data.prediction || null,
       });
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load wallet');

@@ -5,12 +5,12 @@ import TicketCard from '../components/tickets/TicketCard';
 import QRModal from '../components/common/QRModal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useToast } from '../components/common/Toast';
-import { cancelTicket } from '../api/tickets.api';
+import { cancelTicket, downloadTicketPDF } from '../api/tickets.api';
 
 export default function MyTickets() {
   const [statusFilter, setStatusFilter] = useState('');
   const { tickets, loading, refetch } = useTickets(statusFilter);
-  const [qrModal, setQrModal] = useState({ open: false, qr: '', ticketId: '' });
+  const [qrModal, setQrModal] = useState({ open: false, ticket: null });
   const toast = useToast();
 
   const handleCancel = async (id) => {
@@ -21,6 +21,25 @@ export default function MyTickets() {
       refetch();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to cancel ticket');
+    }
+  };
+
+  const handleShowQR = (ticket) => {
+    setQrModal({ open: true, ticket });
+  };
+
+  const handleDownloadPDF = async (ticketId) => {
+    try {
+      const res = await downloadTicketPDF(ticketId);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `MetroMind-Ticket-${ticketId}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('PDF downloaded!');
+    } catch {
+      toast.error('Failed to download PDF');
     }
   };
 
@@ -56,7 +75,7 @@ export default function MyTickets() {
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))' }}>
           {tickets.map((t) => (
             <TicketCard key={t._id} ticket={t} onCancel={handleCancel}
-              onShowQR={(qr, id) => setQrModal({ open: true, qr, ticketId: id })} />
+              onShowQR={handleShowQR} />
           ))}
         </div>
       ) : (
@@ -68,8 +87,12 @@ export default function MyTickets() {
         </div>
       )}
 
-      <QRModal isOpen={qrModal.open} qrCode={qrModal.qr} ticketId={qrModal.ticketId}
-        onClose={() => setQrModal({ open: false, qr: '', ticketId: '' })} />
+      <QRModal
+        isOpen={qrModal.open}
+        ticket={qrModal.ticket}
+        onClose={() => setQrModal({ open: false, ticket: null })}
+        onDownloadPDF={handleDownloadPDF}
+      />
     </div>
   );
 }

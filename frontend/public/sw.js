@@ -1,5 +1,5 @@
 // frontend/public/sw.js — Service Worker for offline ticket caching
-const CACHE_NAME = 'metromind-v1';
+const CACHE_NAME = 'metromind-v2';
 const OFFLINE_URL = '/';
 
 // Assets to precache on install

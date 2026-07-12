@@ -4,7 +4,7 @@ import { useTheme } from '../../hooks/useTheme';
 
 export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme(); // theme = 'light' | 'dark' (resolved)
 
   return (
     <nav className="glass-navbar" style={{

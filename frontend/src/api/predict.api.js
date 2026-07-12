@@ -3,3 +3,4 @@
 import api from './index';
 
 export const predictCrowd = (data) => api.post('/api/predict/crowd', data);
+export const getLiveTrains = (station) => api.get(`/api/live-trains/${encodeURIComponent(station)}`);

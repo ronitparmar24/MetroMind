@@ -8,6 +8,7 @@ const PassengerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   age: { type: Number, required: true },
   qrCode: { type: String, default: '' }, // base64 QR image
+  farePerPerson: { type: Number, default: 0 }, // split fare for group bookings
 });
 
 const TicketSchema = new mongoose.Schema(

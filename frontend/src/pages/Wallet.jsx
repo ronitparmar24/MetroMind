@@ -41,6 +41,47 @@ export default function Wallet() {
         <p className="page-subtitle">Manage your MetroMind wallet</p>
       </div>
 
+      {/* Predictive low-balance warning */}
+      {wallet.prediction?.lowBalanceWarning && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          padding: '14px 20px',
+          background: 'rgba(245, 158, 11, 0.1)',
+          border: '1px solid rgba(245, 158, 11, 0.3)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: 'var(--space-lg)',
+        }}>
+          <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>⚠️</span>
+          <p style={{ flex: 1, fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.4 }}>
+            At your current pace, your wallet runs out in{' '}
+            <strong style={{ color: '#f59e0b' }}>
+              ~{wallet.prediction.daysUntilEmpty} day{wallet.prediction.daysUntilEmpty !== 1 ? 's' : ''}
+            </strong>.
+            Consider topping up.
+          </p>
+          <button
+            className="btn btn-sm"
+            style={{
+              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+              color: '#000',
+              fontWeight: 700,
+              border: 'none',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+            onClick={() => {
+              setAmount('200');
+              // Auto-scroll to topup form
+              document.getElementById('topup-submit')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
+          >
+            Top Up ₹200
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-xl)', alignItems: 'start' }}>
         {/* Balance Card */}
         <div>
@@ -57,6 +98,11 @@ export default function Wallet() {
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
               {wallet.currency || 'INR'}
+              {wallet.prediction?.avgWeeklySpend > 0 && (
+                <span style={{ marginLeft: '12px' }}>
+                  · Avg. {formatCurrency(wallet.prediction.avgWeeklySpend)}/week
+                </span>
+              )}
             </p>
           </GlassCard>
 

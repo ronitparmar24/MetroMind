@@ -16,6 +16,28 @@ const getWallet = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(10);
 
+    // ── Predictive low-balance warning ──
+    // Aggregate last 4 weeks of debit transactions
+    const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+    const debitAgg = await Transaction.aggregate([
+      {
+        $match: {
+          userId: wallet.userId,
+          type: 'debit',
+          createdAt: { $gte: fourWeeksAgo },
+        },
+      },
+      { $group: { _id: null, totalDebits: { $sum: '$amount' } } },
+    ]);
+
+    const totalDebits = debitAgg.length > 0 ? debitAgg[0].totalDebits : 0;
+    const avgWeeklySpend = Math.round((totalDebits / 4) * 100) / 100; // average over 4 weeks
+    const dailySpendRate = avgWeeklySpend / 7;
+    const daysUntilEmpty = dailySpendRate > 0
+      ? Math.floor(wallet.balance / dailySpendRate)
+      : Infinity;
+    const lowBalanceWarning = isFinite(daysUntilEmpty) && daysUntilEmpty <= 3;
+
     res.json({
       success: true,
       wallet: {
@@ -23,6 +45,11 @@ const getWallet = async (req, res, next) => {
         currency: wallet.currency,
       },
       recentTransactions,
+      prediction: {
+        avgWeeklySpend,
+        daysUntilEmpty: isFinite(daysUntilEmpty) ? daysUntilEmpty : null,
+        lowBalanceWarning,
+      },
     });
   } catch (error) {
     next(error);

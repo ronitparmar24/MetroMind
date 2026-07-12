@@ -5,6 +5,10 @@ import CrowdBadge from '../booking/CrowdBadge';
 
 export default function TicketCard({ ticket, onCancel, onShowQR }) {
   const status = TICKET_STATUS[ticket.status] || TICKET_STATUS.upcoming;
+  const isGroup = (ticket.passengers?.length || 1) > 1;
+  const farePerPerson = isGroup
+    ? Math.round(ticket.fare / ticket.passengers.length)
+    : ticket.fare;
 
   return (
     <div className="glass-card stagger-item" style={{ padding: '20px' }}>
@@ -45,6 +49,27 @@ export default function TicketCard({ ticket, onCancel, onShowQR }) {
         </div>
       </div>
 
+      {/* Group fare split info */}
+      {isGroup && (
+        <div style={{
+          padding: '8px 12px',
+          background: 'var(--bg-tertiary)',
+          borderRadius: 'var(--radius-sm)',
+          marginBottom: '12px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '0.8rem',
+        }}>
+          <span style={{ color: 'var(--text-secondary)' }}>
+            👥 Group ({ticket.passengers.length} passengers)
+          </span>
+          <span style={{ fontWeight: 600, color: 'var(--success)' }}>
+            {formatCurrency(farePerPerson)}/person
+          </span>
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <CrowdBadge level={ticket.crowdBucket} />
         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -52,7 +77,7 @@ export default function TicketCard({ ticket, onCancel, onShowQR }) {
         </span>
         {ticket.co2Saved > 0 && (
           <span style={{ fontSize: '0.8rem', color: 'var(--success)' }}>
-            🌿 {ticket.co2Saved} kg CO₂ saved
+            🌿 {ticket.co2Saved} kg CO2 saved
           </span>
         )}
       </div>
@@ -61,9 +86,10 @@ export default function TicketCard({ ticket, onCancel, onShowQR }) {
         {ticket.passengers?.[0]?.qrCode && (
           <button
             className="btn btn-sm btn-primary"
-            onClick={() => onShowQR(ticket.passengers[0].qrCode, ticket.ticketId)}
+            onClick={() => onShowQR(ticket)}
+            id={`show-qr-${ticket.ticketId}`}
           >
-            Show QR
+            {isGroup ? `Show ${ticket.passengers.length} QR Codes` : 'Show QR'}
           </button>
         )}
         {ticket.status === 'upcoming' && (

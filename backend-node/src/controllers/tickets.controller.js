@@ -97,8 +97,9 @@ const bookTicket = async (req, res, next) => {
       return next(err);
     }
 
-    // Generate QR codes for each passenger
+    // Generate QR codes for each passenger with split fare
     const ticketId = generateTicketId();
+    const farePerPerson = Math.round(fareResult.fare / passengers.length);
     const passengersWithQR = await Promise.all(
       passengers.map(async (p, i) => {
         const qrData = JSON.stringify({
@@ -108,9 +109,11 @@ const bookTicket = async (req, res, next) => {
           source,
           destination,
           date: travelDate,
+          farePerPerson,
+          totalPassengers: passengers.length,
         });
         const qrCode = await generateQR(qrData);
-        return { ...p, qrCode };
+        return { ...p, qrCode, farePerPerson };
       })
     );
 
@@ -134,7 +137,7 @@ const bookTicket = async (req, res, next) => {
       coachPref: coachPref || 'general',
     });
 
-    // Deduct from wallet
+    // Deduct from wallet (single payer books for the group)
     wallet.balance -= fareResult.fare;
     await wallet.save();
 
@@ -145,7 +148,7 @@ const bookTicket = async (req, res, next) => {
       amount: fareResult.fare,
       balance: wallet.balance,
       ref: ticketId,
-      note: `Ticket: ${source} → ${destination}`,
+      note: `Ticket: ${source} → ${destination} (${passengers.length} pax)`,
     });
 
     // Update user loyalty points and streak
@@ -175,6 +178,7 @@ const bookTicket = async (req, res, next) => {
       success: true,
       ticket,
       fareBreakdown: fareResult,
+      farePerPerson,
       crowdBucket,
       co2Saved,
     });

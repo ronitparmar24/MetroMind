@@ -24,6 +24,8 @@ const metrocardRoutes = require('./routes/metrocard.routes');
 const lostfoundRoutes = require('./routes/lostfound.routes');
 const feedbackRoutes = require('./routes/feedback.routes');
 const notificationRoutes = require('./routes/notifications.routes');
+const routeCompareRoutes = require('./routes/routes.routes');
+const liveTrainsRoutes = require('./routes/liveTrains.routes');
 
 const app = express();
 
@@ -32,9 +34,9 @@ const app = express();
 // 1. Security headers
 app.use(helmet());
 
-// 2. CORS — only allow the React frontend origin
+// 2. CORS — allow the React frontend on either port
 app.use(cors({
-  origin: CLIENT_URL,
+  origin: [CLIENT_URL, 'http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
 }));
 
@@ -61,6 +63,8 @@ app.use('/api/metrocard', metrocardRoutes);
 app.use('/api/lostfound', lostfoundRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/routes', routeCompareRoutes);
+app.use('/api/live-trains', liveTrainsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

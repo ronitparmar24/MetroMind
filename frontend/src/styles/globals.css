@@ -4,18 +4,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Color System — Premium Dark Theme */
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1a2236;
-  --bg-card: rgba(17, 24, 39, 0.7);
-  --bg-card-hover: rgba(26, 34, 54, 0.9);
+  /* Color System — Light Theme (default) */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --bg-card-hover: rgba(241, 245, 249, 0.9);
+  
+  /* Glass component backgrounds (light) */
+  --bg-sidebar: rgba(255, 255, 255, 0.9);
+  --bg-navbar: rgba(255, 255, 255, 0.8);
+  --bg-modal: rgba(255, 255, 255, 0.95);
+  --glass-shimmer: rgba(0, 0, 0, 0.06);
+  --glow-opacity: 0.06;
   
   /* Accent Colors */
   --accent-primary: #6366f1;    /* Indigo */
   --accent-secondary: #8b5cf6;  /* Violet */
   --accent-tertiary: #a78bfa;   /* Light violet */
-  --accent-glow: rgba(99, 102, 241, 0.3);
+  --accent-glow: rgba(99, 102, 241, 0.15);
   
   /* Status Colors */
   --success: #22c55e;
@@ -27,29 +34,29 @@
   --info: #3b82f6;
   --info-bg: rgba(59, 130, 246, 0.1);
   
-  /* Text */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-accent: #a78bfa;
+  /* Text (dark-on-light) */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-accent: #6366f1;
   
   /* Borders */
-  --border-color: rgba(148, 163, 184, 0.1);
-  --border-hover: rgba(148, 163, 184, 0.2);
+  --border-color: rgba(15, 23, 42, 0.08);
+  --border-hover: rgba(15, 23, 42, 0.15);
   
   /* Gradients */
   --gradient-primary: linear-gradient(135deg, #6366f1, #8b5cf6);
   --gradient-secondary: linear-gradient(135deg, #3b82f6, #6366f1);
   --gradient-success: linear-gradient(135deg, #22c55e, #16a34a);
   --gradient-warm: linear-gradient(135deg, #f59e0b, #ef4444);
-  --gradient-bg: linear-gradient(180deg, #0a0e1a 0%, #111827 100%);
+  --gradient-bg: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.15);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+  /* Shadows (light) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.08);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
   
   /* Spacing */
   --space-xs: 4px;
@@ -89,22 +96,41 @@
   --transition-slow: 400ms ease;
 }
 
-/* Light Theme */
-[data-theme="light"] {
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f1f5f9;
-  --bg-card: rgba(255, 255, 255, 0.8);
-  --bg-card-hover: rgba(241, 245, 249, 0.9);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --border-color: rgba(15, 23, 42, 0.08);
-  --border-hover: rgba(15, 23, 42, 0.15);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
+/* Dark Theme — complete override of all theme-aware variables */
+[data-theme="dark"] {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1a2236;
+  --bg-card: rgba(17, 24, 39, 0.7);
+  --bg-card-hover: rgba(26, 34, 54, 0.9);
+  
+  /* Glass component backgrounds (dark) */
+  --bg-sidebar: rgba(10, 14, 26, 0.85);
+  --bg-navbar: rgba(10, 14, 26, 0.7);
+  --bg-modal: rgba(17, 24, 39, 0.9);
+  --glass-shimmer: rgba(148, 163, 184, 0.15);
+  --glow-opacity: 0.15;
+  
+  /* Text (light-on-dark) */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-accent: #a78bfa;
+  
+  /* Borders */
+  --border-color: rgba(148, 163, 184, 0.1);
+  --border-hover: rgba(148, 163, 184, 0.2);
+  
+  /* Adjusted accents for dark bg */
+  --accent-glow: rgba(99, 102, 241, 0.3);
+  --gradient-bg: linear-gradient(180deg, #0a0e1a 0%, #111827 100%);
+  
+  /* Deeper shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.15);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
 }
 
 /* Reset */
