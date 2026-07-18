@@ -1,7 +1,24 @@
 /* frontend/src/styles/auth.css */
-/* Premium auth page styles — MetroFlow-inspired */
+/* Premium auth page styles — theme-aware (follows system dark/light mode) */
 
-/* ═══ Metro Line SVG Background ═══ */
+/* ═══ Auth Page Container (theme-aware background) ═══ */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary, #f8fafc);
+  padding: 1rem;
+  overflow: hidden;
+  position: relative;
+  transition: background 0.3s ease;
+}
+
+[data-theme="dark"] .auth-page {
+  background: var(--bg-primary, #0a0e1a);
+}
+
+/* ═══ Metro Line SVG Background (theme-aware strokes) ═══ */
 .metro-bg {
   position: fixed;
   inset: 0;
@@ -12,23 +29,33 @@
 
 .metro-line-path {
   fill: none;
+  stroke: rgba(99, 102, 241, 0.12);
   stroke-width: 3;
   stroke-linecap: round;
-  opacity: 0.12;
 }
 
-.metro-train-dot { fill: rgba(255,255,255,0.6); }
+[data-theme="dark"] .metro-line-path {
+  stroke: rgba(167, 139, 250, 0.12);
+}
+
+.metro-train-dot { fill: rgba(99, 102, 241, 0.4); }
+[data-theme="dark"] .metro-train-dot { fill: rgba(167, 139, 250, 0.5); }
+
 .metro-station-dot {
-  fill: rgba(255,255,255,0.2);
-  stroke: rgba(255,255,255,0.3);
+  fill: rgba(99, 102, 241, 0.1);
+  stroke: rgba(99, 102, 241, 0.15);
   stroke-width: 2;
+}
+[data-theme="dark"] .metro-station-dot {
+  fill: rgba(167, 139, 250, 0.1);
+  stroke: rgba(167, 139, 250, 0.15);
 }
 
 /* ═══ Auth Card ═══ */
 .auth-card {
-  background: white;
+  background: var(--bg-secondary, white);
   border-radius: 20px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   width: 100%;
   max-width: 450px;
@@ -37,6 +64,14 @@
   position: relative;
   z-index: 1;
   animation: authCardEntrance 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  border: 1px solid var(--border-color, rgba(15, 23, 42, 0.08));
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+[data-theme="dark"] .auth-card {
+  background: var(--bg-secondary, #111827);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+  border-color: rgba(148, 163, 184, 0.1);
 }
 
 @media (min-width: 900px) {
@@ -275,6 +310,9 @@
 
 .login-step-connector.active { background: #6366f1; }
 
+[data-theme="dark"] .login-step-dot { background: #334155; }
+[data-theme="dark"] .login-step-connector { background: #334155; }
+
 /* ═══ Success Overlay ═══ */
 .auth-success-overlay {
   position: fixed;
@@ -411,13 +449,17 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ═══ Particle ═══ */
+/* ═══ Particle (theme-aware) ═══ */
 .auth-particle {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(99, 102, 241, 0.06);
   pointer-events: none;
   animation: authParticleFloat linear infinite;
+}
+
+[data-theme="dark"] .auth-particle {
+  background: rgba(139, 92, 246, 0.08);
 }
 
 @keyframes authParticleFloat {

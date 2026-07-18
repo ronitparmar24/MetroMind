@@ -20,13 +20,13 @@ function getStrength(pw) {
   return { score: s, color: colors[s - 1] || '#e2e8f0', label: labels[s - 1] || '' };
 }
 
-/* ═══ Metro SVG Background ═══ */
+/* ═══ Metro SVG Background (theme-aware via CSS) ═══ */
 function MetroBackground() {
   return (
     <div className="metro-bg">
       <svg viewBox="0 0 1200 800" preserveAspectRatio="none">
         {/* Line 1: Horizontal */}
-        <path className="metro-line-path" stroke="rgba(255,255,255,0.8)"
+        <path className="metro-line-path"
           d="M -50,200 C 200,200 300,350 500,350 S 800,200 1050,200 L 1300,200">
           <animate attributeName="d" dur="20s" repeatCount="indefinite"
             values="M -50,200 C 200,200 300,350 500,350 S 800,200 1050,200 L 1300,200;M -50,250 C 200,180 300,300 500,380 S 800,250 1050,180 L 1300,250;M -50,200 C 200,200 300,350 500,350 S 800,200 1050,200 L 1300,200" />
@@ -39,7 +39,7 @@ function MetroBackground() {
         <path id="loginLine1" d="M -50,200 C 200,200 300,350 500,350 S 800,200 1050,200 L 1300,200" fill="none" />
 
         {/* Line 2: Diagonal */}
-        <path className="metro-line-path" stroke="rgba(255,255,255,0.6)"
+        <path className="metro-line-path"
           d="M -50,600 C 150,500 400,400 600,450 S 900,550 1100,400 L 1300,350" />
         <circle className="metro-train-dot" r="4">
           <animateMotion dur="12s" repeatCount="indefinite">
@@ -49,7 +49,7 @@ function MetroBackground() {
         <path id="loginLine2" d="M -50,600 C 150,500 400,400 600,450 S 900,550 1100,400 L 1300,350" fill="none" />
 
         {/* Line 3: Top sweep */}
-        <path className="metro-line-path" stroke="rgba(255,255,255,0.5)"
+        <path className="metro-line-path"
           d="M -50,80 Q 300,160 600,80 T 1300,120" />
         <circle className="metro-train-dot" r="3.5">
           <animateMotion dur="10s" repeatCount="indefinite">
@@ -180,16 +180,7 @@ export default function Login() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-      padding: '1rem',
-      overflow: 'hidden',
-      position: 'relative',
-    }}>
+    <div className="auth-page">
       <MetroBackground />
       <Particles />
 
