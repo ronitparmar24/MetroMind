@@ -19,3 +19,5 @@ export const submitFeedback = (data) => api.post('/api/feedback', data);
 export const getFeedback = () => api.get('/api/feedback');
 export const getNotifications = () => api.get('/api/notifications');
 export const markAllRead = () => api.put('/api/notifications/read-all');
+export const getStationProfile = (station) => api.get(`/api/analytics/station-profile/${encodeURIComponent(station)}`);
+export const getNetworkPulse = () => api.get('/api/analytics/network-pulse');

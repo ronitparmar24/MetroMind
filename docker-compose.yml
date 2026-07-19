@@ -70,11 +70,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_NODE_API_URL: http://localhost:5000
     container_name: metromind-frontend
     ports:
       - "3000:3000"
-    environment:
-      - VITE_NODE_API_URL=http://localhost:5000
     depends_on:
       - product-api
     restart: unless-stopped

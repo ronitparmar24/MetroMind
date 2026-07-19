@@ -1,21 +1,21 @@
 // frontend/src/components/common/PersonalityCard.jsx
 import { useState, useEffect } from 'react';
-import { getPersonality } from '../../api/analytics.api';
+import { getPersonalityProfile } from '../../api/predict.api';
 
-const ICON_MAP = {
-  sunrise: '🌅',
-  zap: '⚡',
-  compass: '🧭',
-  brain: '🧠',
-  scale: '⚖️',
-  lock: '🔒',
+const TYPE_META = {
+  'Early Bird':        { icon: '🌅', color: '#f59e0b' },
+  'Rush Hour Warrior': { icon: '⚡', color: '#ef4444' },
+  'Weekend Explorer':  { icon: '🧭', color: '#6366f1' },
+  'Smart Commuter':    { icon: '🧠', color: '#22c55e' },
+  'Balanced Traveler': { icon: '⚖️', color: '#0B7DC3' },
 };
 
-const STAT_LABELS = [
-  { key: 'earlyBirdRatio', label: 'Early Bird', color: '#f59e0b' },
-  { key: 'rushHourRatio', label: 'Rush Hour', color: '#ef4444' },
+const RATIO_LABELS = [
+  { key: 'earlyMorningRatio', label: 'Early Morning', color: '#f59e0b' },
+  { key: 'peakHourRatio', label: 'Peak Hour', color: '#ef4444' },
   { key: 'weekendRatio', label: 'Weekend', color: '#6366f1' },
-  { key: 'smartRatio', label: 'Smart', color: '#22c55e' },
+  { key: 'lowCrowdRatio', label: 'Low Crowd', color: '#22c55e' },
+  { key: 'highCrowdRatio', label: 'High Crowd', color: '#E8283B' },
 ];
 
 export default function PersonalityCard() {
@@ -23,8 +23,12 @@ export default function PersonalityCard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getPersonality()
-      .then((res) => setData(res.data.personality))
+    getPersonalityProfile()
+      .then((res) => {
+        const p = res.data.personality;
+        if (p && p.totalTrips >= 5) setData(p);
+        else setData(null);
+      })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, []);
@@ -45,7 +49,8 @@ export default function PersonalityCard() {
 
   if (!data) return null;
 
-  const isNewcomer = data.type === 'Newcomer';
+  const meta = TYPE_META[data.personality] || TYPE_META['Balanced Traveler'];
+  const ratios = data.ratios || {};
 
   return (
     <div
@@ -54,7 +59,6 @@ export default function PersonalityCard() {
         padding: '28px',
         marginBottom: '24px',
         maxWidth: '600px',
-        opacity: isNewcomer ? 0.75 : 1,
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -66,26 +70,24 @@ export default function PersonalityCard() {
         left: 0,
         right: 0,
         height: '3px',
-        background: isNewcomer
-          ? 'var(--border-color)'
-          : 'var(--gradient-primary)',
+        background: 'var(--gradient-primary)',
       }} />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: isNewcomer ? '16px' : '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
         {/* Large icon */}
         <div style={{
           width: '64px',
           height: '64px',
           borderRadius: 'var(--radius-lg)',
-          background: isNewcomer ? 'var(--bg-tertiary)' : 'var(--gradient-primary)',
+          background: 'var(--gradient-primary)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: '1.8rem',
           flexShrink: 0,
-          boxShadow: isNewcomer ? 'none' : 'var(--shadow-glow)',
+          boxShadow: 'var(--shadow-glow)',
         }}>
-          {ICON_MAP[data.icon] || '🚇'}
+          {meta.icon}
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -95,13 +97,11 @@ export default function PersonalityCard() {
             fontSize: '1.15rem',
             fontWeight: 700,
             marginBottom: '4px',
-            ...(isNewcomer ? { color: 'var(--text-muted)' } : {
-              background: 'var(--gradient-primary)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }),
+            background: 'var(--gradient-primary)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
           }}>
-            {data.type}
+            {data.personality}
           </h3>
 
           {/* Description */}
@@ -115,83 +115,55 @@ export default function PersonalityCard() {
         </div>
       </div>
 
-      {/* Newcomer: progress bar */}
-      {isNewcomer && (
-        <div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: '6px',
-            fontSize: '0.8rem',
-            color: 'var(--text-muted)',
-          }}>
-            <span>{data.message}</span>
-            <span>{data.tripsCompleted}/{data.tripsRequired}</span>
-          </div>
-          <div style={{
-            height: '6px',
-            background: 'var(--bg-tertiary)',
-            borderRadius: 'var(--radius-full)',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${(data.tripsCompleted / data.tripsRequired) * 100}%`,
-              background: 'var(--gradient-primary)',
-              borderRadius: 'var(--radius-full)',
-              transition: 'width 0.6s ease',
-            }} />
-          </div>
-        </div>
-      )}
-
-      {/* Unlocked: stat bars */}
-      {!isNewcomer && data.stats && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {STAT_LABELS.map(({ key, label, color }) => {
-            const value = data.stats[key] || 0;
-            return (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted)',
-                  width: '72px',
-                  flexShrink: 0,
-                  textAlign: 'right',
-                }}>
-                  {label}
-                </span>
+      {/* Ratio breakdown bars — powered by Django ML ratios */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {RATIO_LABELS.map(({ key, label, color }) => {
+          const value = ratios[key] || 0;
+          return (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                width: '88px',
+                flexShrink: 0,
+                textAlign: 'right',
+              }}>
+                {label}
+              </span>
+              <div style={{
+                flex: 1,
+                height: '6px',
+                background: 'var(--bg-tertiary)',
+                borderRadius: 'var(--radius-full)',
+                overflow: 'hidden',
+              }}>
                 <div style={{
-                  flex: 1,
-                  height: '6px',
-                  background: 'var(--bg-tertiary)',
+                  height: '100%',
+                  width: `${value * 100}%`,
+                  background: color,
                   borderRadius: 'var(--radius-full)',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${value * 100}%`,
-                    background: color,
-                    borderRadius: 'var(--radius-full)',
-                    transition: 'width 0.8s ease',
-                  }} />
-                </div>
-                <span style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-secondary)',
-                  width: '36px',
-                  fontWeight: 600,
-                }}>
-                  {Math.round(value * 100)}%
-                </span>
+                  transition: 'width 0.8s ease',
+                }} />
               </div>
-            );
-          })}
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'right' }}>
-            Based on {data.totalTrips} completed trips
+              <span style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary)',
+                width: '36px',
+                fontWeight: 600,
+              }}>
+                {Math.round(value * 100)}%
+              </span>
+            </div>
+          );
+        })}
+
+        {/* Unique stations stat */}
+        {ratios.uniqueStations && (
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', textAlign: 'right' }}>
+            {ratios.uniqueStations} unique stations visited across {data.totalTrips} trips
           </p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

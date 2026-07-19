@@ -42,6 +42,10 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    personalityCache: {
+      result: { type: mongoose.Schema.Types.Mixed, default: null },
+      computedAt: { type: Date, default: null },
+    },
   },
   { timestamps: true }
 );

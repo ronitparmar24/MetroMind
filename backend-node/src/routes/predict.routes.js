@@ -2,8 +2,16 @@
 // Proxies crowd predictions to Django ML service — API Gateway pattern
 const router = require('express').Router();
 const { protect } = require('../middleware/auth.middleware');
-const { predictCrowd } = require('../controllers/predict.controller');
+const {
+  predictCrowd,
+  getAnomalyCheck,
+  getPersonalityProfile,
+  getBestDeparture,
+} = require('../controllers/predict.controller');
 
 router.post('/crowd', protect, predictCrowd);
+router.post('/anomaly', protect, getAnomalyCheck);
+router.get('/personality', protect, getPersonalityProfile);
+router.post('/best-departure', protect, getBestDeparture);
 
 module.exports = router;

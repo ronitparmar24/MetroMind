@@ -27,15 +27,28 @@ class BookingSample(models.Model):
 
 class PredictionLog(models.Model):
     """Every inference served, for audit/EDA tracking."""
+
+    PREDICTION_TYPES = [
+        ('crowd', 'Crowd Prediction'),
+        ('anomaly', 'Anomaly Check'),
+        ('personality', 'Personality Analysis'),
+        ('best_departure', 'Best Departure'),
+    ]
+
     station = models.CharField(max_length=100)
     hour = models.IntegerField()
     day = models.IntegerField()
     pred_bucket = models.CharField(max_length=10)
     pred_score = models.FloatField()
+    prediction_type = models.CharField(
+        max_length=20,
+        choices=PREDICTION_TYPES,
+        default='crowd',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.station} → {self.pred_bucket} ({self.pred_score:.2f})"
+        return f"[{self.prediction_type}] {self.station} → {self.pred_bucket} ({self.pred_score:.2f})"
 
     class Meta:
         ordering = ['-created_at']

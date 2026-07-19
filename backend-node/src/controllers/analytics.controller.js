@@ -277,4 +277,49 @@ const getLeaderboard = async (req, res, next) => {
   }
 };
 
-module.exports = { getWeeklyDigest, getSpending, getHeatmap, getPersonality, getLeaderboard };
+// GET /api/analytics/station-profile/:station
+// Merges Django's global station stats with Node's per-user personal trip count
+const getStationProfile = async (req, res, next) => {
+  try {
+    const { station } = req.params;
+
+    // Parallel: Django global stats + MongoDB personal trip count
+    const [djangoRes, personalCount] = await Promise.all([
+      axios.get(`${DJANGO_API_URL}/api/analytics/station-profile/${encodeURIComponent(station)}/`),
+      Ticket.countDocuments({
+        userId: req.user._id,
+        $or: [{ source: station }, { destination: station }],
+        status: { $in: ['completed', 'upcoming'] },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      profile: { ...djangoRes.data, personalTripCount: personalCount },
+    });
+  } catch (error) {
+    if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
+      return res.json({ success: true, profile: {}, fallback: true });
+    }
+    if (error.response && error.response.status === 404) {
+      return res.status(404).json({ success: false, error: error.response.data.error || 'Station not found', available_stations: error.response.data.available_stations });
+    }
+    next(error);
+  }
+};
+
+// GET /api/analytics/network-pulse
+// Pure proxy to Django — system-wide, no MongoDB writes
+const getNetworkPulse = async (req, res, next) => {
+  try {
+    const response = await axios.get(`${DJANGO_API_URL}/api/analytics/network-pulse/`);
+    res.json({ success: true, pulse: response.data });
+  } catch (error) {
+    if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
+      return res.json({ success: true, pulse: {}, fallback: true });
+    }
+    next(error);
+  }
+};
+
+module.exports = { getWeeklyDigest, getSpending, getHeatmap, getPersonality, getLeaderboard, getStationProfile, getNetworkPulse };

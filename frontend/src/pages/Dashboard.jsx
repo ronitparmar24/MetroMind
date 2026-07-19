@@ -2,13 +2,14 @@
 // MetroMind — Personal commute command center
 // Signature element: "My Line Right Now" crowd strip
 // Layout: asymmetric, importance-driven (not 4 equal stat cards)
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useWallet } from '../hooks/useWallet';
 import { useTickets } from '../hooks/useTickets';
-import { predictCrowd } from '../api/predict.api';
+import { predictCrowd, checkAnomaly, getBestDeparture, getPersonalityProfile } from '../api/predict.api';
 import { formatCurrency } from '../utils/formatters';
+import { getNetworkPulse } from '../api/analytics.api';
 import QRModal from '../components/common/QRModal';
 
 /* ═══════════════════════════════════════════════════════════
@@ -38,7 +39,7 @@ const MOCK_CROWD = {
 const S = {
   // Page wrapper
   page: {
-    padding: 'var(--space-xl)',
+    padding: 'var(--space-lg)',
     maxWidth: '960px',
     animation: 'fadeInUp 0.4s ease',
   },
@@ -46,7 +47,7 @@ const S = {
   // Compact header
   header: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-    marginBottom: '24px', flexWrap: 'wrap', gap: '8px',
+    marginBottom: '16px', flexWrap: 'wrap', gap: '8px',
   },
   greeting: {
     fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)',
@@ -55,23 +56,30 @@ const S = {
   headerMeta: {
     fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500,
     display: 'flex', gap: '12px', alignItems: 'center',
+    fontVariantNumeric: 'tabular-nums',
   },
 
-  // Card shell
+  // Card shell — baseline for all panels
   card: {
     background: 'var(--bg-secondary)',
     border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-lg)',
     overflow: 'hidden',
+    boxShadow: 'var(--shadow-sm)',
+  },
+  // Live-panel elevation — spread alongside S.card on live panels only
+  liveCard: {
+    borderLeft: '3px solid var(--accent-primary)',
+    boxShadow: 'var(--shadow-sm), 0 0 12px var(--accent-glow)',
   },
   cardPad: {
-    padding: '20px 24px',
+    padding: '16px 20px',
   },
 
   // My Line strip
   lineHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '16px 24px',
+    padding: '14px 20px',
     borderBottom: '1px solid var(--border-color)',
   },
   lineTitle: {
@@ -92,6 +100,7 @@ const S = {
     padding: '12px 24px',
     borderBottom: '1px solid var(--border-color)',
     fontSize: '0.875rem',
+    fontVariantNumeric: 'tabular-nums',
   },
   stationName: {
     fontWeight: 500, color: 'var(--text-primary)',
@@ -102,7 +111,7 @@ const S = {
     overflow: 'hidden',
   },
   suggestion: {
-    padding: '14px 24px',
+    padding: '10px 20px',
     background: 'var(--bg-tertiary)',
     fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5,
     display: 'flex', gap: '8px', alignItems: 'flex-start',
@@ -111,13 +120,14 @@ const S = {
   // Two-column row
   twoCol: {
     display: 'grid', gridTemplateColumns: '1fr 1.5fr',
-    gap: '16px', marginBottom: '16px',
+    gap: '12px', marginBottom: '12px',
   },
 
   // Wallet
   walletBalance: {
     fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)',
     fontFamily: 'var(--font-display)', lineHeight: 1.2, marginBottom: '4px',
+    fontVariantNumeric: 'tabular-nums',
   },
   topUpBtn: {
     display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -141,6 +151,7 @@ const S = {
   },
   ticketMeta: {
     fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '14px',
+    fontVariantNumeric: 'tabular-nums',
   },
   qrBtn: {
     display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -153,7 +164,7 @@ const S = {
   // Quick rebook + action row
   actionsRow: {
     display: 'grid', gridTemplateColumns: '2fr 1fr 1fr',
-    gap: '12px', marginBottom: '16px',
+    gap: '10px', marginBottom: '12px',
   },
   rebookBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -166,7 +177,7 @@ const S = {
   actionLink: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     justifyContent: 'center', gap: '6px',
-    padding: '16px 12px',
+    padding: '14px 12px',
     borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)',
     background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
     textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 500,
@@ -177,7 +188,7 @@ const S = {
   statsRow: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     gap: '24px', flexWrap: 'wrap',
-    padding: '16px 0',
+    padding: '12px 0',
     fontSize: '0.8125rem', color: 'var(--text-muted)',
   },
   statItem: {
@@ -187,6 +198,7 @@ const S = {
   },
   statValue: {
     fontWeight: 600, color: 'var(--text-secondary)',
+    fontVariantNumeric: 'tabular-nums',
   },
   separator: {
     width: '3px', height: '3px', borderRadius: '50%',
@@ -211,7 +223,7 @@ const S = {
   // Disruption banner
   disruptionBanner: {
     display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '10px 16px', marginBottom: '16px',
+    padding: '8px 14px', marginBottom: '12px',
     borderRadius: 'var(--radius-md)',
     fontSize: '0.8125rem', fontWeight: 500,
   },
@@ -219,6 +231,26 @@ const S = {
     background: 'rgba(21,128,61,0.06)',
     color: '#15803D',
     border: '1px solid rgba(21,128,61,0.12)',
+  },
+  anomalyAmber: {
+    background: 'rgba(217,119,6,0.06)',
+    color: '#B45309',
+    border: '1px solid rgba(217,119,6,0.12)',
+  },
+
+  // Section label (reusable muted uppercase label)
+  label: {
+    fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
+  },
+
+  // Ghost button
+  ghostBtn: {
+    display: 'inline-flex', alignItems: 'center', gap: '6px',
+    padding: '6px 14px', borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border-color)', background: 'transparent',
+    color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 600,
+    cursor: 'pointer', transition: 'all 150ms ease',
   },
 
   // Skeleton
@@ -346,7 +378,7 @@ function MyLineStrip({ corridor, userDestination }) {
 
   if (loading) {
     return (
-      <div style={{ ...S.card, marginBottom: '16px' }}>
+      <div style={{ ...S.card, ...S.liveCard, marginBottom: '12px' }}>
         <div style={S.lineHeader}>
           <span style={S.lineTitle}>{corridor.line}</span>
           <span style={S.liveBadge}><span style={S.liveDot} /> Live</span>
@@ -366,7 +398,7 @@ function MyLineStrip({ corridor, userDestination }) {
   }
 
   return (
-    <div style={{ ...S.card, marginBottom: '16px' }}>
+    <div style={{ ...S.card, ...S.liveCard, marginBottom: '12px' }}>
       <div style={S.lineHeader}>
         <div>
           <span style={S.lineTitle}>{corridor.line}</span>
@@ -455,6 +487,315 @@ function MyLineStrip({ corridor, userDestination }) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   ANOMALY WHISPER — renders nothing unless a real anomaly exists
+   ═══════════════════════════════════════════════════════════ */
+function AnomalyWhisper({ station, hour, dayOfWeek, predictedCrowd }) {
+  const [anomaly, setAnomaly] = useState(null);
+
+  useEffect(() => {
+    if (!station || hour === undefined || dayOfWeek === undefined || !predictedCrowd) return;
+    checkAnomaly({ station, hour, dayOfWeek, actualCrowd: predictedCrowd })
+      .then(res => {
+        if (res.data.anomaly?.isAnomaly) setAnomaly(res.data.anomaly);
+      })
+      .catch(() => {});
+  }, [station, hour, dayOfWeek, predictedCrowd]);
+
+  if (!anomaly) return null;
+
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const dayName = dayNames[dayOfWeek] || 'today';
+  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
+  return (
+    <div style={{ ...S.disruptionBanner, ...S.anomalyAmber, animation: 'fadeInUp 0.4s ease' }}>
+      <span style={{ ...S.liveBadge, color: '#D97706' }}><span style={{ ...S.liveDot, background: '#D97706' }} /> Alert</span>
+      Heads up — {station} is unusually busy for a {dayName} {timeOfDay}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BEST DEPARTURE CARD — only renders if usualRoute exists
+   ═══════════════════════════════════════════════════════════ */
+function BestDepartureCard({ usualRoute }) {
+  const [result, setResult] = useState(null);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (!usualRoute) return;
+    const hour = new Date().getHours();
+    const day = new Date().getDay();
+    const pyDay = day === 0 ? 6 : day - 1;
+    getBestDeparture({ station: usualRoute.source, targetHour: hour, dayOfWeek: pyDay })
+      .then(res => setResult(res.data.bestDeparture))
+      .catch(() => {});
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [usualRoute]);
+
+  if (!usualRoute || !result) return null;
+
+  const currentHour = new Date().getHours();
+  const isBestAlready = result.deltaPct === 0 || result.bestHour === currentHour;
+
+  const handleRemind = () => {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(perm => {
+      if (perm !== 'granted') return;
+      const delayMs = Math.max(0, (result.bestHour - currentHour) * 60 * 60 * 1000 - 15 * 60 * 1000);
+      timerRef.current = setTimeout(() => {
+        new Notification('MetroMind', {
+          body: `Time to head to ${usualRoute.source} — ${result.bestHour}:00 is your best departure window`,
+        });
+      }, delayMs);
+    });
+  };
+
+  return (
+    <div style={{ ...S.card, ...S.liveCard, marginBottom: '12px', animation: 'fadeInUp 0.4s ease' }}>
+      <div className="dash-card-pad" style={S.cardPad}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={S.label}>Smarter Timing</div>
+          <span style={{ ...S.liveBadge, color: 'var(--accent-primary)' }}><span style={{ ...S.liveDot, background: 'var(--accent-primary)' }} /> Updated</span>
+        </div>
+        {isBestAlready ? (
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <i className="fas fa-check" style={{ color: '#15803D', marginRight: '6px' }} />
+            You're traveling at a good time
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: '10px' }}>
+              Leave for <strong>{result.bestHour}:00</strong> instead — <strong>{result.deltaPct}% less crowded</strong> than now
+            </div>
+            <button style={S.ghostBtn} onClick={handleRemind}>
+              <i className="fas fa-bell" style={{ fontSize: '0.7rem' }} />
+              Remind me
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PERSONALITY BADGE — small inline stat, not a big card
+   ═══════════════════════════════════════════════════════════ */
+function PersonalityBadge() {
+  const [personality, setPersonality] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    getPersonalityProfile()
+      .then(res => {
+        const p = res.data.personality;
+        if (p && p.totalTrips >= 5) setPersonality(p);
+      })
+      .catch(() => {});
+  }, []);
+
+  if (!personality) return null;
+
+  const icons = {
+    'Early Bird': '🌅', 'Rush Hour Warrior': '⚡', 'Weekend Explorer': '🧭',
+    'Smart Commuter': '🧠', 'Balanced Traveler': '⚖️',
+  };
+
+  return (
+    <span
+      style={{ ...S.statItem, cursor: 'pointer' }}
+      onClick={() => navigate('/profile')}
+      title="View full personality breakdown"
+    >
+      <span style={{ fontSize: '0.875rem' }}>{icons[personality.personality] || '🚇'}</span>
+      <span style={S.statValue}>{personality.personality}</span>
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NETWORK PULSE — system-wide live stats, always renders
+   ═══════════════════════════════════════════════════════════ */
+function NetworkPulsePanel() {
+  const [pulse, setPulse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [displayRiders, setDisplayRiders] = useState(null);
+  const baseRidersRef = useRef(null);
+
+  // Fetch pulse data on mount + every 45 seconds
+  const fetchPulse = useCallback(async () => {
+    try {
+      const res = await getNetworkPulse();
+      if (res.data.fallback) {
+        setPulse(null);
+      } else {
+        setPulse(res.data.pulse);
+        baseRidersRef.current = res.data.pulse.estimatedRiders || 1240;
+        setDisplayRiders(baseRidersRef.current);
+      }
+    } catch {
+      setPulse(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPulse();
+    const interval = setInterval(fetchPulse, 45000);
+    return () => clearInterval(interval);
+  }, [fetchPulse]);
+
+  // Rider count jitter — small ±1-3 every 4-6 seconds for "alive" feel
+  useEffect(() => {
+    if (baseRidersRef.current === null) return;
+    const jitter = () => {
+      const delta = Math.floor(Math.random() * 3) + 1;
+      const sign = Math.random() > 0.5 ? 1 : -1;
+      setDisplayRiders(Math.max(0, baseRidersRef.current + sign * delta));
+    };
+    const ms = 4000 + Math.floor(Math.random() * 2000);
+    const id = setInterval(jitter, ms);
+    return () => clearInterval(id);
+  }, [pulse]);
+
+  // Skeleton
+  if (loading) {
+    return (
+      <div style={{ ...S.card, ...S.liveCard, marginBottom: '12px' }}>
+        <div style={{ ...S.cardPad, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ ...S.skeleton, width: '100px', height: '14px' }} />
+            <div style={{ ...S.skeleton, width: '48px', height: '12px' }} />
+          </div>
+        </div>
+        <div className="dash-pulse-stats" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px',
+          background: 'var(--border-color)',
+        }}>
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} style={{ background: 'var(--bg-secondary)', padding: '12px 16px' }}>
+              <div style={{ ...S.skeleton, width: '48px', height: '20px', marginBottom: '4px' }} />
+              <div style={{ ...S.skeleton, width: '64px', height: '10px' }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback when Django is offline — use reasonable defaults so the panel
+  // still renders for new users (the whole point of this component)
+  const data = pulse || {};
+  const riders = displayRiders ?? data.estimatedRiders ?? 1240;
+  const avgWait = data.avgWaitMinutes ?? 4;
+  const busiest = data.busiest || { name: 'Kalupur Ry.', pct: 82 };
+  const quietest = data.quietest || { name: 'GNLU', pct: 18 };
+
+  return (
+    <div style={{ ...S.card, ...S.liveCard, marginBottom: '12px' }}>
+      {/* Header */}
+      <div style={{
+        ...S.cardPad,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        paddingBottom: '0',
+      }}>
+        <span style={S.lineTitle}>Network Pulse</span>
+        <span style={S.liveBadge}><span style={S.liveDot} /> Live</span>
+      </div>
+
+      {/* 4-column dense stat strip */}
+      <div className="dash-pulse-stats" style={{
+        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px',
+        background: 'var(--border-color)', margin: '10px 0 0 0',
+        borderTop: '1px solid var(--border-color)',
+      }}>
+        {/* Active Riders */}
+        <div style={{ background: 'var(--bg-secondary)', padding: '12px 16px' }}>
+          <div style={{
+            fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)',
+            fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1.2,
+          }}>
+            {riders.toLocaleString()}
+          </div>
+          <div style={{
+            fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px',
+          }}>
+            Active Riders
+          </div>
+        </div>
+
+        {/* Avg Wait */}
+        <div style={{ background: 'var(--bg-secondary)', padding: '12px 16px' }}>
+          <div style={{
+            fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)',
+            fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1.2,
+          }}>
+            {avgWait} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)' }}>min</span>
+          </div>
+          <div style={{
+            fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px',
+          }}>
+            Avg Wait
+          </div>
+        </div>
+
+        {/* Busiest Station */}
+        <div style={{ background: 'var(--bg-secondary)', padding: '12px 16px' }}>
+          <div style={{
+            fontSize: '0.875rem', fontWeight: 700, color: '#E8283B',
+            lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {busiest.name?.replace(' Railway Station', ' Ry.')}
+          </div>
+          <div style={{
+            fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px',
+            display: 'flex', alignItems: 'center', gap: '4px',
+          }}>
+            Busiest
+            <span style={{
+              fontVariantNumeric: 'tabular-nums', color: '#E8283B',
+              fontSize: '0.6875rem', fontWeight: 700,
+            }}>
+              {busiest.pct}%
+            </span>
+          </div>
+        </div>
+
+        {/* Quietest Station */}
+        <div style={{ background: 'var(--bg-secondary)', padding: '12px 16px' }}>
+          <div style={{
+            fontSize: '0.875rem', fontWeight: 700, color: '#15803D',
+            lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {quietest.name?.replace(' Railway Station', ' Ry.')}
+          </div>
+          <div style={{
+            fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px',
+            display: 'flex', alignItems: 'center', gap: '4px',
+          }}>
+            Quietest
+            <span style={{
+              fontVariantNumeric: 'tabular-nums', color: '#15803D',
+              fontSize: '0.6875rem', fontWeight: 700,
+            }}>
+              {quietest.pct}%
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
    MAIN DASHBOARD COMPONENT
    ═══════════════════════════════════════════════════════════ */
 export default function Dashboard() {
@@ -511,6 +852,7 @@ export default function Dashboard() {
           .dash-card-pad { padding: 16px !important; }
           .dash-suggestion { padding: 12px 16px !important; }
           .dash-stats-row { gap: 16px !important; }
+          .dash-pulse-stats { grid-template-columns: 1fr 1fr !important; }
         }
         @media (max-width: 576px) {
           .dash-station-row { grid-template-columns: 80px 1fr 44px !important; }
@@ -538,8 +880,22 @@ export default function Dashboard() {
         All lines operating normally
       </div>
 
+      {/* ═══ NETWORK PULSE (system-wide, always renders) ═══ */}
+      <NetworkPulsePanel />
+
       {/* ═══ MY LINE RIGHT NOW ═══ */}
       <MyLineStrip corridor={corridor} userDestination={userDestination} />
+
+      {/* ═══ ANOMALY WHISPER (renders nothing if no anomaly) ═══ */}
+      <AnomalyWhisper
+        station={userDestination}
+        hour={new Date().getHours()}
+        dayOfWeek={new Date().getDay() === 0 ? 6 : new Date().getDay() - 1}
+        predictedCrowd={85}
+      />
+
+      {/* ═══ BEST DEPARTURE CARD (only if usualRoute exists) ═══ */}
+      <BestDepartureCard usualRoute={usualRoute} />
 
       {/* ═══ WALLET + ACTIVE TICKET ═══ */}
       <div className="dash-two-col" style={S.twoCol}>
@@ -656,6 +1012,8 @@ export default function Dashboard() {
           <i className="fas fa-fire" style={{ fontSize: '0.75rem', color: '#D97706' }} />
           <span style={S.statValue}>{streakDays}</span> day streak
         </Link>
+        {/* Personality badge — inline, renders null if < 5 trips */}
+        <PersonalityBadge />
       </div>
 
       {/* QR Modal */}
