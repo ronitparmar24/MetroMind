@@ -32,13 +32,13 @@ export default function CarbonPassport() {
         <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>{user?.name}</p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '32px', marginTop: '24px' }}>
           <div>
-            <p style={{ fontSize: '2rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--success)' }}>
+            <p className="mm-num" style={{ fontSize: '2rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--success)' }}>
               {totalCO2.toFixed(1)}
             </p>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>kg CO₂ saved</p>
           </div>
           <div>
-            <p style={{ fontSize: '2rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--accent-primary)' }}>
+            <p className="mm-num" style={{ fontSize: '2rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--accent-primary)' }}>
               {totalDistance.toFixed(0)}
             </p>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>km by metro</p>

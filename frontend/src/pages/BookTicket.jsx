@@ -1,5 +1,5 @@
 // frontend/src/pages/BookTicket.jsx
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import StationSelector from '../components/booking/StationSelector';
 import TimeSlotPicker from '../components/booking/TimeSlotPicker';
@@ -13,6 +13,17 @@ import { bookTicket } from '../api/tickets.api';
 import { STATIONS } from '../constants/stations';
 import { calculateFare } from '../utils/fareEngine';
 
+// Lazy-load the interactive map to keep the initial bundle small
+const InteractiveMetroMap = lazy(() => import('../components/metro/InteractiveMetroMap'));
+
+const TAB_STYLE_BASE = {
+  flex: 1, padding: '10px 20px', border: 'none',
+  fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer',
+  borderRadius: 'var(--radius-md)',
+  transition: 'all 0.2s ease',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+};
+
 export default function BookTicket() {
   const location = useLocation();
   const prefilled = location.state || {};
@@ -23,6 +34,7 @@ export default function BookTicket() {
   const [travelTime, setTravelTime] = useState('');
   const [passengers, setPassengers] = useState([{ name: '', age: '' }]);
   const [loading, setLoading] = useState(false);
+  const [inputMode, setInputMode] = useState('search'); // 'search' | 'map'
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -46,6 +58,23 @@ export default function BookTicket() {
     const dayOfWeek = new Date(travelDate).getDay();
     return calculateFare(srcStation, destStation, hour, dayOfWeek, passengers.length);
   }, [source, destination, travelDate, hour, passengers.length]);
+
+  // Map station selection callback — writes to same source/destination state
+  const handleMapSelect = (from, to) => {
+    if (from) setSource(from);
+    if (to !== undefined) setDestination(to);
+  };
+
+  // Find station IDs for passing to the map
+  const fromStationId = useMemo(() => {
+    const s = STATIONS.find(s => s.name === source);
+    return s?.id || null;
+  }, [source]);
+
+  const toStationId = useMemo(() => {
+    const s = STATIONS.find(s => s.name === destination);
+    return s?.id || null;
+  }, [destination]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,11 +114,94 @@ export default function BookTicket() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 'var(--space-xl)', alignItems: 'start' }}>
         <form onSubmit={handleSubmit}>
           <GlassCard style={{ marginBottom: 'var(--space-lg)' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: '20px' }}>Route</h3>
-            <StationSelector label="From" value={source} onChange={setSource} excludeStation={destination} />
-            <StationSelector label="To" value={destination} onChange={setDestination} excludeStation={source} />
+            {/* ── Input Mode Toggle ── */}
+            <div style={{
+              display: 'flex', gap: '4px', marginBottom: '20px',
+              padding: '4px', background: 'var(--bg-tertiary)',
+              borderRadius: 'var(--radius-md)',
+            }}>
+              <button
+                type="button"
+                onClick={() => setInputMode('search')}
+                style={{
+                  ...TAB_STYLE_BASE,
+                  background: inputMode === 'search'
+                    ? 'var(--bg-secondary)'
+                    : 'transparent',
+                  color: inputMode === 'search'
+                    ? 'var(--text-primary)'
+                    : 'var(--text-muted)',
+                  boxShadow: inputMode === 'search'
+                    ? '0 1px 4px rgba(0,0,0,0.08)'
+                    : 'none',
+                }}
+              >
+                🔍 Search by Name
+              </button>
+              <button
+                type="button"
+                onClick={() => setInputMode('map')}
+                style={{
+                  ...TAB_STYLE_BASE,
+                  background: inputMode === 'map'
+                    ? 'var(--bg-secondary)'
+                    : 'transparent',
+                  color: inputMode === 'map'
+                    ? 'var(--text-primary)'
+                    : 'var(--text-muted)',
+                  boxShadow: inputMode === 'map'
+                    ? '0 1px 4px rgba(0,0,0,0.08)'
+                    : 'none',
+                }}
+              >
+                🗺️ Pick on Map
+              </button>
+            </div>
 
-            <div className="form-group">
+            <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: '16px' }}>Route</h3>
+
+            {/* ── Search by Name mode ── */}
+            {inputMode === 'search' && (
+              <>
+                <StationSelector label="From" value={source} onChange={setSource} excludeStation={destination} />
+                <StationSelector label="To" value={destination} onChange={setDestination} excludeStation={source} />
+              </>
+            )}
+
+            {/* ── Pick on Map mode ── */}
+            {inputMode === 'map' && (
+              <Suspense fallback={
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  Loading map...
+                </div>
+              }>
+                <InteractiveMetroMap
+                  compact
+                  onStationSelect={handleMapSelect}
+                  initialFrom={fromStationId}
+                  initialTo={toStationId}
+                />
+              </Suspense>
+            )}
+
+            {/* Show selected route summary when in map mode */}
+            {inputMode === 'map' && (source || destination) && (
+              <div style={{
+                display: 'flex', gap: '8px', marginTop: '12px',
+                padding: '10px 14px', background: 'var(--bg-tertiary)',
+                borderRadius: 'var(--radius-md)', fontSize: '0.85rem',
+              }}>
+                <span style={{ color: source ? '#22c55e' : 'var(--text-muted)' }}>
+                  📍 {source || 'Select FROM'}
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>→</span>
+                <span style={{ color: destination ? '#ef4444' : 'var(--text-muted)' }}>
+                  🏁 {destination || 'Select TO'}
+                </span>
+              </div>
+            )}
+
+            <div className="form-group" style={{ marginTop: inputMode === 'map' ? '12px' : undefined }}>
               <label className="form-label">Travel Date</label>
               <input type="date" className="form-input" value={travelDate}
                 onChange={(e) => setTravelDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />

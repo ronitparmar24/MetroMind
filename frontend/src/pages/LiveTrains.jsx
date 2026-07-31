@@ -4,7 +4,7 @@ import GlassCard from '../components/common/GlassCard';
 import CrowdBadge from '../components/booking/CrowdBadge';
 import StationSelector from '../components/booking/StationSelector';
 import { getLiveTrains } from '../api/predict.api';
-import { BLUE_LINE_STATIONS, RED_LINE_STATIONS } from '../constants/stations';
+import { STATIONS, LINES } from '../constants/stations';
 
 export default function LiveTrains() {
   const [time, setTime] = useState(new Date());
@@ -48,12 +48,13 @@ export default function LiveTrains() {
   const onTimeCount = useMemo(() => departures.filter(d => d.isOnTime).length, [departures]);
   const totalCount = departures.length;
 
-  const lineColor = stationLine === 'red' ? '#ef4444' : '#3b82f6';
+  const lineColor = LINES[stationLine]?.color || '#3b82f6';
 
-  // ── Simulated train positions (kept from original for the overview cards) ──
-  const getTrainPosition = (line, index) => {
+  // ── Simulated train positions (overview cards) ──
+  const getTrainPosition = (lineKey, index) => {
     const minute = time.getMinutes() + time.getSeconds() / 60;
-    const stations = line === 'blue' ? BLUE_LINE_STATIONS : RED_LINE_STATIONS;
+    const stations = STATIONS.filter(s => s.line === lineKey);
+    if (stations.length === 0) return { currentStation: 'Depot', nextStation: 'Depot', progress: 0 };
     const pos = (minute / 5 + index * 3) % stations.length;
     const stationIndex = Math.floor(pos);
     const progress = pos - stationIndex;
@@ -64,56 +65,52 @@ export default function LiveTrains() {
     };
   };
 
-  const blueTrains = [0, 1, 2].map(i => ({ id: `BL-${i + 1}`, ...getTrainPosition('blue', i) }));
-  const redTrains = [0, 1].map(i => ({ id: `RL-${i + 1}`, ...getTrainPosition('red', i) }));
+  // Build train arrays per line (Blue/Red: 3 trains; others: 2)
+  const LINE_TRAIN_COUNT = { blue: 3, red: 3, yellow: 2, pink: 1, purple: 1 };
+  const LINE_EMOJI = { blue: '🔵', red: '🔴', yellow: '🟡', pink: '🩷', purple: '🟣' };
+
+  const allLineTrains = Object.keys(LINES).map(lineKey => ({
+    lineKey,
+    line: LINES[lineKey],
+    emoji: LINE_EMOJI[lineKey] || '⚪',
+    trains: Array.from({ length: LINE_TRAIN_COUNT[lineKey] || 1 }, (_, i) => ({
+      id: `${lineKey.charAt(0).toUpperCase()}L-${i + 1}`,
+      ...getTrainPosition(lineKey, i),
+    })),
+  }));
 
   return (
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Live Trains 🚇</h1>
         <p className="page-subtitle">
-          Real-time positions & ML-powered delay predictions · {time.toLocaleTimeString('en-IN')}
+          Real-time positions & ML-powered delay predictions · <span className="mm-num">{time.toLocaleTimeString('en-IN')}</span>
         </p>
       </div>
 
-      {/* ── Train overview (Blue + Red lines) ── */}
-      <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: '12px', color: '#3b82f6' }}>
-        🔵 Blue Line
-      </h3>
-      <div className="grid grid-3" style={{ marginBottom: 'var(--space-xl)' }}>
-        {blueTrains.map(t => (
-          <GlassCard key={t.id} style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontWeight: 700, fontFamily: 'monospace', color: '#3b82f6' }}>{t.id}</span>
-              <span className="badge badge-success">On Time</span>
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>At: <strong style={{ color: 'var(--text-primary)' }}>{t.currentStation}</strong></p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Next: {t.nextStation}</p>
-            <div style={{ height: '4px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-full)', marginTop: '10px', overflow: 'hidden' }}>
-              <div style={{ width: `${t.progress}%`, height: '100%', background: '#3b82f6', borderRadius: 'var(--radius-full)', transition: 'width 5s linear' }} />
-            </div>
-          </GlassCard>
-        ))}
-      </div>
-
-      <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: '12px', color: '#ef4444' }}>
-        🔴 Red Line
-      </h3>
-      <div className="grid grid-3" style={{ marginBottom: 'var(--space-2xl)' }}>
-        {redTrains.map(t => (
-          <GlassCard key={t.id} style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontWeight: 700, fontFamily: 'monospace', color: '#ef4444' }}>{t.id}</span>
-              <span className="badge badge-success">On Time</span>
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>At: <strong style={{ color: 'var(--text-primary)' }}>{t.currentStation}</strong></p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Next: {t.nextStation}</p>
-            <div style={{ height: '4px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-full)', marginTop: '10px', overflow: 'hidden' }}>
-              <div style={{ width: `${t.progress}%`, height: '100%', background: '#ef4444', borderRadius: 'var(--radius-full)', transition: 'width 5s linear' }} />
-            </div>
-          </GlassCard>
-        ))}
-      </div>
+      {/* ── Train overview for all lines ── */}
+      {allLineTrains.map(({ lineKey, line, emoji, trains }) => (
+        <div key={lineKey}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: '12px', color: line.color }}>
+            {emoji} {line.name}
+          </h3>
+          <div className="grid grid-3" style={{ marginBottom: 'var(--space-xl)' }}>
+            {trains.map(t => (
+              <GlassCard key={t.id} style={{ padding: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ fontWeight: 700, fontFamily: 'monospace', color: line.color }}>{t.id}</span>
+                  <span className="badge badge-success">On Time</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>At: <strong style={{ color: 'var(--text-primary)' }}>{t.currentStation}</strong></p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Next: {t.nextStation}</p>
+                <div style={{ height: '4px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-full)', marginTop: '10px', overflow: 'hidden' }}>
+                  <div style={{ width: `${t.progress}%`, height: '100%', background: line.color, borderRadius: 'var(--radius-full)', transition: 'width 5s linear' }} />
+                </div>
+              </GlassCard>
+            ))}
+          </div>
+        </div>
+      ))}
 
       {/* ── Station departure board ── */}
       <div style={{
@@ -152,10 +149,10 @@ export default function LiveTrains() {
             fontWeight: 600,
             color: onTimeCount === totalCount ? 'var(--success)' : 'var(--warning)',
           }}>
-            <span style={{ fontSize: '1.1rem' }}>
+            <span className="mm-num" style={{ fontSize: '1.1rem' }}>
               {onTimeCount === totalCount ? '✅' : '⚠️'}
             </span>
-            {onTimeCount}/{totalCount} trains on time right now
+            <span className="mm-num">{onTimeCount}/{totalCount} trains on time right now</span>
           </div>
         )}
 
@@ -236,11 +233,11 @@ export default function LiveTrains() {
 
                   {/* Departure time with delay */}
                   <div>
-                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                    <span className="mm-num" style={{ fontWeight: 600, fontSize: '0.9rem' }}>
                       {dep.departureDisplay}
                     </span>
                     {dep.delay > 0 && (
-                      <span style={{
+                      <span className="mm-num" style={{
                         color: '#f59e0b',
                         fontSize: '0.8rem',
                         fontWeight: 600,

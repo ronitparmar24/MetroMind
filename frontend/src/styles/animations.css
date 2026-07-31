@@ -165,3 +165,18 @@
     opacity: 0;
   }
 }
+
+/* Dashboard live-data keyframes (shared — used by Dashboard, Sidebar) */
+@keyframes dashPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.4); }
+}
+
+@keyframes dashSkeleton {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes dashArcIn {
+  from { stroke-dashoffset: 163; }
+}

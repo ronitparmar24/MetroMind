@@ -1,62 +1,115 @@
 // frontend/src/pages/MetroMap.jsx
-import GlassCard from '../components/common/GlassCard';
-import { BLUE_LINE_STATIONS, RED_LINE_STATIONS } from '../constants/stations';
+// Full-page interactive metro map with search + Know Your Station
+import { useState, useMemo } from 'react';
+import InteractiveMetroMap from '../components/metro/InteractiveMetroMap';
+import StationInfoModal from '../components/metro/StationInfoModal';
+import { STATIONS } from '../constants/stations';
 
 export default function MetroMap() {
+  const [infoStation, setInfoStation] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResult, setSearchResult] = useState(null);
+
+  // Search suggestions
+  const suggestions = useMemo(() => {
+    if (!searchQuery || searchQuery.length < 2) return [];
+    const q = searchQuery.toLowerCase();
+    return STATIONS.filter(s => s.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [searchQuery]);
+
+  const handleSearchSelect = (station) => {
+    setSearchQuery(station.name);
+    setSearchResult(station);
+    setInfoStation(station);
+  };
+
   return (
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Metro Map 🗾</h1>
-        <p className="page-subtitle">Ahmedabad Metro Rail network — Blue & Red lines</p>
+        <p className="page-subtitle">
+          Ahmedabad Metro Rail (GMRC) — interactive network map · click stations to plan your journey
+        </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-xl)' }}>
-        <GlassCard style={{ padding: '24px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: '16px', color: '#3b82f6' }}>
-            🔵 Blue Line (North-South)
-          </h3>
-          <div style={{ position: 'relative', paddingLeft: '28px' }}>
-            <div style={{ position: 'absolute', left: '10px', top: '8px', bottom: '8px', width: '3px', background: '#3b82f6', borderRadius: '2px' }} />
-            {BLUE_LINE_STATIONS.map((s, i) => (
-              <div key={s.name} className="stagger-item" style={{
-                display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', position: 'relative',
-              }}>
-                <div style={{
-                  position: 'absolute', left: '-22px', width: '12px', height: '12px',
-                  borderRadius: '50%', background: '#3b82f6', border: '2px solid var(--bg-primary)',
-                  zIndex: 1,
-                }} />
-                <span style={{ fontSize: '0.85rem', fontWeight: i === 0 || i === BLUE_LINE_STATIONS.length - 1 ? 600 : 400 }}>
-                  {s.name}
-                </span>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
+      {/* Search bar for "Know Your Station" */}
+      <div style={{
+        maxWidth: '420px',
+        marginBottom: 'var(--space-lg)',
+        position: 'relative',
+      }}>
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="🔍 Search station... (Know Your Station)"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setSearchResult(null); }}
+            style={{ paddingLeft: '16px' }}
+          />
+        </div>
 
-        <GlassCard style={{ padding: '24px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: '16px', color: '#ef4444' }}>
-            🔴 Red Line (East-West)
-          </h3>
-          <div style={{ position: 'relative', paddingLeft: '28px' }}>
-            <div style={{ position: 'absolute', left: '10px', top: '8px', bottom: '8px', width: '3px', background: '#ef4444', borderRadius: '2px' }} />
-            {RED_LINE_STATIONS.map((s, i) => (
-              <div key={s.name} className="stagger-item" style={{
-                display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', position: 'relative',
-              }}>
-                <div style={{
-                  position: 'absolute', left: '-22px', width: '12px', height: '12px',
-                  borderRadius: '50%', background: '#ef4444', border: '2px solid var(--bg-primary)',
-                  zIndex: 1,
-                }} />
-                <span style={{ fontSize: '0.85rem', fontWeight: i === 0 || i === RED_LINE_STATIONS.length - 1 ? 600 : 400 }}>
-                  {s.name}
+        {/* Search suggestions dropdown */}
+        {suggestions.length > 0 && !searchResult && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0, right: 0,
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            zIndex: 50,
+            marginTop: '4px',
+            overflow: 'hidden',
+          }}>
+            {suggestions.map(s => (
+              <button
+                key={s.id}
+                onClick={() => handleSearchSelect(s)}
+                style={{
+                  display: 'block', width: '100%',
+                  padding: '10px 16px',
+                  background: 'none', border: 'none',
+                  textAlign: 'left', cursor: 'pointer',
+                  fontSize: '0.88rem',
+                  color: 'var(--text-primary)',
+                  borderBottom: '1px solid var(--border-color)',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={(e) => e.target.style.background = 'var(--bg-tertiary)'}
+                onMouseLeave={(e) => e.target.style.background = 'none'}
+              >
+                <strong>{s.name}</strong>
+                <span style={{ color: 'var(--text-muted)', marginLeft: '8px', fontSize: '0.78rem' }}>
+                  {s.line.charAt(0).toUpperCase() + s.line.slice(1)} Line
                 </span>
-              </div>
+              </button>
             ))}
           </div>
-        </GlassCard>
+        )}
       </div>
+
+      {/* Interactive Map */}
+      <InteractiveMetroMap
+        onStationInfo={(station) => setInfoStation(station)}
+      />
+
+      {/* Know Your Station Modal */}
+      {infoStation && (
+        <StationInfoModal
+          station={infoStation}
+          onClose={() => setInfoStation(null)}
+        />
+      )}
+
+      {/* Tip */}
+      <p style={{
+        fontSize: '0.78rem', color: 'var(--text-muted)',
+        marginTop: 'var(--space-lg)', textAlign: 'center',
+      }}>
+        💡 Scroll to zoom · Drag to pan · Click stations to select a route · Right-click a station for details
+      </p>
     </div>
   );
 }

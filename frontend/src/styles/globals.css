@@ -435,3 +435,10 @@ input, select, textarea {
   .btn { width: 100%; text-align: center; }
 }
 
+/* ── Numeric utility ──────────────────────────────────────────────
+   Apply to any element displaying a number that updates or matters
+   at a glance: wallet balance, ride counts, CO₂, crowd %, etc.
+   tabular-nums locks digits to a fixed grid so counters don't jitter. */
+.mm-num {
+  font-variant-numeric: tabular-nums;
+}

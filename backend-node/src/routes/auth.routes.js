@@ -3,7 +3,7 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
 const { protect } = require('../middleware/auth.middleware');
-const { register, login, getMe } = require('../controllers/auth.controller');
+const { register, login, getMe, googleLogin } = require('../controllers/auth.controller');
 
 router.post(
   '/register',
@@ -25,5 +25,8 @@ router.post(
 );
 
 router.get('/me', protect, getMe);
+
+// Google OAuth — verify Google id_token and return MetroMind JWT
+router.post('/google', googleLogin);
 
 module.exports = router;

@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useToast } from '../components/common/Toast';
 import { topupWallet } from '../api/wallet.api';
 import { formatCurrency, timeAgo } from '../utils/formatters';
+import { NCMC_INFO } from '../constants/stations';
 
 export default function Wallet() {
   const { wallet, loading, refetch } = useWallet();
@@ -93,7 +94,7 @@ export default function Wallet() {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
               Available Balance
             </p>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', marginTop: '8px' }}>
+            <h2 className="mm-num" style={{ fontSize: '2.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', marginTop: '8px' }}>
               {formatCurrency(wallet.balance)}
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
@@ -144,7 +145,7 @@ export default function Wallet() {
                     <p style={{ fontSize: '0.9rem', fontWeight: 500 }}>{t.note || t.ref}</p>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{timeAgo(t.createdAt)}</p>
                   </div>
-                  <p style={{
+                  <p className="mm-num" style={{
                     fontWeight: 600, fontFamily: 'var(--font-display)',
                     color: t.type === 'credit' ? 'var(--success)' : 'var(--danger)',
                   }}>
@@ -160,6 +161,22 @@ export default function Wallet() {
           </div>
         </GlassCard>
       </div>
+
+      {/* NCMC compatibility notice */}
+      {NCMC_INFO.enabled && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '14px',
+          padding: '14px 20px', marginTop: 'var(--space-xl)',
+          background: 'rgba(34, 197, 94, 0.08)',
+          border: '1px solid rgba(34, 197, 94, 0.2)',
+          borderRadius: 'var(--radius-md)',
+          fontSize: '0.85rem', color: 'var(--text-secondary)',
+          lineHeight: 1.5,
+        }}>
+          <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>🪪</span>
+          <p>{NCMC_INFO.description}</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -29,5 +29,6 @@ module.exports = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   DJANGO_API_URL: process.env.DJANGO_API_URL,
   CLIENT_URL: process.env.CLIENT_URL,
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
   NODE_ENV: process.env.NODE_ENV || 'development',
 };

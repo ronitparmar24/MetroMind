@@ -2,6 +2,9 @@
 import { NavLink } from 'react-router-dom';
 import { NAV_ROUTES } from '../../constants/routes';
 
+// Nav items that carry live data — show pulsing dot
+const LIVE_PATHS = new Set(['/dashboard', '/live-trains']);
+
 export default function Sidebar({ isOpen }) {
   return (
     <aside
@@ -60,6 +63,20 @@ export default function Sidebar({ isOpen }) {
                   {item.icon}
                 </span>
                 <span>{item.label}</span>
+                {LIVE_PATHS.has(item.path) && (
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: '#E8283B',
+                      animation: 'dashPulse 1.5s ease-in-out infinite',
+                      marginLeft: 'auto',
+                      flexShrink: 0,
+                    }}
+                    title="Live data"
+                  />
+                )}
               </NavLink>
             ))}
           </div>
