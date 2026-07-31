@@ -1,8 +1,8 @@
 // frontend/src/pages/Login.jsx
-// Premium split-screen login — viewport-fitted, no scroll
-import { useState, useRef, useEffect } from 'react';
+// Premium split-screen login — handles unverified accounts with inline OTP
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { loginUser, googleLogin as googleLoginApi } from '../api/auth.api';
+import { loginUser, googleLogin as googleLoginApi, verifyOtp, resendOtp } from '../api/auth.api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
 import '../styles/auth.css';
@@ -34,6 +34,90 @@ function useClock() {
   return time;
 }
 
+/* ═══ OTP Input Component ═══ */
+function OtpInput({ length = 6, onComplete, hasError }) {
+  const [values, setValues] = useState(Array(length).fill(''));
+  const inputRefs = useRef([]);
+
+  const focusInput = (idx) => {
+    if (inputRefs.current[idx]) inputRefs.current[idx].focus();
+  };
+
+  const handleChange = (idx, val) => {
+    const digit = val.replace(/\D/g, '').slice(-1);
+    const next = [...values];
+    next[idx] = digit;
+    setValues(next);
+    if (digit && idx < length - 1) focusInput(idx + 1);
+    const code = next.join('');
+    if (code.length === length && next.every(v => v !== '')) onComplete(code);
+  };
+
+  const handleKeyDown = (idx, e) => {
+    if (e.key === 'Backspace') {
+      if (values[idx]) {
+        const next = [...values];
+        next[idx] = '';
+        setValues(next);
+      } else if (idx > 0) {
+        focusInput(idx - 1);
+        const next = [...values];
+        next[idx - 1] = '';
+        setValues(next);
+      }
+      e.preventDefault();
+    } else if (e.key === 'ArrowLeft' && idx > 0) {
+      focusInput(idx - 1);
+    } else if (e.key === 'ArrowRight' && idx < length - 1) {
+      focusInput(idx + 1);
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, length);
+    if (!pasted.length) return;
+    const next = [...values];
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
+    setValues(next);
+    focusInput(Math.min(pasted.length, length - 1));
+    if (pasted.length === length) onComplete(pasted);
+  };
+
+  const reset = useCallback(() => {
+    setValues(Array(length).fill(''));
+    focusInput(0);
+  }, [length]);
+
+  useEffect(() => {
+    if (hasError) {
+      const t = setTimeout(reset, 600);
+      return () => clearTimeout(t);
+    }
+  }, [hasError, reset]);
+
+  return (
+    <div className="otp-container" onPaste={handlePaste}>
+      {values.map((val, idx) => (
+        <input
+          key={idx}
+          ref={(el) => (inputRefs.current[idx] = el)}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          className={`otp-input${val ? ' filled' : ''}${hasError ? ' error' : ''}`}
+          value={val}
+          onChange={(e) => handleChange(idx, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(idx, e)}
+          onFocus={(e) => e.target.select()}
+          autoFocus={idx === 0}
+          autoComplete="one-time-code"
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,12 +128,37 @@ export default function Login() {
   const [loginSteps, setLoginSteps] = useState([false, false, false]);
   const [stepsVisible, setStepsVisible] = useState(false);
 
+  // OTP verification state (for unverified accounts)
+  const [showOtpFlow, setShowOtpFlow] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpError, setOtpError] = useState(false);
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const formRef = useRef(null);
   const googleBtnRef = useRef(null);
   const clock = useClock();
+
+  // Resend countdown
+  useEffect(() => {
+    if (!showOtpFlow) return;
+    setResendTimer(60);
+    setCanResend(false);
+    const id = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(id);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [showOtpFlow]);
 
   // Initialize Google Identity Services
   useEffect(() => {
@@ -114,7 +223,23 @@ export default function Login() {
       setShowSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1800);
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid email or password');
+      const data = err.response?.data;
+
+      // Handle unverified email
+      if (data?.error === 'EMAIL_NOT_VERIFIED') {
+        setOtpEmail(data.email);
+        setShowOtpFlow(true);
+        setError('');
+        if (data.otpSent) {
+          toast.success('Verification code sent to your email! 📧');
+        }
+        setLoading(false);
+        setStepsVisible(false);
+        setLoginSteps([false, false, false]);
+        return;
+      }
+
+      setError(data?.error || 'Invalid email or password');
       setLoading(false);
       setStepsVisible(false);
       setLoginSteps([false, false, false]);
@@ -127,6 +252,47 @@ export default function Login() {
     }
   };
 
+  // OTP verification
+  const handleVerifyOtp = async (code) => {
+    setError('');
+    setOtpError(false);
+    setLoading(true);
+    try {
+      const res = await verifyOtp(otpEmail, code);
+      login(res.data.token, res.data.user);
+      toast.success('Email verified! Welcome aboard 🎉');
+      setShowSuccess(true);
+      setTimeout(() => navigate('/dashboard'), 1800);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid verification code');
+      setOtpError(true);
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!canResend) return;
+    setError('');
+    try {
+      await resendOtp(otpEmail);
+      toast.success('New verification code sent! 📧');
+      setCanResend(false);
+      setResendTimer(60);
+      const id = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(id);
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to resend code');
+    }
+  };
+
   const hour = clock.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -135,17 +301,13 @@ export default function Login() {
       {/* ═══ LEFT PANEL ═══ */}
       <div className="auth-visual">
         <Particles />
-
         <div className="auth-visual-brand">
           <span className="material-symbols-outlined">subway</span>
           <span>MetroMind</span>
         </div>
-
         <div className="auth-visual-content">
           <h1>Your city,<br />connected.</h1>
           <p>Real-time crowd prediction, smart ticketing, and sustainable transit — all in one platform.</p>
-
-          {/* Stats */}
           <div className="auth-stats-bar">
             <div className="auth-stat-item">
               <span className="auth-stat-value">32</span>
@@ -160,8 +322,6 @@ export default function Login() {
               <span className="auth-stat-label">On-Time</span>
             </div>
           </div>
-
-          {/* Metro animation */}
           <div className="auth-metro-animation">
             <div className="auth-metro-track">
               <div className="auth-metro-station" style={{ left: '0%' }} />
@@ -170,8 +330,6 @@ export default function Login() {
               <div className="auth-metro-train" />
             </div>
           </div>
-
-          {/* Feature pills */}
           <div className="auth-feature-pills">
             <div className="auth-feature-pill">
               <span className="material-symbols-outlined">qr_code_2</span>
@@ -200,154 +358,179 @@ export default function Login() {
             <span className="auth-logo-text">MetroMind</span>
           </div>
 
-          {/* Desktop logo */}
-          <div className="auth-logo-bar auth-anim" style={{ display: 'none' }}>
-            <div className="auth-logo-icon">
-              <span className="material-symbols-outlined">train</span>
-            </div>
-            <span className="auth-logo-text">MetroMind</span>
-          </div>
-          <style>{`@media (min-width: 900px) { .auth-logo-bar { display: flex !important; } }`}</style>
 
-          {/* Header */}
-          <div className="auth-heading auth-anim d1">
-            <h2>{greeting} 👋</h2>
-            <p>Sign in to manage your commute.</p>
-          </div>
 
-          {/* Error */}
-          {error && (
-            <div className="auth-error-alert">
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
-              <span>{error}</span>
-            </div>
-          )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit}>
-            {/* Email */}
-            <div className="auth-input-group auth-anim d2">
-              <label htmlFor="login-email">Email</label>
-              <div className="auth-input-wrap">
-                <span className="material-symbols-outlined">mail</span>
-                <input
-                  id="login-email"
-                  type="email"
-                  className="auth-input"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  autoComplete="email"
-                />
+          {/* ═══ OTP VERIFICATION FLOW ═══ */}
+          {showOtpFlow ? (
+            <div style={{ animation: 'authFadeIn 0.4s ease' }}>
+              <div className="auth-heading">
+                <h2>Verify your email</h2>
+                <p>Your account needs email verification before signing in.</p>
               </div>
-            </div>
 
-            {/* Password */}
-            <div className="auth-input-group auth-anim d3">
-              <div className="auth-label-row">
-                <label htmlFor="login-password">Password</label>
-                <a href="#">Forgot?</a>
+              <div className="otp-email-icon">
+                <span className="material-symbols-outlined">mark_email_read</span>
               </div>
-              <div className="auth-input-wrap">
-                <span className="material-symbols-outlined">lock</span>
-                <input
-                  id="login-password"
-                  type={showPw ? 'text' : 'password'}
-                  className="auth-input"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                  autoComplete="current-password"
-                  style={{ paddingRight: '42px' }}
-                />
-                <button type="button" className="auth-pw-toggle" onClick={() => setShowPw(!showPw)}>
-                  <span className="material-symbols-outlined">
-                    {showPw ? 'visibility' : 'visibility_off'}
-                  </span>
-                </button>
-              </div>
-            </div>
 
-            {/* Submit */}
-            <div className="auth-anim d4" style={{ paddingTop: '4px' }}>
-              <button type="submit" className="auth-btn-primary" disabled={loading} id="login-submit">
-                {loading ? (
-                  <div className="auth-spinner" />
-                ) : (
-                  <>
-                    <span>Sign In</span>
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </>
-                )}
-              </button>
-            </div>
+              <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', marginBottom: '4px' }}>
+                We sent a 6-digit code to
+              </p>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', textAlign: 'center', marginBottom: '16px' }}>
+                {otpEmail}
+              </p>
 
-            {/* Login steps progress */}
-            <div className={`login-steps ${stepsVisible ? 'visible' : ''}`}>
-              <div className={`login-step-item ${loginSteps[0] ? 'active' : ''}`}>
-                <div className="login-step-dot" /> Verifying
-              </div>
-              <div className={`login-step-connector ${loginSteps[1] ? 'active' : ''}`} />
-              <div className={`login-step-item ${loginSteps[1] ? 'active' : ''}`}>
-                <div className="login-step-dot" /> Securing
-              </div>
-              <div className={`login-step-connector ${loginSteps[2] ? 'active' : ''}`} />
-              <div className={`login-step-item ${loginSteps[2] ? 'active' : ''}`}>
-                <div className="login-step-dot" /> Redirecting
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="auth-divider auth-anim d4">
-              <span>or</span>
-            </div>
-
-            {/* Google sign-in */}
-            <div className="auth-anim d5" style={{ width: '100%' }}>
-              {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
-                <div ref={googleBtnRef} style={{
-                  display: 'flex', justifyContent: 'center', width: '100%',
-                }} />
-              ) : (
-                <button type="button" className="auth-btn-google" disabled
-                  style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                  <span>Google Sign-In unavailable</span>
-                </button>
+              {error && (
+                <div className="auth-error-alert">
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
+                  <span>{error}</span>
+                </div>
               )}
-            </div>
-          </form>
 
-          {/* Footer */}
-          <div className="auth-footer-link auth-anim d5">
-            Don't have an account?
-            <Link to="/register">Create one</Link>
-          </div>
+              <OtpInput length={6} onComplete={handleVerifyOtp} hasError={otpError} />
 
-          {/* Quick access */}
-          <div className="auth-anim d6" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginTop: '16px' }}>
-            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px', fontWeight: 500, marginBottom: '8px' }}>
-              Quick Access (Demo)
-            </p>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" className="auth-quick-btn"
-                onClick={() => { setEmail('admin@metromind.in'); setPassword('admin123'); }}>
-                🛡️ Admin
+              {loading && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+                  <div className="auth-spinner" style={{ borderColor: 'rgba(79,70,229,0.2)', borderTopColor: '#4F46E5' }} />
+                </div>
+              )}
+
+              <div className="otp-resend">
+                {canResend ? (
+                  <>
+                    Didn't receive the code?{' '}
+                    <button type="button" onClick={handleResendOtp}>Resend code</button>
+                  </>
+                ) : (
+                  <span>Resend code in <strong>{resendTimer}s</strong></span>
+                )}
+              </div>
+
+              <button type="button" onClick={() => { setShowOtpFlow(false); setError(''); }} style={{
+                background: 'none', border: 'none', color: '#64748b', display: 'block', margin: '16px auto 0',
+                fontSize: '13px', cursor: 'pointer', fontWeight: 500, fontFamily: "'Inter', system-ui, sans-serif",
+              }}>
+                ← Back to login
               </button>
-              <button type="button" className="auth-quick-btn"
-                onClick={() => { setEmail('user@metromind.in'); setPassword('user123'); }}>
-                👤 User
-              </button>
             </div>
-          </div>
+          ) : (
+            /* ═══ NORMAL LOGIN FORM ═══ */
+            <>
+              <div className="auth-heading auth-anim d1">
+                <h2>{greeting} 👋</h2>
+                <p>Sign in to manage your commute.</p>
+              </div>
 
-          {/* Security */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '12px', fontSize: '10px', color: '#94a3b8' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>verified_user</span>
-            256-bit encrypted · Your data stays private
-          </div>
+              {error && (
+                <div className="auth-error-alert">
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit}>
+                <div className="auth-input-group auth-anim d2">
+                  <label htmlFor="login-email">Email</label>
+                  <div className="auth-input-wrap">
+                    <span className="material-symbols-outlined">mail</span>
+                    <input
+                      id="login-email" type="email" className="auth-input"
+                      value={email} onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com" required autoComplete="email"
+                    />
+                  </div>
+                </div>
+
+                <div className="auth-input-group auth-anim d3">
+                  <div className="auth-label-row">
+                    <label htmlFor="login-password">Password</label>
+                    <a href="#">Forgot?</a>
+                  </div>
+                  <div className="auth-input-wrap">
+                    <span className="material-symbols-outlined">lock</span>
+                    <input
+                      id="login-password" type={showPw ? 'text' : 'password'} className="auth-input"
+                      value={password} onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••" required minLength={6}
+                      autoComplete="current-password" style={{ paddingRight: '42px' }}
+                    />
+                    <button type="button" className="auth-pw-toggle" onClick={() => setShowPw(!showPw)}>
+                      <span className="material-symbols-outlined">
+                        {showPw ? 'visibility' : 'visibility_off'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="auth-anim d4" style={{ paddingTop: '4px' }}>
+                  <button type="submit" className="auth-btn-primary" disabled={loading} id="login-submit">
+                    {loading ? <div className="auth-spinner" /> : (
+                      <>
+                        <span>Sign In</span>
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className={`login-steps ${stepsVisible ? 'visible' : ''}`}>
+                  <div className={`login-step-item ${loginSteps[0] ? 'active' : ''}`}>
+                    <div className="login-step-dot" /> Verifying
+                  </div>
+                  <div className={`login-step-connector ${loginSteps[1] ? 'active' : ''}`} />
+                  <div className={`login-step-item ${loginSteps[1] ? 'active' : ''}`}>
+                    <div className="login-step-dot" /> Securing
+                  </div>
+                  <div className={`login-step-connector ${loginSteps[2] ? 'active' : ''}`} />
+                  <div className={`login-step-item ${loginSteps[2] ? 'active' : ''}`}>
+                    <div className="login-step-dot" /> Redirecting
+                  </div>
+                </div>
+
+                <div className="auth-divider auth-anim d4"><span>or</span></div>
+
+                <div className="auth-anim d5" style={{ width: '100%' }}>
+                  {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+                    <div className="google-btn-wrapper">
+                      <div className="google-btn-inner">
+                        <div ref={googleBtnRef} style={{ display: 'flex', justifyContent: 'center', width: '100%' }} />
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" className="auth-btn-google" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                      <span>Google Sign-In unavailable</span>
+                    </button>
+                  )}
+                </div>
+              </form>
+
+              <div className="auth-footer-link auth-anim d5">
+                Don't have an account?
+                <Link to="/register">Create one</Link>
+              </div>
+
+              <div className="auth-anim d6" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginTop: '16px' }}>
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px', fontWeight: 500, marginBottom: '8px' }}>
+                  Quick Access (Demo)
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="auth-quick-btn"
+                    onClick={() => { setEmail('admin@metromind.in'); setPassword('admin123'); }}>
+                    🛡️ Admin
+                  </button>
+                  <button type="button" className="auth-quick-btn"
+                    onClick={() => { setEmail('user@metromind.in'); setPassword('user123'); }}>
+                    👤 User
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '12px', fontSize: '10px', color: '#94a3b8' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>verified_user</span>
+                256-bit encrypted · Your data stays private
+              </div>
+            </>
+          )}
         </div>
       </div>
 

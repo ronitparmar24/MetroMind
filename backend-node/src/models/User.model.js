@@ -53,6 +53,22 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otpHash: {
+      type: String,
+      default: null,
+    },
+    otpExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    lastOtpSentAt: {
+      type: Date,
+      default: null,
+    },
     personalityCache: {
       result: { type: mongoose.Schema.Types.Mixed, default: null },
       computedAt: { type: Date, default: null },

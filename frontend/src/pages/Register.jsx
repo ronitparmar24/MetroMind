@@ -1,8 +1,8 @@
 // frontend/src/pages/Register.jsx
-// Premium split-screen register — viewport-fitted, multi-step, no scroll
-import { useState, useRef, useEffect } from 'react';
+// 3-step registration: Account (all fields) → Verify (OTP) → Done
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { registerUser, googleLogin as googleLoginApi } from '../api/auth.api';
+import { registerUser, googleLogin as googleLoginApi, verifyOtp, resendOtp } from '../api/auth.api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
 import '../styles/auth.css';
@@ -127,9 +127,9 @@ function TermsModal({ open, onClose, onAccept }) {
 
 /* ═══ Step Progress ═══ */
 function StepProgress({ step }) {
-  const steps = ['Account', 'Security', 'Done'];
+  const steps = ['Account', 'Verify', 'Done'];
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '18px' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '16px' }}>
       {steps.map((label, i) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -173,15 +173,15 @@ function PwChecklist({ checks }) {
     { key: 'special', label: 'Special' },
   ];
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', margin: '4px 0 10px' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 10px', margin: '2px 0 8px' }}>
       {items.map((item) => (
         <div key={item.key} style={{
-          display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem',
+          display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem',
           color: checks[item.key] ? '#22c55e' : '#cbd5e1', transition: 'color 0.3s',
         }}>
           <div style={{
-            width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.45rem',
+            width: '11px', height: '11px', borderRadius: '50%', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.4rem',
             background: checks[item.key] ? '#22c55e' : 'transparent',
             border: checks[item.key] ? 'none' : '1.5px solid #e2e8f0',
             color: 'white', transition: 'all 0.3s',
@@ -190,6 +190,108 @@ function PwChecklist({ checks }) {
           </div>
           {item.label}
         </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══ OTP Input Component ═══ */
+function OtpInput({ length = 6, onComplete, hasError }) {
+  const [values, setValues] = useState(Array(length).fill(''));
+  const inputRefs = useRef([]);
+
+  const focusInput = (idx) => {
+    if (inputRefs.current[idx]) inputRefs.current[idx].focus();
+  };
+
+  const handleChange = (idx, val) => {
+    // Only accept single digits
+    const digit = val.replace(/\D/g, '').slice(-1);
+    const next = [...values];
+    next[idx] = digit;
+    setValues(next);
+
+    if (digit && idx < length - 1) {
+      focusInput(idx + 1);
+    }
+
+    // Auto-submit when all filled
+    const code = next.join('');
+    if (code.length === length && next.every(v => v !== '')) {
+      onComplete(code);
+    }
+  };
+
+  const handleKeyDown = (idx, e) => {
+    if (e.key === 'Backspace') {
+      if (values[idx]) {
+        const next = [...values];
+        next[idx] = '';
+        setValues(next);
+      } else if (idx > 0) {
+        focusInput(idx - 1);
+        const next = [...values];
+        next[idx - 1] = '';
+        setValues(next);
+      }
+      e.preventDefault();
+    } else if (e.key === 'ArrowLeft' && idx > 0) {
+      focusInput(idx - 1);
+    } else if (e.key === 'ArrowRight' && idx < length - 1) {
+      focusInput(idx + 1);
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, length);
+    if (pasted.length === 0) return;
+    const next = [...values];
+    for (let i = 0; i < pasted.length; i++) {
+      next[i] = pasted[i];
+    }
+    setValues(next);
+    // Focus last filled or next empty
+    const focusIdx = Math.min(pasted.length, length - 1);
+    focusInput(focusIdx);
+    // Auto-submit if full
+    if (pasted.length === length) {
+      onComplete(pasted);
+    }
+  };
+
+  // Reset values when error clears (allow retry)
+  const reset = useCallback(() => {
+    setValues(Array(length).fill(''));
+    focusInput(0);
+  }, [length]);
+
+  // Expose reset via ref-like pattern
+  useEffect(() => {
+    if (hasError) {
+      // Keep values visible briefly, then clear after shake animation
+      const t = setTimeout(reset, 600);
+      return () => clearTimeout(t);
+    }
+  }, [hasError, reset]);
+
+  return (
+    <div className="otp-container" onPaste={handlePaste}>
+      {values.map((val, idx) => (
+        <input
+          key={idx}
+          ref={(el) => (inputRefs.current[idx] = el)}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          className={`otp-input${val ? ' filled' : ''}${hasError ? ' error' : ''}`}
+          value={val}
+          onChange={(e) => handleChange(idx, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(idx, e)}
+          onFocus={(e) => e.target.select()}
+          autoFocus={idx === 0}
+          autoComplete="one-time-code"
+        />
       ))}
     </div>
   );
@@ -206,6 +308,11 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [otpError, setOtpError] = useState(false);
+
+  // Resend cooldown
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -216,6 +323,24 @@ export default function Register() {
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
   const strength = getStrength(form.password);
   const passwordsMatch = form.confirmPw.length > 0 && form.password === form.confirmPw;
+
+  // Resend countdown timer
+  useEffect(() => {
+    if (step !== 2) return;
+    setResendTimer(60);
+    setCanResend(false);
+    const id = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(id);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [step]);
 
   // Initialize Google Identity Services
   useEffect(() => {
@@ -250,6 +375,7 @@ export default function Register() {
       const res = await googleLoginApi(response.credential);
       login(res.data.token, res.data.user);
       toast.success(`Welcome to MetroMind, ${res.data.user.name}! 🎉`);
+      setStep(3);
       setShowSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1800);
     } catch (err) {
@@ -258,16 +384,11 @@ export default function Register() {
     }
   };
 
-  const goStep2 = () => {
+  // Step 1 → register + send OTP
+  const handleCreateAccount = async () => {
     if (!form.name.trim()) { setError('Please enter your name'); return; }
     if (!form.email.trim()) { setError('Please enter your email'); return; }
-    setError('');
-    setStep(2);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (step === 1) { goStep2(); return; }
+    if (form.password.length < 6) { setError('Password must be at least 6 characters'); return; }
     if (form.password !== form.confirmPw) { setError('Passwords do not match'); return; }
     if (!termsAccepted) { setError('Please accept the Terms of Service'); return; }
 
@@ -277,38 +398,89 @@ export default function Register() {
       const res = await registerUser({
         name: form.name, email: form.email, password: form.password, phone: form.phone,
       });
-      setStep(3);
-      login(res.data.token, res.data.user);
-      toast.success('Account created! Welcome aboard 🎉');
-      setShowSuccess(true);
-      setTimeout(() => navigate('/dashboard'), 2000);
+      if (res.data.requiresVerification) {
+        toast.success('Verification code sent to your email! 📧');
+        setStep(2);
+      }
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.errors?.[0]?.message || 'Registration failed');
-      setLoading(false);
       if (formRef.current) {
         formRef.current.classList.remove('auth-shake');
         void formRef.current.offsetWidth;
         formRef.current.classList.add('auth-shake');
       }
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Step 2 → verify OTP
+  const handleVerifyOtp = async (code) => {
+    setError('');
+    setOtpError(false);
+    setLoading(true);
+    try {
+      const res = await verifyOtp(form.email, code);
+      login(res.data.token, res.data.user);
+      toast.success('Account verified! Welcome aboard 🎉');
+      setStep(3);
+      setShowSuccess(true);
+      setTimeout(() => navigate('/dashboard'), 2000);
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Invalid verification code';
+      setError(msg);
+      setOtpError(true);
+      setLoading(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResendOtp = async () => {
+    if (!canResend) return;
+    setError('');
+    try {
+      await resendOtp(form.email);
+      toast.success('New verification code sent! 📧');
+      setCanResend(false);
+      setResendTimer(60);
+      // Restart countdown
+      const id = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(id);
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to resend code');
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (step === 1) handleCreateAccount();
+  };
+
+  // Mask email for display
+  const maskedEmail = form.email
+    ? form.email.replace(/(.{2})(.*)(@.*)/, (_, a, b, c) => a + '•'.repeat(Math.min(b.length, 5)) + c)
+    : '';
 
   return (
     <div className="auth-page">
       {/* ═══ LEFT PANEL ═══ */}
       <div className="auth-visual">
         <Particles />
-
         <div className="auth-visual-brand">
           <span className="material-symbols-outlined">subway</span>
           <span>MetroMind</span>
         </div>
-
         <div className="auth-visual-content">
           <h1>Travel<br />smarter.</h1>
           <p>Join thousands of commuters who save time, money, and the planet every day.</p>
-
-          {/* Stats */}
           <div className="auth-stats-bar">
             <div className="auth-stat-item">
               <span className="auth-stat-value">₹500</span>
@@ -323,8 +495,6 @@ export default function Register() {
               <span className="auth-stat-label">User Rating</span>
             </div>
           </div>
-
-          {/* Metro animation */}
           <div className="auth-metro-animation">
             <div className="auth-metro-track">
               <div className="auth-metro-station" style={{ left: '0%' }} />
@@ -333,8 +503,6 @@ export default function Register() {
               <div className="auth-metro-train" />
             </div>
           </div>
-
-          {/* Feature pills */}
           <div className="auth-feature-pills">
             <div className="auth-feature-pill">
               <span className="material-symbols-outlined">wallet</span>
@@ -365,8 +533,8 @@ export default function Register() {
 
           {/* Heading */}
           <div className="auth-heading auth-anim d1">
-            <h2>Create your account</h2>
-            <p>Start your smarter commute today.</p>
+            <h2>{step === 2 ? 'Verify your email' : step === 3 ? 'All set!' : 'Create your account'}</h2>
+            <p>{step === 2 ? `Enter the code sent to ${maskedEmail}` : step === 3 ? 'Your account is ready.' : 'Start your smarter commute today.'}</p>
           </div>
 
           <StepProgress step={step} />
@@ -380,7 +548,7 @@ export default function Register() {
           )}
 
           <form onSubmit={handleSubmit}>
-            {/* ═══ STEP 1: Account ═══ */}
+            {/* ═══ STEP 1: Account + Password + Terms ═══ */}
             {step === 1 && (
               <div style={{ animation: 'authFadeIn 0.4s ease' }}>
                 {/* Full Name */}
@@ -404,12 +572,6 @@ export default function Register() {
                       placeholder="john@example.com" required id="reg-email" autoComplete="email" />
                   </div>
                 </div>
-                {form.email && (
-                  <div style={{ fontSize: '11px', marginTop: '-8px', marginBottom: '10px',
-                    color: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '#22c55e' : '#ef4444', fontWeight: 500 }}>
-                    {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '✓ Valid email' : '✗ Invalid email format'}
-                  </div>
-                )}
 
                 {/* Phone */}
                 <div className="auth-input-group">
@@ -429,38 +591,6 @@ export default function Register() {
                   </div>
                 </div>
 
-                <div style={{ paddingTop: '2px' }}>
-                  <button type="button" className="auth-btn-primary" onClick={goStep2}>
-                    <span>Continue</span>
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </button>
-                </div>
-
-                {/* Divider + Google */}
-                <div className="auth-divider"><span>or</span></div>
-                <div style={{ width: '100%' }}>
-                  {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
-                    <div ref={googleBtnRef} style={{
-                      display: 'flex', justifyContent: 'center', width: '100%',
-                    }} />
-                  ) : (
-                    <button type="button" className="auth-btn-google" disabled
-                      style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                      <span>Google Sign-Up unavailable</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="auth-footer-link">
-                  Already have an account?
-                  <Link to="/login">Sign in</Link>
-                </div>
-              </div>
-            )}
-
-            {/* ═══ STEP 2: Security ═══ */}
-            {step === 2 && (
-              <div style={{ animation: 'authFadeIn 0.4s ease' }}>
                 {/* Password */}
                 <div className="auth-input-group">
                   <label htmlFor="reg-password">Password</label>
@@ -478,14 +608,14 @@ export default function Register() {
                   </div>
                 </div>
 
-                {/* Strength bar */}
+                {/* Strength bar + checklist */}
                 {form.password.length > 0 && (
                   <div style={{ marginBottom: '2px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
                       <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600 }}>Strength</span>
                       <span style={{ fontSize: '10px', fontWeight: 700, color: strength.color }}>{strength.label}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '3px', height: '4px' }}>
+                    <div style={{ display: 'flex', gap: '3px', height: '3px' }}>
                       {[1, 2, 3, 4].map((i) => (
                         <div key={i} style={{
                           flex: 1, borderRadius: '2px', transition: 'background 0.3s',
@@ -495,7 +625,6 @@ export default function Register() {
                     </div>
                   </div>
                 )}
-
                 <PwChecklist checks={strength.checks} />
 
                 {/* Confirm Password */}
@@ -515,7 +644,7 @@ export default function Register() {
                   </div>
                 </div>
                 {form.confirmPw.length > 0 && (
-                  <div style={{ fontSize: '11px', marginTop: '-8px', marginBottom: '10px',
+                  <div style={{ fontSize: '11px', marginTop: '-8px', marginBottom: '8px',
                     color: passwordsMatch ? '#22c55e' : '#ef4444', fontWeight: 500 }}>
                     {passwordsMatch ? '✓ Passwords match' : '✗ Passwords do not match'}
                   </div>
@@ -524,7 +653,7 @@ export default function Register() {
                 {/* Terms */}
                 <label style={{
                   display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer',
-                  marginBottom: '12px', fontSize: '12px', color: '#475569',
+                  marginBottom: '10px', fontSize: '12px', color: '#475569',
                 }}>
                   <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)}
                     style={{ accentColor: '#4F46E5', width: '15px', height: '15px' }} />
@@ -535,24 +664,87 @@ export default function Register() {
                   </span>
                 </label>
 
-                {/* Buttons */}
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => { setStep(1); setError(''); }} style={{
-                    background: 'none', border: '1.5px solid #e2e8f0', borderRadius: '10px',
-                    padding: '10px 16px', color: '#475569', fontWeight: 600, cursor: 'pointer',
-                    fontFamily: "'Inter', system-ui, sans-serif", fontSize: '13px',
-                  }}>
-                    ← Back
-                  </button>
-                  <button type="submit" className="auth-btn-primary" style={{ flex: 1 }} disabled={loading} id="register-submit">
-                    {loading ? <div className="auth-spinner" /> : (
-                      <>
-                        <span>Create Account</span>
-                        <span className="material-symbols-outlined">arrow_forward</span>
-                      </>
-                    )}
-                  </button>
+                {/* Create Account button */}
+                <button type="submit" className="auth-btn-primary" disabled={loading} id="register-submit">
+                  {loading ? <div className="auth-spinner" /> : (
+                    <>
+                      <span>Create Account</span>
+                      <span className="material-symbols-outlined">arrow_forward</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Divider + Google */}
+                <div className="auth-divider"><span>or</span></div>
+                <div style={{ width: '100%' }}>
+                  {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+                    <div className="google-btn-wrapper">
+                      <div className="google-btn-inner">
+                        <div ref={googleBtnRef} style={{
+                          display: 'flex', justifyContent: 'center', width: '100%',
+                        }} />
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" className="auth-btn-google" disabled
+                      style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                      <span>Google Sign-Up unavailable</span>
+                    </button>
+                  )}
                 </div>
+
+                <div className="auth-footer-link">
+                  Already have an account?
+                  <Link to="/login">Sign in</Link>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ STEP 2: OTP Verification ═══ */}
+            {step === 2 && (
+              <div style={{ animation: 'authFadeIn 0.4s ease', textAlign: 'center' }}>
+                {/* Email icon */}
+                <div className="otp-email-icon">
+                  <span className="material-symbols-outlined">mark_email_read</span>
+                </div>
+
+                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '4px' }}>
+                  We sent a 6-digit code to
+                </p>
+                <p style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '16px' }}>
+                  {form.email}
+                </p>
+
+                {/* OTP Inputs */}
+                <OtpInput length={6} onComplete={handleVerifyOtp} hasError={otpError} />
+
+                {/* Verify button */}
+                {loading && (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+                    <div className="auth-spinner" style={{ borderColor: 'rgba(79,70,229,0.2)', borderTopColor: '#4F46E5' }} />
+                  </div>
+                )}
+
+                {/* Resend */}
+                <div className="otp-resend">
+                  {canResend ? (
+                    <>
+                      Didn't receive the code?{' '}
+                      <button type="button" onClick={handleResendOtp}>Resend code</button>
+                    </>
+                  ) : (
+                    <span>Resend code in <strong>{resendTimer}s</strong></span>
+                  )}
+                </div>
+
+                {/* Back */}
+                <button type="button" onClick={() => { setStep(1); setError(''); }} style={{
+                  background: 'none', border: 'none', color: '#64748b',
+                  fontSize: '13px', cursor: 'pointer', marginTop: '16px', fontWeight: 500,
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                }}>
+                  ← Change email
+                </button>
               </div>
             )}
 
@@ -564,20 +756,22 @@ export default function Register() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
                   fontSize: '1.5rem', color: 'white',
                 }}>✓</div>
-                <h3 style={{ fontWeight: 700, marginBottom: '6px', color: '#0f172a', fontSize: '1.1rem' }}>Account Created!</h3>
+                <h3 style={{ fontWeight: 700, marginBottom: '6px', color: '#0f172a', fontSize: '1.1rem' }}>Account Verified!</h3>
                 <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Redirecting to your dashboard...</p>
               </div>
             )}
           </form>
 
           {/* Security badge */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-            marginTop: '12px', fontSize: '10px', color: '#94a3b8',
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>verified_user</span>
-            256-bit encrypted · Your data stays private
-          </div>
+          {step !== 3 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+              marginTop: '12px', fontSize: '10px', color: '#94a3b8',
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>verified_user</span>
+              256-bit encrypted · Your data stays private
+            </div>
+          )}
         </div>
       </div>
 

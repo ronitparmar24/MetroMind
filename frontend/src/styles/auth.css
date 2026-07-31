@@ -488,7 +488,96 @@
   color: #94a3b8;
 }
 
-/* ═══ GOOGLE BUTTON ═══ */
+/* ═══ GOOGLE BUTTON WRAPPER ═══ */
+.google-btn-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  padding: 2px;
+  background: linear-gradient(135deg, #e2e8f0, #e2e8f0);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.google-btn-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 2px;
+  background: linear-gradient(135deg, #4285F4, #EA4335, #FBBC05, #34A853, #4285F4);
+  background-size: 300% 300%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  animation: googleGradientRotate 3s linear infinite paused;
+}
+
+.google-btn-wrapper:hover::before {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+.google-btn-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transition: none;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.google-btn-wrapper:hover::after {
+  animation: googleShimmer 1.2s ease forwards;
+}
+
+.google-btn-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 15px rgba(66, 133, 244, 0.15),
+    0 2px 8px rgba(234, 67, 53, 0.1),
+    0 2px 8px rgba(52, 168, 83, 0.1);
+}
+
+.google-btn-wrapper:active {
+  transform: translateY(0) scale(0.98);
+}
+
+@keyframes googleGradientRotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes googleShimmer {
+  0% { left: -100%; }
+  100% { left: 120%; }
+}
+
+.google-btn-inner {
+  background: white;
+  border-radius: 10px;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  transition: background 0.3s ease;
+}
+
+.google-btn-wrapper:hover .google-btn-inner {
+  background: #fafbfc;
+}
+
+/* Fallback button when Google SDK not available */
 .auth-btn-google {
   width: 100%;
   height: 46px;
@@ -514,6 +603,23 @@
 }
 
 .auth-btn-google:active { transform: scale(0.98); }
+
+/* Dark mode */
+[data-theme="dark"] .google-btn-wrapper {
+  background: linear-gradient(135deg, #334155, #334155);
+}
+[data-theme="dark"] .google-btn-inner {
+  background: #0f172a;
+}
+[data-theme="dark"] .google-btn-wrapper:hover .google-btn-inner {
+  background: #1e293b;
+}
+[data-theme="dark"] .google-btn-wrapper:hover {
+  box-shadow:
+    0 4px 15px rgba(66, 133, 244, 0.2),
+    0 2px 8px rgba(234, 67, 53, 0.12),
+    0 2px 8px rgba(52, 168, 83, 0.12);
+}
 
 /* ═══ FOOTER LINK ═══ */
 .auth-footer-link {
@@ -817,3 +923,119 @@
 [data-theme="dark"] .auth-logo-text { color: #a78bfa; }
 [data-theme="dark"] .auth-logo-icon { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
 [data-theme="dark"] .auth-feature-pill { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); }
+
+/* ═══ OTP VERIFICATION INPUT ═══ */
+.otp-container {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.otp-input {
+  width: 46px;
+  height: 54px;
+  text-align: center;
+  font-family: 'Outfit', 'Inter', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.15s;
+  caret-color: #4F46E5;
+}
+
+.otp-input:focus {
+  border-color: #4F46E5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  background: #ffffff;
+}
+
+.otp-input.filled {
+  border-color: #4F46E5;
+  background: #eef2ff;
+}
+
+.otp-input.error {
+  border-color: #ef4444;
+  animation: authShake 0.4s ease;
+}
+
+/* Resend timer */
+.otp-resend {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.otp-resend button {
+  background: none;
+  border: none;
+  color: #4F46E5;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: color 0.15s;
+}
+
+.otp-resend button:hover:not(:disabled) {
+  color: #3525cd;
+  text-decoration: underline;
+}
+
+.otp-resend button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* OTP email icon pulse */
+.otp-email-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  animation: otpPulse 2s ease-in-out infinite;
+}
+
+.otp-email-icon .material-symbols-outlined {
+  font-size: 28px;
+  color: #4F46E5;
+}
+
+@keyframes otpPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(79,70,229,0.2); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(79,70,229,0); }
+}
+
+/* Dark mode OTP */
+[data-theme="dark"] .otp-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+[data-theme="dark"] .otp-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  background: #1e293b;
+}
+[data-theme="dark"] .otp-input.filled {
+  border-color: #6366f1;
+  background: #1e1b4b;
+}
+[data-theme="dark"] .otp-resend { color: #94a3b8; }
+[data-theme="dark"] .otp-resend button { color: #a78bfa; }
+[data-theme="dark"] .otp-resend button:disabled { color: #475569; }
+[data-theme="dark"] .otp-email-icon {
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+}
+[data-theme="dark"] .otp-email-icon .material-symbols-outlined { color: #a78bfa; }
+

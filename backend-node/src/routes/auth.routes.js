@@ -3,7 +3,7 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
 const { protect } = require('../middleware/auth.middleware');
-const { register, login, getMe, googleLogin } = require('../controllers/auth.controller');
+const { register, login, getMe, googleLogin, verifyOtp, resendOtp } = require('../controllers/auth.controller');
 
 router.post(
   '/register',
@@ -28,5 +28,24 @@ router.get('/me', protect, getMe);
 
 // Google OAuth — verify Google id_token and return MetroMind JWT
 router.post('/google', googleLogin);
+
+// OTP verification
+router.post(
+  '/verify-otp',
+  validate([
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  ]),
+  verifyOtp
+);
+
+// Resend OTP
+router.post(
+  '/resend-otp',
+  validate([
+    body('email').isEmail().withMessage('Valid email is required'),
+  ]),
+  resendOtp
+);
 
 module.exports = router;

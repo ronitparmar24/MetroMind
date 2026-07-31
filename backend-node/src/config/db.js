@@ -1,18 +1,37 @@
 // backend-node/src/config/db.js
-// MongoDB connection via Mongoose
-// Note: mongoose.connect() returns a promise. We connect once at startup
-// and Mongoose internally manages the connection pool.
+// MongoDB connection via Mongoose — serverless-safe
+// Caches the connection across warm invocations on Vercel
 
 const mongoose = require('mongoose');
 const { MONGO_URI } = require('./env');
 
+let cached = global._mongooseConnection;
+if (!cached) {
+  cached = global._mongooseConnection = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
+  // Reuse existing connection
+  if (cached.conn && mongoose.connection.readyState === 1) {
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGO_URI, {
+      bufferCommands: false,
+    }).then((m) => {
+      console.log(`✅ MongoDB connected: ${m.connection.host}`);
+      return m;
+    });
+  }
+
   try {
-    const conn = await mongoose.connect(MONGO_URI);
-    console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+    cached.conn = await cached.promise;
+    return cached.conn;
   } catch (error) {
+    cached.promise = null;
     console.error(`❌ MongoDB connection error: ${error.message}`);
-    process.exit(1);
+    throw error;
   }
 };
 

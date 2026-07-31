@@ -34,9 +34,22 @@ const app = express();
 // 1. Security headers
 app.use(helmet());
 
-// 2. CORS — allow the React frontend on either port
+// 2. CORS — allow the React frontend (local + Vercel deployed)
 app.use(cors({
-  origin: [CLIENT_URL, 'http://localhost:3000', 'http://localhost:3001'],
+  origin: function (origin, callback) {
+    const allowed = [
+      CLIENT_URL,
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ];
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    // Allow any *.vercel.app domain
+    if (origin.endsWith('.vercel.app') || allowed.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(null, false);
+  },
   credentials: true,
 }));
 
