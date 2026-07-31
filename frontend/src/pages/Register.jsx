@@ -1,6 +1,5 @@
 // frontend/src/pages/Register.jsx
-// Stitch-inspired split-screen register — gradient left, form right
-// Preserves: multi-step flow, TermsModal, PwChecklist, validation, success overlay
+// Premium split-screen register — viewport-fitted, multi-step, no scroll
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { registerUser, googleLogin as googleLoginApi } from '../api/auth.api';
@@ -15,7 +14,7 @@ function getStrength(pw) {
     number: /[0-9]/.test(pw), special: /[^A-Za-z0-9]/.test(pw),
   };
   const score = Object.values(checks).filter(Boolean).length;
-  const colors = ['#dce2f3', '#ef4444', '#f59e0b', '#3b82f6', '#22c55e', '#22c55e'];
+  const colors = ['#e2e8f0', '#ef4444', '#f59e0b', '#3b82f6', '#22c55e', '#22c55e'];
   const labels = ['', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
   return { checks, score, color: colors[score], label: labels[score] };
 }
@@ -23,11 +22,11 @@ function getStrength(pw) {
 /* ═══ Floating particles ═══ */
 function Particles() {
   const items = [
-    { w: 48, left: '10%', top: '20%', dur: 25, delay: 0 },
-    { w: 96, left: '70%', top: '40%', dur: 35, delay: 5 },
-    { w: 64, left: '30%', top: '80%', dur: 30, delay: 2 },
-    { w: 80, left: '80%', top: '10%', dur: 40, delay: 10 },
-    { w: 32, left: '50%', top: '60%', dur: 20, delay: 7 },
+    { w: 40, left: '12%', top: '15%', dur: 22, delay: 0 },
+    { w: 80, left: '72%', top: '35%', dur: 32, delay: 4 },
+    { w: 56, left: '28%', top: '75%', dur: 28, delay: 2 },
+    { w: 64, left: '82%', top: '8%', dur: 36, delay: 8 },
+    { w: 28, left: '55%', top: '55%', dur: 18, delay: 6 },
   ];
   return items.map((p, i) => (
     <div key={i} className="auth-particle" style={{
@@ -37,19 +36,7 @@ function Particles() {
   ));
 }
 
-/* ═══ Google SVG Logo ═══ */
-function GoogleLogo() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-    </svg>
-  );
-}
-
-/* ═══ Terms Modal (unchanged logic) ═══ */
+/* ═══ Terms Modal ═══ */
 function TermsModal({ open, onClose, onAccept }) {
   if (!open) return null;
   const SECTIONS = [
@@ -66,7 +53,7 @@ function TermsModal({ open, onClose, onAccept }) {
       'Maximum 6 passengers per ticket.',
       'QR codes are generated upon booking.',
     ]},
-    { icon: '💰', title: '4. Fare Calculation', color: '#712ae2',
+    { icon: '💰', title: '4. Fare Calculation', color: '#7c3aed',
       content: 'Fares are dynamically calculated. Base: ₹10, per km: ₹5. Peak hours (8–11 AM, 5–7 PM): +25% surge.' },
     { icon: '🌿', title: '5. Carbon Tracking', color: '#16a34a', list: [
       'MetroMind calculates CO₂ savings for every metro trip.',
@@ -86,50 +73,50 @@ function TermsModal({ open, onClose, onAccept }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
     }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        background: 'white', borderRadius: '24px', width: '100%', maxWidth: '600px',
-        maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+        background: 'white', borderRadius: '16px', width: '100%', maxWidth: '560px',
+        maxHeight: '80vh', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
         display: 'flex', flexDirection: 'column',
       }}>
         <div style={{
-          background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', padding: '20px 24px',
+          background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', padding: '16px 20px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <div>
-            <h3 style={{ color: 'white', fontWeight: 700, fontSize: '1.1rem', margin: 0 }}>
+            <h3 style={{ color: 'white', fontWeight: 700, fontSize: '1rem', margin: 0 }}>
               📋 Terms of Service
             </h3>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', margin: '4px 0 0' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem', margin: '2px 0 0' }}>
               MetroMind v2.0 · July 2026
             </p>
           </div>
           <button onClick={onClose} style={{
             background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white',
-            width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem',
+            width: '28px', height: '28px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem',
           }}>✕</button>
         </div>
-        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
           {SECTIONS.map((s, idx) => (
-            <div key={idx} style={{ marginBottom: '16px', paddingBottom: '16px',
-              borderBottom: idx < SECTIONS.length - 1 ? '1px solid #f0f3ff' : 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: s.color,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', flexShrink: 0 }}>{s.icon}</div>
-                <h4 style={{ fontWeight: 700, fontSize: '0.9rem', margin: 0, color: '#151c27' }}>{s.title}</h4>
+            <div key={idx} style={{ marginBottom: '12px', paddingBottom: '12px',
+              borderBottom: idx < SECTIONS.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: s.color,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', flexShrink: 0 }}>{s.icon}</div>
+                <h4 style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0, color: '#0f172a' }}>{s.title}</h4>
               </div>
-              {s.content && <p style={{ fontSize: '0.85rem', color: '#464555', lineHeight: 1.6 }}>{s.content}</p>}
+              {s.content && <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5, margin: 0 }}>{s.content}</p>}
               {s.list && (
-                <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                <ul style={{ paddingLeft: '18px', margin: 0 }}>
                   {s.list.map((item, i) => (
-                    <li key={i} style={{ fontSize: '0.85rem', color: '#464555', lineHeight: 1.6, marginBottom: '2px' }}>{item}</li>
+                    <li key={i} style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5, marginBottom: '1px' }}>{item}</li>
                   ))}
                 </ul>
               )}
             </div>
           ))}
         </div>
-        <div style={{ background: '#f9f9ff', padding: '14px 24px', borderTop: '1px solid #f0f3ff',
+        <div style={{ background: '#f8fafc', padding: '12px 20px', borderTop: '1px solid #f1f5f9',
           display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onAccept} className="auth-btn-primary" style={{ width: 'auto', height: '44px', padding: '0 24px' }}>
+          <button onClick={onAccept} className="auth-btn-primary" style={{ width: 'auto', height: '40px', padding: '0 20px' }}>
             I Understand & Accept ✓
           </button>
         </div>
@@ -142,32 +129,32 @@ function TermsModal({ open, onClose, onAccept }) {
 function StepProgress({ step }) {
   const steps = ['Account', 'Security', 'Done'];
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '24px' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '18px' }}>
       {steps.map((label, i) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <div style={{
-              width: '32px', height: '32px', borderRadius: '50%',
+              width: '26px', height: '26px', borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '0.75rem', fontWeight: 700,
+              fontSize: '0.65rem', fontWeight: 700,
               background: step > i + 1 ? '#22c55e' : step === i + 1 ? 'linear-gradient(135deg, #4F46E5, #7C3AED)' : 'white',
-              color: step >= i + 1 ? 'white' : '#c7c4d8',
-              border: step >= i + 1 ? 'none' : '2px solid #dce2f3',
-              boxShadow: step === i + 1 ? '0 4px 12px rgba(79,70,229,0.3)' : 'none',
-              transition: 'all 0.4s ease',
+              color: step >= i + 1 ? 'white' : '#cbd5e1',
+              border: step >= i + 1 ? 'none' : '2px solid #e2e8f0',
+              boxShadow: step === i + 1 ? '0 3px 10px rgba(79,70,229,0.3)' : 'none',
+              transition: 'all 0.3s ease',
             }}>
               {step > i + 1 ? '✓' : i + 1}
             </div>
             <span style={{
-              fontSize: '0.75rem', fontWeight: 600,
-              color: step > i + 1 ? '#22c55e' : step === i + 1 ? '#4F46E5' : '#c7c4d8',
+              fontSize: '0.7rem', fontWeight: 600,
+              color: step > i + 1 ? '#22c55e' : step === i + 1 ? '#4F46E5' : '#cbd5e1',
               transition: 'color 0.3s',
             }}>{label}</span>
           </div>
           {i < steps.length - 1 && (
             <div style={{
-              width: '40px', height: '2px', margin: '0 8px',
-              background: step > i + 1 ? '#22c55e' : '#dce2f3', transition: 'background 0.4s',
+              width: '32px', height: '2px', margin: '0 6px',
+              background: step > i + 1 ? '#22c55e' : '#e2e8f0', transition: 'background 0.3s',
             }} />
           )}
         </div>
@@ -176,27 +163,27 @@ function StepProgress({ step }) {
   );
 }
 
-/* ═══ Password Requirements Checklist ═══ */
+/* ═══ Password Checklist ═══ */
 function PwChecklist({ checks }) {
   const items = [
-    { key: 'length', label: '6+ characters' },
+    { key: 'length', label: '6+ chars' },
     { key: 'upper', label: 'Uppercase' },
     { key: 'lower', label: 'Lowercase' },
     { key: 'number', label: 'Number' },
-    { key: 'special', label: 'Special char' },
+    { key: 'special', label: 'Special' },
   ];
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', margin: '8px 0 14px' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', margin: '4px 0 10px' }}>
       {items.map((item) => (
         <div key={item.key} style={{
-          display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.73rem',
-          color: checks[item.key] ? '#22c55e' : '#c7c4d8', transition: 'color 0.3s',
+          display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem',
+          color: checks[item.key] ? '#22c55e' : '#cbd5e1', transition: 'color 0.3s',
         }}>
           <div style={{
-            width: '14px', height: '14px', borderRadius: '50%', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.5rem',
+            width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.45rem',
             background: checks[item.key] ? '#22c55e' : 'transparent',
-            border: checks[item.key] ? 'none' : '1.5px solid #dce2f3',
+            border: checks[item.key] ? 'none' : '1.5px solid #e2e8f0',
             color: 'white', transition: 'all 0.3s',
           }}>
             {checks[item.key] ? '✓' : ''}
@@ -248,8 +235,8 @@ export default function Register() {
         theme: 'outline',
         size: 'large',
         text: 'signup_with',
-        shape: 'pill',
-        width: 350,
+        shape: 'rectangular',
+        width: 340,
         logo_alignment: 'left',
       });
     }
@@ -308,7 +295,7 @@ export default function Register() {
 
   return (
     <div className="auth-page">
-      {/* ═══ LEFT PANEL — Gradient Brand ═══ */}
+      {/* ═══ LEFT PANEL ═══ */}
       <div className="auth-visual">
         <Particles />
 
@@ -318,15 +305,48 @@ export default function Register() {
         </div>
 
         <div className="auth-visual-content">
-          <h1>Know before<br />you go.</h1>
-          <p>Smart transit planning for the modern urban commuter. Join thousands already traveling smarter.</p>
+          <h1>Travel<br />smarter.</h1>
+          <p>Join thousands of commuters who save time, money, and the planet every day.</p>
 
+          {/* Stats */}
+          <div className="auth-stats-bar">
+            <div className="auth-stat-item">
+              <span className="auth-stat-value">₹500</span>
+              <span className="auth-stat-label">Welcome Bonus</span>
+            </div>
+            <div className="auth-stat-item">
+              <span className="auth-stat-value">2.4t</span>
+              <span className="auth-stat-label">CO₂ Saved</span>
+            </div>
+            <div className="auth-stat-item">
+              <span className="auth-stat-value">4.9★</span>
+              <span className="auth-stat-label">User Rating</span>
+            </div>
+          </div>
+
+          {/* Metro animation */}
           <div className="auth-metro-animation">
             <div className="auth-metro-track">
               <div className="auth-metro-station" style={{ left: '0%' }} />
               <div className="auth-metro-station" style={{ left: '40%' }} />
               <div className="auth-metro-station" style={{ left: '80%' }} />
               <div className="auth-metro-train" />
+            </div>
+          </div>
+
+          {/* Feature pills */}
+          <div className="auth-feature-pills">
+            <div className="auth-feature-pill">
+              <span className="material-symbols-outlined">wallet</span>
+              Digital Wallet
+            </div>
+            <div className="auth-feature-pill">
+              <span className="material-symbols-outlined">schedule</span>
+              Live Schedules
+            </div>
+            <div className="auth-feature-pill">
+              <span className="material-symbols-outlined">credit_card</span>
+              Monthly Pass
             </div>
           </div>
         </div>
@@ -346,7 +366,7 @@ export default function Register() {
           {/* Heading */}
           <div className="auth-heading auth-anim d1">
             <h2>Create your account</h2>
-            <p>Join MetroMind to start planning your smarter commute.</p>
+            <p>Start your smarter commute today.</p>
           </div>
 
           <StepProgress step={step} />
@@ -354,7 +374,7 @@ export default function Register() {
           {/* Error */}
           {error && (
             <div className="auth-error-alert">
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>error</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
               <span>{error}</span>
             </div>
           )}
@@ -385,8 +405,8 @@ export default function Register() {
                   </div>
                 </div>
                 {form.email && (
-                  <div style={{ fontSize: '12px', marginTop: '-10px', marginBottom: '12px',
-                    color: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '#22c55e' : '#ba1a1a', fontWeight: 500 }}>
+                  <div style={{ fontSize: '11px', marginTop: '-8px', marginBottom: '10px',
+                    color: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '#22c55e' : '#ef4444', fontWeight: 500 }}>
                     {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '✓ Valid email' : '✗ Invalid email format'}
                   </div>
                 )}
@@ -394,11 +414,11 @@ export default function Register() {
                 {/* Phone */}
                 <div className="auth-input-group">
                   <label htmlFor="reg-phone">Phone (optional)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
                     <div style={{
-                      background: '#f0f3ff', border: '2px solid #dce2f3', borderRadius: '12px',
-                      padding: '0 12px', display: 'flex', alignItems: 'center', gap: '4px',
-                      fontSize: '13px', fontWeight: 700, color: '#464555', whiteSpace: 'nowrap', flexShrink: 0,
+                      background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px',
+                      padding: '0 10px', display: 'flex', alignItems: 'center', gap: '3px',
+                      fontSize: '12px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap', flexShrink: 0,
                     }}>🇮🇳 +91</div>
                     <div className="auth-input-wrap" style={{ flex: 1 }}>
                       <span className="material-symbols-outlined">phone</span>
@@ -409,7 +429,7 @@ export default function Register() {
                   </div>
                 </div>
 
-                <div style={{ paddingTop: '8px' }}>
+                <div style={{ paddingTop: '2px' }}>
                   <button type="button" className="auth-btn-primary" onClick={goStep2}>
                     <span>Continue</span>
                     <span className="material-symbols-outlined">arrow_forward</span>
@@ -426,8 +446,7 @@ export default function Register() {
                   ) : (
                     <button type="button" className="auth-btn-google" disabled
                       style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                      <GoogleLogo />
-                      <span>Google Sign-Up (configure GOOGLE_CLIENT_ID)</span>
+                      <span>Google Sign-Up unavailable</span>
                     </button>
                   )}
                 </div>
@@ -450,28 +469,27 @@ export default function Register() {
                     <input type={showPw ? 'text' : 'password'} className="auth-input" value={form.password}
                       onChange={(e) => update('password', e.target.value)}
                       placeholder="••••••••" required minLength={6} maxLength={15}
-                      autoComplete="new-password" id="reg-password" style={{ paddingRight: '46px' }} />
+                      autoComplete="new-password" id="reg-password" style={{ paddingRight: '42px' }} />
                     <button type="button" className="auth-pw-toggle" onClick={() => setShowPw(!showPw)}>
                       <span className="material-symbols-outlined">
                         {showPw ? 'visibility' : 'visibility_off'}
                       </span>
                     </button>
                   </div>
-                  <p className="pw-hint">Must be at least 6 characters.</p>
                 </div>
 
                 {/* Strength bar */}
                 {form.password.length > 0 && (
-                  <div style={{ marginBottom: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                      <span style={{ fontSize: '11px', color: '#777587', fontWeight: 600 }}>Strength</span>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: strength.color }}>{strength.label}</span>
+                  <div style={{ marginBottom: '2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600 }}>Strength</span>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: strength.color }}>{strength.label}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '4px', height: '5px' }}>
+                    <div style={{ display: 'flex', gap: '3px', height: '4px' }}>
                       {[1, 2, 3, 4].map((i) => (
                         <div key={i} style={{
-                          flex: 1, borderRadius: '3px', transition: 'background 0.3s',
-                          background: i <= Math.min(strength.score, 4) ? strength.color : '#dce2f3',
+                          flex: 1, borderRadius: '2px', transition: 'background 0.3s',
+                          background: i <= Math.min(strength.score, 4) ? strength.color : '#e2e8f0',
                         }} />
                       ))}
                     </div>
@@ -488,7 +506,7 @@ export default function Register() {
                     <input type={showCpw ? 'text' : 'password'} className="auth-input" value={form.confirmPw}
                       onChange={(e) => update('confirmPw', e.target.value)}
                       placeholder="••••••••" required maxLength={15}
-                      autoComplete="new-password" id="reg-confirm" style={{ paddingRight: '46px' }} />
+                      autoComplete="new-password" id="reg-confirm" style={{ paddingRight: '42px' }} />
                     <button type="button" className="auth-pw-toggle" onClick={() => setShowCpw(!showCpw)}>
                       <span className="material-symbols-outlined">
                         {showCpw ? 'visibility' : 'visibility_off'}
@@ -497,19 +515,19 @@ export default function Register() {
                   </div>
                 </div>
                 {form.confirmPw.length > 0 && (
-                  <div style={{ fontSize: '12px', marginTop: '-10px', marginBottom: '12px',
-                    color: passwordsMatch ? '#22c55e' : '#ba1a1a', fontWeight: 500 }}>
+                  <div style={{ fontSize: '11px', marginTop: '-8px', marginBottom: '10px',
+                    color: passwordsMatch ? '#22c55e' : '#ef4444', fontWeight: 500 }}>
                     {passwordsMatch ? '✓ Passwords match' : '✗ Passwords do not match'}
                   </div>
                 )}
 
                 {/* Terms */}
                 <label style={{
-                  display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
-                  marginBottom: '16px', fontSize: '13px', color: '#464555',
+                  display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer',
+                  marginBottom: '12px', fontSize: '12px', color: '#475569',
                 }}>
                   <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)}
-                    style={{ accentColor: '#4F46E5', width: '16px', height: '16px' }} />
+                    style={{ accentColor: '#4F46E5', width: '15px', height: '15px' }} />
                   I agree to the{' '}
                   <span onClick={(e) => { e.preventDefault(); setTermsOpen(true); }}
                     style={{ color: '#4F46E5', fontWeight: 700, cursor: 'pointer' }}>
@@ -518,11 +536,11 @@ export default function Register() {
                 </label>
 
                 {/* Buttons */}
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
                   <button type="button" onClick={() => { setStep(1); setError(''); }} style={{
-                    background: 'none', border: '2px solid #dce2f3', borderRadius: '9999px',
-                    padding: '12px 20px', color: '#464555', fontWeight: 600, cursor: 'pointer',
-                    fontFamily: "'Inter', system-ui, sans-serif", fontSize: '14px',
+                    background: 'none', border: '1.5px solid #e2e8f0', borderRadius: '10px',
+                    padding: '10px 16px', color: '#475569', fontWeight: 600, cursor: 'pointer',
+                    fontFamily: "'Inter', system-ui, sans-serif", fontSize: '13px',
                   }}>
                     ← Back
                   </button>
@@ -540,25 +558,25 @@ export default function Register() {
 
             {/* ═══ STEP 3: Done ═══ */}
             {step === 3 && (
-              <div style={{ textAlign: 'center', padding: '24px 0', animation: 'authFadeIn 0.4s ease' }}>
+              <div style={{ textAlign: 'center', padding: '20px 0', animation: 'authFadeIn 0.4s ease' }}>
                 <div style={{
-                  width: '70px', height: '70px', borderRadius: '50%', background: '#22c55e',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-                  fontSize: '1.8rem', color: 'white',
+                  width: '60px', height: '60px', borderRadius: '50%', background: '#22c55e',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
+                  fontSize: '1.5rem', color: 'white',
                 }}>✓</div>
-                <h3 style={{ fontWeight: 700, marginBottom: '8px', color: '#151c27', fontSize: '1.2rem' }}>Account Created!</h3>
-                <p style={{ color: '#464555', fontSize: '0.9rem' }}>Redirecting to your dashboard...</p>
+                <h3 style={{ fontWeight: 700, marginBottom: '6px', color: '#0f172a', fontSize: '1.1rem' }}>Account Created!</h3>
+                <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Redirecting to your dashboard...</p>
               </div>
             )}
           </form>
 
           {/* Security badge */}
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            marginTop: '16px', fontSize: '11px', color: '#777587',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+            marginTop: '12px', fontSize: '10px', color: '#94a3b8',
           }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>lock</span>
-            Secured with JWT · Your data is safe
+            <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>verified_user</span>
+            256-bit encrypted · Your data stays private
           </div>
         </div>
       </div>
@@ -568,7 +586,7 @@ export default function Register() {
 
       {/* Success Overlay */}
       <div className={`auth-success-overlay ${showSuccess ? 'show' : ''}`}>
-        <svg width="80" height="80" viewBox="0 0 80 80">
+        <svg width="72" height="72" viewBox="0 0 80 80">
           <circle cx="40" cy="40" r="36" fill="none" stroke="#22c55e" strokeWidth="4" />
           <path className="check-path" d="M24 42 L34 52 L56 30" fill="none" stroke="#22c55e" strokeWidth="4"
             strokeLinecap="round" strokeLinejoin="round" />
