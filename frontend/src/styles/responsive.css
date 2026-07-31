@@ -26,6 +26,9 @@
     grid-template-columns: 1fr 1fr;
     gap: 32px;
   }
+  .mm-testimonials-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* ─── Small Tablet / Large Phone (≤768px) ─── */
@@ -77,6 +80,28 @@
     text-align: center;
     gap: 4px;
   }
+  .mm-testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+  .mm-trusted__logos {
+    gap: 16px;
+  }
+  .mm-trusted__item {
+    min-width: 100px;
+    padding: 8px 12px;
+  }
+  .mm-trusted__name {
+    font-size: 1rem;
+  }
+  .mm-comparison {
+    margin: 0 -8px;
+    border-radius: var(--mm-radius);
+  }
+  .mm-comparison__table thead th,
+  .mm-comparison__table tbody td {
+    padding: 10px 14px;
+    font-size: 0.8125rem;
+  }
 }
 
 /* ─── Phone (≤576px) ─── */
@@ -110,11 +135,16 @@
   }
   .mm-stats__inner {
     gap: 20px;
+    justify-content: space-around;
   }
   .mm-stat__value {
     font-size: 1.5rem;
   }
   .mm-stat__label {
+    font-size: 0.75rem;
+  }
+  .mm-stat__icon {
+    width: 32px; height: 32px;
     font-size: 0.75rem;
   }
   .mm-network-grid {
@@ -151,6 +181,21 @@
     right: 16px;
     width: 40px;
     height: 40px;
+  }
+  .mm-faq-item__q {
+    padding: 14px 16px;
+    font-size: 0.875rem;
+  }
+  .mm-faq-item__a {
+    padding: 0 16px 14px;
+    font-size: 0.8125rem;
+  }
+  .mm-testimonial {
+    padding: 20px;
+  }
+  .mm-comparison__table thead th:first-child,
+  .mm-comparison__table tbody td:first-child {
+    min-width: 110px;
   }
 }
 
