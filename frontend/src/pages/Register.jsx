@@ -474,10 +474,10 @@ export default function Register() {
       {/* ═══ LEFT PANEL ═══ */}
       <div className="auth-visual">
         <Particles />
-        <div className="auth-visual-brand">
+        <Link to="/" className="auth-visual-brand" style={{ textDecoration: 'none', color: 'inherit' }}>
           <span className="material-symbols-outlined">subway</span>
           <span>MetroMind</span>
-        </div>
+        </Link>
         <div className="auth-visual-content">
           <h1>Travel<br />smarter.</h1>
           <p>Join thousands of commuters who save time, money, and the planet every day.</p>
@@ -524,12 +524,12 @@ export default function Register() {
       <div className="auth-form-side">
         <div className="auth-form-inner" ref={formRef}>
           {/* Mobile brand */}
-          <div className="auth-mobile-brand">
+          <Link to="/" className="auth-mobile-brand" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="auth-logo-icon">
               <span className="material-symbols-outlined">train</span>
             </div>
             <span className="auth-logo-text">MetroMind</span>
-          </div>
+          </Link>
 
           {/* Heading */}
           <div className="auth-heading auth-anim d1">

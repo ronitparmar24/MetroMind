@@ -2,7 +2,7 @@
 // Premium split-screen login — handles unverified accounts with inline OTP
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { loginUser, googleLogin as googleLoginApi, verifyOtp, resendOtp } from '../api/auth.api';
+import { loginUser, googleLogin as googleLoginApi, verifyOtp, resendOtp, forgotPassword, resetPassword } from '../api/auth.api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
 import '../styles/auth.css';
@@ -131,6 +131,12 @@ export default function Login() {
   // OTP verification state (for unverified accounts)
   const [showOtpFlow, setShowOtpFlow] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
+  
+  // Forgot Password state
+  const [showForgotFlow, setShowForgotFlow] = useState(false);
+  const [showResetFlow, setShowResetFlow] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [otpError, setOtpError] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -293,6 +299,52 @@ export default function Login() {
     }
   };
 
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      setError('Please enter your email');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      await forgotPassword(forgotEmail);
+      toast.success('Password reset code sent to your email 📧');
+      setShowForgotFlow(false);
+      setShowResetFlow(true);
+      setLoading(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to send reset code');
+      setLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (code) => {
+    if (!newPassword) {
+      setError('Please enter a new password');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    setError('');
+    setOtpError(false);
+    setLoading(true);
+    try {
+      await resetPassword(forgotEmail, code, newPassword);
+      toast.success('Password updated successfully! You can now sign in. 🎉');
+      setShowResetFlow(false);
+      setForgotEmail('');
+      setNewPassword('');
+      setLoading(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid or expired code');
+      setOtpError(true);
+      setLoading(false);
+    }
+  };
+
   const hour = clock.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -301,10 +353,10 @@ export default function Login() {
       {/* ═══ LEFT PANEL ═══ */}
       <div className="auth-visual">
         <Particles />
-        <div className="auth-visual-brand">
+        <Link to="/" className="auth-visual-brand" style={{ textDecoration: 'none', color: 'inherit' }}>
           <span className="material-symbols-outlined">subway</span>
           <span>MetroMind</span>
-        </div>
+        </Link>
         <div className="auth-visual-content">
           <h1>Your city,<br />connected.</h1>
           <p>Real-time crowd prediction, smart ticketing, and sustainable transit — all in one platform.</p>
@@ -351,18 +403,106 @@ export default function Login() {
       <div className="auth-form-side">
         <div className="auth-form-inner" ref={formRef}>
           {/* Mobile brand */}
-          <div className="auth-mobile-brand">
+          <Link to="/" className="auth-mobile-brand" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="auth-logo-icon">
               <span className="material-symbols-outlined">train</span>
             </div>
             <span className="auth-logo-text">MetroMind</span>
-          </div>
+          </Link>
 
 
 
 
-          {/* ═══ OTP VERIFICATION FLOW ═══ */}
-          {showOtpFlow ? (
+          {/* ═══ FORGOT PASSWORD FLOW ═══ */}
+          {showForgotFlow ? (
+            <div style={{ animation: 'authFadeIn 0.4s ease' }}>
+              <div className="auth-heading">
+                <h2>Reset Password</h2>
+                <p>Enter your email to receive a password reset code.</p>
+              </div>
+
+              {error && (
+                <div className="auth-error-alert">
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleForgotPasswordSubmit}>
+                <div className="auth-input-group">
+                  <label htmlFor="forgot-email">Email</label>
+                  <div className="auth-input-wrap">
+                    <span className="material-symbols-outlined">mail</span>
+                    <input
+                      id="forgot-email" type="email" className="auth-input"
+                      value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="you@example.com" required
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="auth-btn" disabled={loading} style={{ marginTop: '24px' }}>
+                  {loading ? <div className="auth-spinner" /> : 'Send Reset Code'}
+                </button>
+              </form>
+
+              <button type="button" onClick={() => { setShowForgotFlow(false); setError(''); }} style={{
+                background: 'none', border: 'none', color: '#64748b', display: 'block', margin: '16px auto 0',
+                fontSize: '13px', cursor: 'pointer', fontWeight: 500, fontFamily: "'Inter', system-ui, sans-serif",
+              }}>
+                ← Back to login
+              </button>
+            </div>
+          ) : showResetFlow ? (
+            <div style={{ animation: 'authFadeIn 0.4s ease' }}>
+              <div className="auth-heading">
+                <h2>Create New Password</h2>
+                <p>Enter the 6-digit code sent to your email and choose a new password.</p>
+              </div>
+
+              {error && (
+                <div className="auth-error-alert">
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="auth-input-group">
+                <label>Verification Code</label>
+                <div style={{ margin: '8px 0 20px' }}>
+                  <OtpInput length={6} onComplete={handleResetPasswordSubmit} hasError={otpError} />
+                </div>
+              </div>
+
+              <div className="auth-input-group">
+                <label htmlFor="new-password">New Password</label>
+                <div className="auth-input-wrap">
+                  <span className="material-symbols-outlined">lock</span>
+                  <input
+                    id="new-password" type={showPw ? 'text' : 'password'} className="auth-input"
+                    value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min 6 characters" required
+                  />
+                  <button type="button" className="auth-pw-toggle" onClick={() => setShowPw(!showPw)}>
+                    <span className="material-symbols-outlined">{showPw ? 'visibility_off' : 'visibility'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {loading && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+                  <div className="auth-spinner" style={{ borderColor: 'rgba(79,70,229,0.2)', borderTopColor: '#4F46E5' }} />
+                </div>
+              )}
+
+              <button type="button" onClick={() => { setShowResetFlow(false); setShowForgotFlow(true); setError(''); setOtpError(false); }} style={{
+                background: 'none', border: 'none', color: '#64748b', display: 'block', margin: '24px auto 0',
+                fontSize: '13px', cursor: 'pointer', fontWeight: 500, fontFamily: "'Inter', system-ui, sans-serif",
+              }}>
+                ← Back to email input
+              </button>
+            </div>
+          ) : showOtpFlow ? (
             <div style={{ animation: 'authFadeIn 0.4s ease' }}>
               <div className="auth-heading">
                 <h2>Verify your email</h2>
@@ -444,7 +584,7 @@ export default function Login() {
                 <div className="auth-input-group auth-anim d3">
                   <div className="auth-label-row">
                     <label htmlFor="login-password">Password</label>
-                    <a href="#">Forgot?</a>
+                    <a href="#" onClick={(e) => { e.preventDefault(); setError(''); setShowForgotFlow(true); }}>Forgot?</a>
                   </div>
                   <div className="auth-input-wrap">
                     <span className="material-symbols-outlined">lock</span>

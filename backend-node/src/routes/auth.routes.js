@@ -3,7 +3,7 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
 const { protect } = require('../middleware/auth.middleware');
-const { register, login, getMe, googleLogin, verifyOtp, resendOtp } = require('../controllers/auth.controller');
+const { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword } = require('../controllers/auth.controller');
 
 router.post(
   '/register',
@@ -46,6 +46,26 @@ router.post(
     body('email').isEmail().withMessage('Valid email is required'),
   ]),
   resendOtp
+);
+
+// Forgot Password
+router.post(
+  '/forgot-password',
+  validate([
+    body('email').isEmail().withMessage('Valid email is required'),
+  ]),
+  forgotPassword
+);
+
+// Reset Password
+router.post(
+  '/reset-password',
+  validate([
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+    body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  ]),
+  resetPassword
 );
 
 module.exports = router;

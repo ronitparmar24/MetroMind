@@ -424,4 +424,109 @@ const googleLogin = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe, googleLogin, verifyOtp, resendOtp };
+// POST /api/auth/forgot-password
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      const err = new Error('Email is required');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      // Return success even if not found to prevent email enumeration
+      return res.json({ success: true, message: 'If an account exists, a verification code was sent.' });
+    }
+
+    // Rate limit: 60 seconds between resends
+    if (user.lastOtpSentAt) {
+      const elapsed = Date.now() - user.lastOtpSentAt.getTime();
+      const remaining = Math.ceil((60000 - elapsed) / 1000);
+      if (elapsed < 60000) {
+        const err = new Error(`Please wait ${remaining} seconds before requesting a new code`);
+        err.statusCode = 429;
+        return next(err);
+      }
+    }
+
+    // Generate OTP
+    const { otp, hash: otpHash } = await generateOtp();
+    user.otpHash = otpHash;
+    user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+    user.lastOtpSentAt = new Date();
+    await user.save();
+
+    // Send email
+    try {
+      await sendOTPEmail(email.toLowerCase(), otp);
+    } catch (emailErr) {
+      console.error('Failed to send forgot password OTP email:', emailErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Verification code sent',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/auth/reset-password
+const resetPassword = async (req, res, next) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      const err = new Error('Email, OTP, and new password are required');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      const err = new Error('Invalid email or code');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    // Check expiry
+    if (!user.otpExpiresAt || user.otpExpiresAt < Date.now()) {
+      const err = new Error('Verification code has expired. Please request a new one.');
+      err.statusCode = 410;
+      return next(err);
+    }
+
+    // Compare OTP
+    const isMatch = await bcrypt.compare(otp, user.otpHash);
+    if (!isMatch) {
+      const err = new Error('Invalid verification code');
+      err.statusCode = 401;
+      return next(err);
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(12);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    
+    // Make sure they are verified
+    user.isVerified = true;
+    
+    // Clear OTP fields
+    user.otpHash = null;
+    user.otpExpiresAt = null;
+    user.lastOtpSentAt = null;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password successfully updated',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword };
