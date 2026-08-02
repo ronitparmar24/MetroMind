@@ -169,26 +169,48 @@ export default function Login() {
   // Initialize Google Identity Services
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId || !window.google?.accounts?.id) return;
+    if (!clientId) return;
 
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCallback,
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    });
+    let initAttempts = 0;
+    let initInterval;
 
-    if (googleBtnRef.current) {
-      window.google.accounts.id.renderButton(googleBtnRef.current, {
-        type: 'standard',
-        theme: 'outline',
-        size: 'large',
-        text: 'signin_with',
-        shape: 'rectangular',
-        width: 340,
-        logo_alignment: 'left',
-      });
+    const initGoogle = () => {
+      if (window.google?.accounts?.id) {
+        clearInterval(initInterval);
+        
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCallback,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        if (googleBtnRef.current) {
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular',
+            width: 340,
+            logo_alignment: 'left',
+          });
+        }
+      } else {
+        initAttempts++;
+        if (initAttempts > 50) clearInterval(initInterval); // Give up after 5 seconds
+      }
+    };
+
+    // Try immediately
+    if (window.google?.accounts?.id) {
+      initGoogle();
+    } else {
+      // Poll if not loaded yet
+      initInterval = setInterval(initGoogle, 100);
     }
+
+    return () => clearInterval(initInterval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -441,7 +463,7 @@ export default function Login() {
                   </div>
                 </div>
 
-                <button type="submit" className="auth-btn" disabled={loading} style={{ marginTop: '24px' }}>
+                <button type="submit" className="auth-btn-primary" disabled={loading} style={{ marginTop: '24px' }}>
                   {loading ? <div className="auth-spinner" /> : 'Send Reset Code'}
                 </button>
               </form>

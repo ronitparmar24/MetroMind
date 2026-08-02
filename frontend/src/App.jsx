@@ -11,6 +11,7 @@ import SOSButton from './components/common/SOSButton';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Goodbye from './pages/Goodbye';
 
 // Dashboard pages
 import Dashboard from './pages/Dashboard';
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/goodbye" element={<Goodbye />} />
 
               {/* Protected routes — inside DashboardLayout */}
               <Route

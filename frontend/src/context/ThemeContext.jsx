@@ -16,14 +16,10 @@ function resolveTheme(preference) {
 
 export function ThemeProvider({ children }) {
   // preference is one of: 'light' | 'dark' | 'system'
-  const [preference, setPreference] = useState(() => {
-    return localStorage.getItem('mm_theme') || 'system';
-  });
+  const [preference, setPreference] = useState('dark');
 
   // resolved is the actual applied theme: 'light' | 'dark'
-  const [resolved, setResolved] = useState(() => resolveTheme(
-    localStorage.getItem('mm_theme') || 'system'
-  ));
+  const [resolved, setResolved] = useState('dark');
 
   // Apply theme to DOM whenever preference changes
   useEffect(() => {

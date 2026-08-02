@@ -1,10 +1,12 @@
 // frontend/src/components/common/Navbar.jsx
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 
 export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme(); // theme = 'light' | 'dark' (resolved)
+  const navigate = useNavigate();
 
   return (
     <nav className="glass-navbar" style={{
@@ -83,7 +85,7 @@ export default function Navbar({ onToggleSidebar }) {
               {user.name?.charAt(0).toUpperCase()}
             </div>
             <button
-              onClick={logout}
+              onClick={() => navigate('/goodbye')}
               className="btn btn-sm btn-secondary"
               id="logout-btn"
             >

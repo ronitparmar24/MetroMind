@@ -11,6 +11,21 @@ import { predictCrowd, checkAnomaly, getBestDeparture, getPersonalityProfile } f
 import { formatCurrency } from '../utils/formatters';
 import { getNetworkPulse } from '../api/analytics.api';
 import QRModal from '../components/common/QRModal';
+import CoachHeatmap from '../components/metro/CoachHeatmap';
+import VoiceAssistantModal from '../components/common/VoiceAssistantModal';
+import CommunityPulseModal from '../components/metro/CommunityPulseModal';
+import SOSButton from '../components/common/SOSButton';
+import SmartRoutesWidget from '../components/metro/SmartRoutesWidget';
+import CarbonTreeWidget from '../components/metro/CarbonTreeWidget';
+import PersonalityBadge from '../components/analytics/PersonalityBadge';
+import AccessibilityToggle from '../components/common/AccessibilityToggle';
+import ActiveRidePass from '../components/metro/ActiveRidePass';
+import LastMileConnect from '../components/metro/LastMileConnect';
+import LiveTrainRadar from '../components/metro/LiveTrainRadar';
+import ExitOptimizer from '../components/metro/ExitOptimizer';
+import TimeToLeaveWidget from '../components/metro/TimeToLeaveWidget';
+import GiftRideWidget from '../components/metro/GiftRideWidget';
+import CommuterLeaderboard from '../components/analytics/CommuterLeaderboard';
 
 /* ═══════════════════════════════════════════════════════════
    CONSTANTS
@@ -413,7 +428,8 @@ function MyLineStrip({ corridor, userDestination }) {
     return (
       <div style={{ ...S.card, ...S.liveCard, marginBottom: '12px' }}>
         <div className="dash-line-header" style={S.lineHeader}>
-          <span style={{ ...S.lineBadge, background: lineColor }}>{corridor.line}</span>
+          <span style={S.lineBadge}>Pulse</span>
+          <span>Network Pulse (TESTING VITE)</span>
           <span style={S.liveBadge}><span style={S.liveDot} /> Live</span>
         </div>
         <div style={{ padding: '8px 0' }}>
@@ -635,40 +651,6 @@ function BestDepartureCard({ usualRoute }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   PERSONALITY BADGE — small inline stat, not a big card
-   ═══════════════════════════════════════════════════════════ */
-function PersonalityBadge() {
-  const [personality, setPersonality] = useState(null);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    getPersonalityProfile()
-      .then(res => {
-        const p = res.data.personality;
-        if (p && p.totalTrips >= 5) setPersonality(p);
-      })
-      .catch(() => {});
-  }, []);
-
-  if (!personality) return null;
-
-  const icons = {
-    'Early Bird': '🌅', 'Rush Hour Warrior': '⚡', 'Weekend Explorer': '🧭',
-    'Smart Commuter': '🧠', 'Balanced Traveler': '⚖️',
-  };
-
-  return (
-    <span
-      style={{ ...S.statItem, cursor: 'pointer' }}
-      onClick={() => navigate('/profile')}
-      title="View full personality breakdown"
-    >
-      <span style={{ fontSize: '0.875rem' }}>{icons[personality.personality] || '🚇'}</span>
-      <span style={S.statValue}>{personality.personality}</span>
-    </span>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════
    NETWORK PULSE — accepts props from parent (pulse lifted)
@@ -819,6 +801,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [qrTicket, setQrTicket] = useState(null);
   const [clock, setClock] = useState(new Date());
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
+  const [isPulseOpen, setIsPulseOpen] = useState(false);
 
   // ── Lifted pulse state (shared between hero + NetworkPulsePanel) ──
   const [pulse, setPulse] = useState(null);
@@ -914,8 +898,9 @@ export default function Dashboard() {
     usualRoute
       ? { to: `/book?from=${encodeURIComponent(usualRoute.source)}&to=${encodeURIComponent(usualRoute.destination)}`, icon: 'fas fa-redo', label: 'Rebook', bg: 'rgba(99,102,241,0.10)', color: '#6366f1', title: `${usualRoute.source.replace(' Railway Station', ' Ry.')} → ${usualRoute.destination.replace(' Railway Station', ' Ry.')}` }
       : { to: '/book', icon: 'fas fa-ticket-alt', label: 'Book Ticket', bg: 'rgba(99,102,241,0.10)', color: '#6366f1' },
+    { onClick: () => setIsVoiceOpen(true), icon: 'fas fa-microphone', label: 'Voice AI', bg: 'rgba(124,58,237,0.12)', color: '#7c3aed' },
+    { onClick: () => setIsPulseOpen(true), icon: 'fas fa-users', label: 'Pulse', bg: 'rgba(16,185,129,0.10)', color: '#10b981' },
     { to: '/live-trains', icon: 'fas fa-train', label: 'Live Trains', bg: 'rgba(59,130,246,0.10)', color: '#3b82f6' },
-    { to: '/journey-planner', icon: 'fas fa-route', label: 'Plan Route', bg: 'rgba(139,92,246,0.10)', color: '#8b5cf6' },
     { to: '/wallet', icon: 'fas fa-plus-circle', label: 'Top Up', bg: 'rgba(34,197,94,0.10)', color: '#22c55e' },
   ];
 
@@ -954,13 +939,51 @@ export default function Dashboard() {
           .dash-hide-mobile { display: none !important; }
           .dash-quick-actions { gap: 16px !important; }
         }
+        /* ── Bento Box Grid ── */
+        .bento-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          gap: 24px;
+          align-items: start;
+        }
+        .bento-grid > * {
+          animation: bentoFadeIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+          width: 100%;
+        }
+        @keyframes bentoFadeIn {
+          0% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .bento-grid > *:nth-child(1) { animation-delay: 0.1s; }
+        .bento-grid > *:nth-child(2) { animation-delay: 0.15s; }
+        .bento-grid > *:nth-child(3) { animation-delay: 0.2s; }
+        .bento-grid > *:nth-child(4) { animation-delay: 0.25s; }
+        .bento-grid > *:nth-child(5) { animation-delay: 0.3s; }
+        .bento-grid > *:nth-child(6) { animation-delay: 0.35s; }
+        .bento-grid > *:nth-child(7) { animation-delay: 0.4s; }
+        .bento-grid > *:nth-child(8) { animation-delay: 0.45s; }
+        .bento-grid > *:nth-child(9) { animation-delay: 0.5s; }
+        .bento-grid > *:nth-child(10) { animation-delay: 0.55s; }
+        .bento-grid > *:nth-child(11) { animation-delay: 0.6s; }
+        .bento-grid > *:nth-child(12) { animation-delay: 0.65s; }
+        .bento-grid > *:nth-child(n+13) { animation-delay: 0.7s; }
+        
+        .bento-span-2 {
+          grid-column: span 2;
+        }
+        @media (max-width: 768px) {
+          .bento-span-2 { grid-column: span 1; }
+        }
       `}</style>
 
-      {/* ═══ 1. HERO SECTION (Stitch-style greeting) ═══ */}
-      <div style={{
-        ...S.heroCard,
-        ...(isDark ? S.heroClearDark : S.heroClear),
-      }}>
+      {/* ═══ 1. HERO SECTION (Stitch-style greeting or Active Pass) ═══ */}
+      {activeTicket ? (
+        <ActiveRidePass ticket={activeTicket} />
+      ) : (
+        <div style={{
+          ...S.heroCard,
+          ...(isDark ? S.heroClearDark : S.heroClear),
+        }}>
         {/* Decorative blur circle */}
         <div style={{
           position: 'absolute', top: '-30px', right: '-30px',
@@ -1035,26 +1058,96 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ═══ 2. QUICK ACTIONS (circular, Google Pay style) ═══ */}
       <div className="dash-quick-actions" style={S.quickActions}>
-        {quickActionItems.map((action) => (
-          <Link
-            key={action.to}
-            to={action.to}
-            className="dash-quick-action"
-            style={S.quickAction}
-            title={action.title || action.label}
-          >
-            <div className="dash-quick-circle" style={{ ...S.quickCircle, background: action.bg }}>
-              <i className={action.icon} style={{ color: action.color }} />
-            </div>
-            <span style={S.quickLabel}>{action.label}</span>
-          </Link>
+        {quickActionItems.map((action, idx) => (
+          action.to ? (
+            <Link
+              key={action.to}
+              to={action.to}
+              className="dash-quick-action"
+              style={S.quickAction}
+              title={action.title || action.label}
+            >
+              <div className="dash-quick-circle" style={{ ...S.quickCircle, background: action.bg }}>
+                <i className={action.icon} style={{ color: action.color }} />
+              </div>
+              <span style={S.quickLabel}>{action.label}</span>
+            </Link>
+          ) : (
+            <button
+              key={idx}
+              onClick={action.onClick}
+              className="dash-quick-action"
+              style={{ ...S.quickAction, border: 'none', background: 'none' }}
+              title={action.label}
+            >
+              <div className="dash-quick-circle" style={{ ...S.quickCircle, background: action.bg }}>
+                <i className={action.icon} style={{ color: action.color }} />
+              </div>
+              <span style={S.quickLabel}>{action.label}</span>
+            </button>
+          )
         ))}
       </div>
 
-      {/* ═══ 3. NETWORK PULSE ═══ */}
+      {/* ═══ 2.5 AI COMMUTE ASSISTANT BANNER ═══ */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(79,70,229,0.1), rgba(124,58,237,0.1))',
+        border: '1px solid rgba(79,70,229,0.2)',
+        borderRadius: '20px',
+        padding: '16px 20px',
+        marginBottom: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        justify: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        animation: 'fadeInUp 0.4s ease',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '240px' }}>
+          <div style={{
+            width: '40px', height: '40px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontSize: '20px', flexShrink: 0,
+            boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
+          }}>
+            <span className="material-symbols-outlined">auto_awesome</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              MetroMind AI Coach
+            </div>
+            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
+              IPL Match at Stadium Station today 🏏 · Peak crowd expected 5:30 - 8:00 PM. Book your return ticket early!
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsVoiceOpen(true)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '8px 16px', borderRadius: '9999px',
+            background: '#4F46E5', color: '#fff', border: 'none',
+            fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>mic</span>
+          Ask Voice AI
+        </button>
+      </div>
+
+      {/* Gift a Ride (Epic Phase 4) */}
+      <GiftRideWidget />
+
+      {/* ═══ BENTO BOX GRID LAYOUT ═══ */}
+      <div className="bento-grid">
+        <div className="bento-span-2">
+          {/* ═══ 3. NETWORK PULSE ═══ */}
       <NetworkPulsePanel
         pulseLoading={pulseLoading}
         riders={riders}
@@ -1068,22 +1161,34 @@ export default function Dashboard() {
         arcOffset={arcOffset}
       />
 
-      {/* ═══ 4. MY LINE RIGHT NOW ═══ */}
-      <MyLineStrip corridor={corridor} userDestination={userDestination} />
+        </div>
 
-      {/* ═══ 5. ANOMALY WHISPER (renders nothing if no anomaly) ═══ */}
-      <AnomalyWhisper
-        station={userDestination}
-        hour={new Date().getHours()}
-        dayOfWeek={new Date().getDay() === 0 ? 6 : new Date().getDay() - 1}
-        predictedCrowd={85}
-      />
+        <div className="bento-span-2">
+          {/* ═══ 4. MY LINE RIGHT NOW ═══ */}
+          <MyLineStrip corridor={corridor} userDestination={userDestination} />
+        </div>
 
-      {/* ═══ 6. BEST DEPARTURE CARD ═══ */}
-      <BestDepartureCard usualRoute={usualRoute} />
+        {/* ═══ 4.5 TRAIN COACH DENSITY HEATMAP ═══ */}
+        <div className="bento-span-2">
+          <CoachHeatmap stationName={userDestination} />
+        </div>
 
-      {/* ═══ 7. WALLET + ACTIVE TICKET ═══ */}
-      <div className="dash-two-col" style={S.twoCol}>
+        {/* ═══ 5. ANOMALY WHISPER ═══ */}
+        {anomaly && (
+          <div className="bento-span-2">
+            <AnomalyWhisper
+              station={userDestination}
+              hour={new Date().getHours()}
+              dayOfWeek={new Date().getDay() === 0 ? 6 : new Date().getDay() - 1}
+              predictedCrowd={85}
+            />
+          </div>
+        )}
+
+        {/* ═══ 6. BEST DEPARTURE CARD ═══ */}
+        <BestDepartureCard usualRoute={usualRoute} />
+
+        {/* ═══ 7. WALLET ═══ */}
         {/* Wallet — Stitch dark gradient card */}
         <div style={{
           borderRadius: '24px', overflow: 'hidden', position: 'relative',
@@ -1185,7 +1290,43 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-      </div>
+
+        {/* ═══ EPIC WIDGETS (Bento Grid) ═══ */}
+        <LiveTrainRadar homeStation={corridor.stations[0] || 'Thaltej'} />
+        <SmartRoutesWidget />
+        {userDestination && <ExitOptimizer destination={userDestination} />}
+        <TimeToLeaveWidget />
+        <CarbonTreeWidget />
+        <CommuterLeaderboard />
+        <LastMileConnect destination={userDestination} />
+        
+        <div className="bento-span-2">
+          {/* Smart Fare Optimizer Banner */}
+          <div style={{
+            background: 'linear-gradient(90deg, var(--bg-secondary), rgba(167, 139, 250, 0.15))',
+            borderLeft: '4px solid #a78bfa',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+          }}>
+            <div style={{ background: '#a78bfa', color: '#fff', padding: '8px', borderRadius: '50%', display: 'flex' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>savings</span>
+            </div>
+            <div>
+              <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Smart-Fare Optimizer
+              </h4>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                Delay your trip by <strong>15 mins</strong> to travel off-peak and save <strong>₹10</strong> on your fare!
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div> {/* END BENTO GRID */}
 
       {/* ═══ 8. STATS ROW (compact, low-priority) ═══ */}
       <div className="dash-stats-row" style={S.statsRow}>
@@ -1203,7 +1344,6 @@ export default function Dashboard() {
           <i className="fas fa-fire" style={{ fontSize: '0.75rem', color: '#D97706' }} />
           <span className="mm-num" style={S.statValue}>{streakDays}</span> day streak
         </Link>
-        <PersonalityBadge />
       </div>
 
       {/* QR Modal */}
@@ -1214,6 +1354,25 @@ export default function Dashboard() {
           ticket={qrTicket}
         />
       )}
+
+      {/* Voice Assistant Modal */}
+      <VoiceAssistantModal
+        isOpen={isVoiceOpen}
+        onClose={() => setIsVoiceOpen(false)}
+        walletBalance={wallet.balance}
+      />
+
+      {/* Commuter Pulse Modal */}
+      <CommunityPulseModal
+        isOpen={isPulseOpen}
+        onClose={() => setIsPulseOpen(false)}
+      />
+      
+      {/* Emergency SOS Button */}
+      <SOSButton />
+      
+      {/* Universal Accessibility Toggle */}
+      <AccessibilityToggle />
     </div>
   );
 }

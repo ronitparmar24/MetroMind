@@ -1,0 +1,97 @@
+// frontend/src/components/analytics/PersonalityBadge.jsx
+import { useState, useEffect } from 'react';
+import { getPersonality } from '../../api/analytics.api';
+
+export default function PersonalityBadge() {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPersonality() {
+      try {
+        const res = await getPersonality();
+        setProfile(res.data.personality);
+      } catch (err) {
+        console.error('Failed to load personality', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPersonality();
+  }, []);
+
+  if (loading || !profile) return null;
+
+  // Determine styles based on personality type
+  const getBadgeStyle = (type) => {
+    const t = (type || '').toLowerCase();
+    if (t.includes('early') || t.includes('morning')) {
+      return { bg: 'linear-gradient(135deg, #fef08a, #f97316)', icon: '🌅', color: '#7c2d12' };
+    }
+    if (t.includes('night') || t.includes('late')) {
+      return { bg: 'linear-gradient(135deg, #312e81, #1e1b4b)', icon: '🦉', color: '#c7d2fe' };
+    }
+    if (t.includes('weekend')) {
+      return { bg: 'linear-gradient(135deg, #a78bfa, #ec4899)', icon: '🎉', color: '#fdf2f8' };
+    }
+    if (t.includes('rush') || t.includes('warrior')) {
+      return { bg: 'linear-gradient(135deg, #ef4444, #7f1d1d)', icon: '⚔️', color: '#fee2e2' };
+    }
+    return { bg: 'linear-gradient(135deg, #38bdf8, #0369a1)', icon: '🧭', color: '#f0f9ff' };
+  };
+
+  const style = getBadgeStyle(profile.personality);
+
+  return (
+    <div style={{
+      background: style.bg,
+      borderRadius: '20px',
+      padding: '2px', // For gradient border effect
+      boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+      marginBottom: '24px',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      <div style={{
+        background: 'rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(12px)',
+        borderRadius: '18px',
+        padding: '20px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '16px',
+        color: style.color
+      }}>
+        <div style={{ fontSize: '40px', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' }}>
+          {style.icon}
+        </div>
+        
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8 }}>
+            AI Commuter Persona
+          </div>
+          <h3 style={{ margin: '4px 0 8px 0', fontSize: '1.25rem', fontWeight: 800 }}>
+            {profile.personality || 'The Explorer'}
+          </h3>
+          <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.5, opacity: 0.9 }}>
+            {profile.description || "You have a balanced travel schedule."}
+          </p>
+          
+          <div style={{
+            marginTop: '12px',
+            background: 'rgba(0,0,0,0.2)',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            fontSize: '0.8125rem',
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'center'
+          }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>tips_and_updates</span>
+            <i>Pro Tip: Shift your commute by 15 mins to avoid the crowds today!</i>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
