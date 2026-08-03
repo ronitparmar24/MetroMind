@@ -1026,6 +1026,12 @@ export default function Dashboard() {
 
           {/* Smart Routes */}
           <SmartRoutesWidget />
+
+          {/* Live Intelligence */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '10px' }}>
+            <LiveTrainRadar homeStation={corridor.stations[0] || 'Thaltej'} />
+            <CoachHeatmap stationName={userDestination} />
+          </div>
         </div>
 
         {/* ─── RIGHT SIDEBAR ────────────────────────────── */}
@@ -1093,6 +1099,9 @@ export default function Dashboard() {
 
           {/* Personality Badge */}
           <PersonalityBadge />
+
+          {/* Carbon Tree Widget */}
+          <CarbonTreeWidget />
         </div>
       </div>
 
@@ -1100,27 +1109,6 @@ export default function Dashboard() {
         @media (max-width: 900px) {
           .dash-main-cols { grid-template-columns: 1fr !important; }
         }
-      `}</style>
-
-      {/* ═══════════════════════════════════════════════════
-          BOTTOM BENTO — 3 equal columns
-          ═══════════════════════════════════════════════════ */}
-      <div style={{ marginBottom: '8px' }}>
-        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
-          Live Intelligence
-          <span style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' }} className="dash-bento-3">
-        <LiveTrainRadar homeStation={corridor.stations[0] || 'Thaltej'} />
-        <CoachHeatmap stationName={userDestination} />
-        <CarbonTreeWidget />
-      </div>
-
-      <style>{`
-        @media (max-width: 1024px) { .dash-bento-3 { grid-template-columns: repeat(2, 1fr) !important; } }
-        @media (max-width: 640px)  { .dash-bento-3 { grid-template-columns: 1fr !important; } }
       `}</style>
 
       {/* QR Modal */}
