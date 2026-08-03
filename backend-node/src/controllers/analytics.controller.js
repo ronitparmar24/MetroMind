@@ -3,6 +3,7 @@ const Ticket = require('../models/Ticket.model');
 const Transaction = require('../models/Transaction.model');
 const axios = require('axios');
 const { DJANGO_API_URL } = require('../config/env');
+const { generateWeeklyDigestText, generatePersonalityDescription } = require('../services/gemini.service');
 
 // GET /api/analytics/weekly-digest
 const getWeeklyDigest = async (req, res, next) => {
@@ -14,10 +15,10 @@ const getWeeklyDigest = async (req, res, next) => {
       createdAt: { $gte: oneWeekAgo },
     });
 
-    const totalTrips = tickets.length;
-    const totalSpent = tickets.reduce((sum, t) => sum + t.fare, 0);
+    const totalTrips    = tickets.length;
+    const totalSpent    = tickets.reduce((sum, t) => sum + t.fare, 0);
     const totalDistance = tickets.reduce((sum, t) => sum + t.distance, 0);
-    const totalCO2 = tickets.reduce((sum, t) => sum + t.co2Saved, 0);
+    const totalCO2      = tickets.reduce((sum, t) => sum + t.co2Saved, 0);
 
     // Most used route
     const routeCount = {};
@@ -25,10 +26,32 @@ const getWeeklyDigest = async (req, res, next) => {
       const route = `${t.source} → ${t.destination}`;
       routeCount[route] = (routeCount[route] || 0) + 1;
     });
-    const topRoute = Object.entries(routeCount).sort((a, b) => b[1] - a[1])[0];
+    const topRouteEntry = Object.entries(routeCount).sort((a, b) => b[1] - a[1])[0];
 
     // Peak vs off-peak split
-    const peakTrips = tickets.filter((t) => t.isPeak).length;
+    const peakTrips    = tickets.filter((t) => t.isPeak).length;
+    const offPeakTrips = totalTrips - peakTrips;
+    const offPeakRatio = totalTrips > 0 ? Math.round((offPeakTrips / totalTrips) * 100) : 0;
+
+    // Cab savings (₹12/km Ahmedabad average)
+    const cabCost   = tickets.reduce((sum, t) => sum + t.distance * 12, 0);
+    const cabSavings = Math.round(cabCost - totalSpent);
+
+    // ── Gemini AI Summary (cached per user per day) ────────────────
+    const aiStats = {
+      tripCount:       totalTrips,
+      totalDistanceKm: Math.round(totalDistance * 10) / 10,
+      totalSpent:      Math.round(totalSpent),
+      cabSavings:      Math.max(0, cabSavings),
+      co2Saved:        Math.round(totalCO2 * 1000) / 1000,
+      topRoute:        topRouteEntry ? topRouteEntry[0] : null,
+      offPeakRatio,
+    };
+
+    const aiSummary = await generateWeeklyDigestText(
+      req.user._id.toString(),
+      aiStats,
+    );
 
     res.json({
       success: true,
@@ -36,12 +59,17 @@ const getWeeklyDigest = async (req, res, next) => {
         period: '7 days',
         totalTrips,
         totalSpent,
-        totalDistance: Math.round(totalDistance * 100) / 100,
-        totalCO2Saved: Math.round(totalCO2 * 1000) / 1000,
-        topRoute: topRoute ? { route: topRoute[0], count: topRoute[1] } : null,
+        totalDistance:    Math.round(totalDistance * 100) / 100,
+        totalCO2Saved:    Math.round(totalCO2 * 1000) / 1000,
+        topRoute:         topRouteEntry ? { route: topRouteEntry[0], count: topRouteEntry[1] } : null,
         peakTrips,
-        offPeakTrips: totalTrips - peakTrips,
-        avgFarePerTrip: totalTrips > 0 ? Math.round(totalSpent / totalTrips) : 0,
+        offPeakTrips,
+        offPeakRatio,
+        avgFarePerTrip:   totalTrips > 0 ? Math.round(totalSpent / totalTrips) : 0,
+        cabSavings:       Math.max(0, cabSavings),
+        // ── Gemini-generated natural language summary ──
+        aiSummary,
+        aiGenerated: true,
       },
     });
   } catch (error) {
@@ -207,10 +235,22 @@ const getPersonality = async (req, res, next) => {
       personality = PERSONALITIES.balanced;
     }
 
+    // ── Gemini AI personality description (cached per user per day) ───
+    const aiDescription = await generatePersonalityDescription(
+      req.user._id.toString(),
+      personality.type,
+      stats,
+    );
+
     res.json({
       success: true,
       personality: {
         ...personality,
+        // Replace static description with Gemini-generated one;
+        // keep original as fallback field in case frontend needs it
+        description:   aiDescription,
+        aiDescription,
+        aiGenerated:   true,
         stats,
         totalTrips: total,
       },

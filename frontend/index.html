@@ -4,7 +4,12 @@
     <!-- Inline theme init: runs BEFORE CSS to prevent flash of wrong theme -->
     <script>
       (function() {
-        var pref = localStorage.getItem('mm_theme') || 'system';
+        var saved = localStorage.getItem('mm_theme');
+        var manual = localStorage.getItem('mm_theme_manual');
+        // If no explicit user choice has been saved, always follow the system
+        var pref = (manual === '1' && (saved === 'light' || saved === 'dark' || saved === 'system'))
+          ? saved
+          : 'system';
         var theme;
         if (pref === 'system') {
           theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -12,6 +17,15 @@
           theme = pref;
         }
         document.documentElement.setAttribute('data-theme', theme);
+        
+        // Prevent white flash by applying background immediately
+        if (theme === 'dark') {
+          document.documentElement.style.backgroundColor = '#0f172a';
+          document.documentElement.style.color = '#f1f5f9';
+        } else {
+          document.documentElement.style.backgroundColor = '#f8fafc';
+          document.documentElement.style.color = '#0f172a';
+        }
       })();
     </script>
     <meta charset="UTF-8" />
@@ -36,10 +50,17 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Register Service Worker for PWA / offline ticket viewing
+      // Force unregister Service Worker to clear aggressive offline cache during development
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+            console.log("Service Worker unregistered to clear cache");
+          }
+          // Also clear caches
+          caches.keys().then(function(names) {
+            for (let name of names) caches.delete(name);
+          });
         });
       }
     </script>

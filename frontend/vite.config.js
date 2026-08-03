@@ -6,11 +6,16 @@ export default defineConfig({
   server: {
     port: 3000,
     hmr: {
-      clientPort: 3000,
+      host: 'localhost',
+      protocol: 'ws',
+    },
+    headers: {
+      'Cross-Origin-Opener-Policy': 'unsafe-none',
+      'Cross-Origin-Embedder-Policy': 'unsafe-none',
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
       },
     },

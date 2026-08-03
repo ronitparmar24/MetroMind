@@ -3,31 +3,37 @@ import { useTheme } from '../hooks/useTheme';
 import { useAccessibility } from '../hooks/useAccessibility';
 import GlassCard from '../components/common/GlassCard';
 import { ACCESSIBILITY_FEATURES } from '../constants/stations';
-
-const THEME_OPTIONS = [
-  { value: 'light', label: 'Light', icon: '☀️' },
-  { value: 'dark', label: 'Dark', icon: '🌙' },
-  { value: 'system', label: 'System', icon: '💻' },
-];
+import { useTranslation } from 'react-i18next';
 
 export default function Settings() {
   const { theme, preference, setTheme } = useTheme();
   const { accessible, toggleAccessible } = useAccessibility();
+  const { t, i18n } = useTranslation();
+
+  const THEME_OPTIONS = [
+    { value: 'light', label: t('settings.theme_light'), icon: '☀️' },
+    { value: 'dark', label: t('settings.theme_dark'), icon: '🌙' },
+    { value: 'system', label: t('settings.theme_system'), icon: '💻' },
+  ];
+
+  const handleLanguageChange = (e) => {
+    i18n.changeLanguage(e.target.value);
+  };
 
   return (
     <div className="page">
       <div className="page-header">
-        <h1 className="page-title">Settings ⚙️</h1>
-        <p className="page-subtitle">Customize your MetroMind experience</p>
+        <h1 className="page-title">{t('settings.title')}</h1>
+        <p className="page-subtitle">{t('settings.subtitle')}</p>
       </div>
 
       <GlassCard style={{ maxWidth: '600px', padding: '28px' }}>
         {/* Theme Selection */}
         <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border-color)' }}>
           <div style={{ marginBottom: '12px' }}>
-            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Theme</h4>
+            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.theme_title')}</h4>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-              Choose your preferred appearance
+              {t('settings.theme_subtitle')}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -44,27 +50,44 @@ export default function Settings() {
             ))}
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '8px' }}>
-            Currently showing: <strong style={{ color: 'var(--text-primary)' }}>{theme}</strong> mode
-            {preference === 'system' && ' (from system preference)'}
+            {t('settings.theme_current')} <strong style={{ color: 'var(--text-primary)' }}>{theme}</strong> {t('settings.theme_mode')}
+            {preference === 'system' && ` ${t('settings.theme_system_pref')}`}
           </p>
         </div>
 
         {/* Notifications */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--border-color)' }}>
           <div>
-            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Notifications</h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Booking and wallet alerts</p>
+            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.notifications_title')}</h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('settings.notifications_subtitle')}</p>
           </div>
-          <span className="badge badge-success">Enabled</span>
+          <span className="badge badge-success">{t('settings.enabled')}</span>
         </div>
 
         {/* Language */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--border-color)' }}>
           <div>
-            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Language</h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Interface language</p>
+            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.language_title')}</h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('settings.language_subtitle')}</p>
           </div>
-          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>English</span>
+          <select 
+            value={i18n.language || 'en'} 
+            onChange={handleLanguageChange}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="en">English</option>
+            <option value="hi">हिंदी (Hindi)</option>
+            <option value="gu">ગુજરાતી (Gujarati)</option>
+          </select>
         </div>
 
         {/* ═══ ACCESSIBILITY SECTION ═══ */}
@@ -72,10 +95,10 @@ export default function Settings() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <div>
               <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                ♿ Accessibility
+                {t('settings.accessibility_title')}
               </h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>
-                GMRC metro accessibility features & routing preferences
+                {t('settings.accessibility_subtitle')}
               </p>
             </div>
           </div>
@@ -95,10 +118,10 @@ export default function Settings() {
           >
             <div>
               <p style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                I need step-free / accessible routing
+                {t('settings.step_free_title')}
               </p>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Shows ♿ badges on stations in Metro Map and Journey Planner
+                {t('settings.step_free_desc')}
               </p>
             </div>
             {/* Toggle switch */}
@@ -124,7 +147,7 @@ export default function Settings() {
             fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)',
             textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px',
           }}>
-            GMRC Station Accessibility Features
+            {t('settings.gmrc_features_title')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {ACCESSIBILITY_FEATURES.map(feature => (
@@ -153,10 +176,10 @@ export default function Settings() {
         {/* App Version */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0' }}>
           <div>
-            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>App Version</h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>MetroMind v1.0.0</p>
+            <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.app_version_title')}</h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('settings.app_version_subtitle')}</p>
           </div>
-          <span className="badge badge-info">Latest</span>
+          <span className="badge badge-info">{t('settings.latest')}</span>
         </div>
       </GlassCard>
     </div>

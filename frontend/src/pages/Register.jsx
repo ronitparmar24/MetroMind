@@ -394,28 +394,22 @@ export default function Register() {
   }, []);
 
   const handleGoogleCallback = async (response) => {
+    if (!response?.credential) {
+      setError('Google sign-up was cancelled or failed. Please try again.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
-      const credential = response?.credential || 'demo_google_credential';
-      const res = await googleLoginApi(credential);
+      const res = await googleLoginApi(response.credential);
       login(res.data.token, res.data.user);
       toast.success(`Welcome to MetroMind, ${res.data.user.name}! 🎉`);
       setStep(3);
       setShowSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1800);
     } catch (err) {
-      try {
-        const fallbackRes = await googleLoginApi('demo_google_credential');
-        login(fallbackRes.data.token, fallbackRes.data.user);
-        toast.success(`Welcome to MetroMind, ${fallbackRes.data.user.name}! 🎉`);
-        setStep(3);
-        setShowSuccess(true);
-        setTimeout(() => navigate('/dashboard'), 1800);
-      } catch (fallbackErr) {
-        setError(err.response?.data?.error || fallbackErr.response?.data?.error || 'Google sign-up failed');
-        setLoading(false);
-      }
+      setError(err.response?.data?.error || 'Google sign-up failed. Please try again.');
+      setLoading(false);
     }
   };
 
@@ -424,10 +418,10 @@ export default function Register() {
       try {
         window.google.accounts.id.prompt();
       } catch (e) {
-        handleGoogleCallback({ credential: 'demo_google_credential' });
+        setError('Google sign-up unavailable. Please try again.');
       }
     } else {
-      handleGoogleCallback({ credential: 'demo_google_credential' });
+      setError('Google sign-in is loading. Please wait a moment and try again.');
     }
   };
 

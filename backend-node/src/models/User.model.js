@@ -73,6 +73,15 @@ const UserSchema = new mongoose.Schema(
       result: { type: mongoose.Schema.Types.Mixed, default: null },
       computedAt: { type: Date, default: null },
     },
+    // FCM push notification token (per-device, from Firebase)
+    fcmToken: {
+      type: String,
+      default: null,
+    },
+    fcmTokenUpdatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

@@ -1,11 +1,14 @@
 // frontend/src/components/common/Sidebar.jsx
 import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { NAV_ROUTES } from '../../constants/routes';
 
 // Nav items that carry live data — show pulsing dot
 const LIVE_PATHS = new Set(['/dashboard', '/live-trains']);
 
 export default function Sidebar({ isOpen }) {
+  const { t } = useTranslation();
+
   return (
     <aside
       className="glass-sidebar"
@@ -38,31 +41,35 @@ export default function Sidebar({ isOpen }) {
               letterSpacing: '1.2px',
               padding: '8px 20px 4px',
             }}>
-              {section.section}
+              {t(`nav.${section.section.toLowerCase()}`, section.section)}
             </p>
-            {section.items.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '10px 20px',
-                  margin: '2px 8px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  background: isActive ? 'var(--accent-glow)' : 'transparent',
-                  textDecoration: 'none',
-                  transition: 'all var(--transition-fast)',
-                })}
-              >
-                <span style={{ fontSize: '1.1rem', width: '24px', textAlign: 'center' }}>
-                  {item.icon}
-                </span>
-                <span>{item.label}</span>
+            {section.items.map((item) => {
+              // Generate translation key from path, e.g. "/metro-card" -> "metro_card"
+              const itemKey = item.path.replace('/', '').replace('-', '_');
+              
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '10px 20px',
+                    margin: '2px 8px',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    background: isActive ? 'var(--accent-glow)' : 'transparent',
+                    textDecoration: 'none',
+                    transition: 'all var(--transition-fast)',
+                  })}
+                >
+                  <span style={{ fontSize: '1.1rem', width: '24px', textAlign: 'center' }}>
+                    {item.icon}
+                  </span>
+                  <span>{t(`nav.${itemKey}`, item.label)}</span>
                 {LIVE_PATHS.has(item.path) && (
                   <span
                     style={{
@@ -78,7 +85,8 @@ export default function Sidebar({ isOpen }) {
                   />
                 )}
               </NavLink>
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>

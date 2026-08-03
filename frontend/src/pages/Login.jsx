@@ -137,6 +137,9 @@ export default function Login() {
   const [showResetFlow, setShowResetFlow] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [resetOtpCode, setResetOtpCode] = useState('');
+  const [resetResendTimer, setResetResendTimer] = useState(60);
+  const [canResetResend, setCanResetResend] = useState(false);
   const [otpError, setOtpError] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -220,11 +223,14 @@ export default function Login() {
   }, []);
 
   const handleGoogleCallback = async (response) => {
+    if (!response?.credential) {
+      setError('Google sign-in was cancelled or failed. Please try again.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
-      const credential = response?.credential || 'demo_google_credential';
-      const res = await googleLoginApi(credential);
+      const res = await googleLoginApi(response.credential);
       login(res.data.token, res.data.user);
       toast.success(
         res.data.isNewUser
@@ -234,16 +240,8 @@ export default function Login() {
       setShowSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1800);
     } catch (err) {
-      try {
-        const fallbackRes = await googleLoginApi('demo_google_credential');
-        login(fallbackRes.data.token, fallbackRes.data.user);
-        toast.success(`Welcome back, ${fallbackRes.data.user.name}!`);
-        setShowSuccess(true);
-        setTimeout(() => navigate('/dashboard'), 1800);
-      } catch (fallbackErr) {
-        setError(err.response?.data?.error || fallbackErr.response?.data?.error || 'Google sign-in failed');
-        setLoading(false);
-      }
+      setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
+      setLoading(false);
     }
   };
 
@@ -252,10 +250,10 @@ export default function Login() {
       try {
         window.google.accounts.id.prompt();
       } catch (e) {
-        handleGoogleCallback({ credential: 'demo_google_credential' });
+        setError('Google sign-in unavailable. Please try again.');
       }
     } else {
-      handleGoogleCallback({ credential: 'demo_google_credential' });
+      setError('Google sign-in is loading. Please wait a moment and try again.');
     }
   };
 
@@ -360,14 +358,38 @@ export default function Login() {
       toast.success('Password reset code sent to your email 📧');
       setShowForgotFlow(false);
       setShowResetFlow(true);
+      setResetOtpCode('');
+      setNewPassword('');
+      setResetResendTimer(60);
+      setCanResetResend(false);
       setLoading(false);
+      // start countdown for resend
+      const id = setInterval(() => {
+        setResetResendTimer((prev) => {
+          if (prev <= 1) { clearInterval(id); setCanResetResend(true); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send reset code');
       setLoading(false);
     }
   };
 
-  const handleResetPasswordSubmit = async (code) => {
+  // Called by OtpInput when all 6 digits filled — just stores the code, does NOT submit
+  const handleResetOtpComplete = (code) => {
+    setResetOtpCode(code);
+    setOtpError(false);
+    setError('');
+  };
+
+  // Called by the Submit button — validates both OTP + password then calls API
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetOtpCode || resetOtpCode.length < 6) {
+      setError('Please enter the 6-digit verification code');
+      return;
+    }
     if (!newPassword) {
       setError('Please enter a new password');
       return;
@@ -380,15 +402,40 @@ export default function Login() {
     setOtpError(false);
     setLoading(true);
     try {
-      await resetPassword(forgotEmail, code, newPassword);
-      toast.success('Password updated successfully! You can now sign in. 🎉');
+      await resetPassword(forgotEmail, resetOtpCode, newPassword);
+      toast.success('Password updated! You can now sign in. 🎉');
       setShowResetFlow(false);
       setForgotEmail('');
       setNewPassword('');
+      setResetOtpCode('');
       setLoading(false);
     } catch (err) {
       setError(err.response?.data?.error || 'Invalid or expired code');
       setOtpError(true);
+      setResetOtpCode('');
+      setLoading(false);
+    }
+  };
+
+  const handleResetResendCode = async () => {
+    if (!canResetResend) return;
+    setError('');
+    setLoading(true);
+    try {
+      await forgotPassword(forgotEmail);
+      toast.success('New reset code sent! 📧');
+      setCanResetResend(false);
+      setResetResendTimer(60);
+      setResetOtpCode('');
+      setLoading(false);
+      const id = setInterval(() => {
+        setResetResendTimer((prev) => {
+          if (prev <= 1) { clearInterval(id); setCanResetResend(true); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to resend code');
       setLoading(false);
     }
   };
@@ -505,7 +552,7 @@ export default function Login() {
             <div style={{ animation: 'authFadeIn 0.4s ease' }}>
               <div className="auth-heading">
                 <h2>Create New Password</h2>
-                <p>Enter the 6-digit code sent to your email and choose a new password.</p>
+                <p>Enter the 6-digit code sent to <strong>{forgotEmail}</strong> and choose a new password.</p>
               </div>
 
               {error && (
@@ -515,36 +562,69 @@ export default function Login() {
                 </div>
               )}
 
-              <div className="auth-input-group">
-                <label>Verification Code</label>
-                <div style={{ margin: '8px 0 20px' }}>
-                  <OtpInput length={6} onComplete={handleResetPasswordSubmit} hasError={otpError} />
+              <form onSubmit={handleResetPasswordSubmit}>
+                <div className="auth-input-group">
+                  <label>Verification Code</label>
+                  <div style={{ margin: '8px 0 4px' }}>
+                    <OtpInput length={6} onComplete={handleResetOtpComplete} hasError={otpError} />
+                  </div>
+                  {resetOtpCode.length === 6 && (
+                    <p style={{ fontSize: '11px', color: '#22c55e', textAlign: 'center', margin: '4px 0 12px', fontWeight: 600 }}>
+                      ✓ Code entered — now set your new password below
+                    </p>
+                  )}
                 </div>
+
+                <div className="auth-input-group">
+                  <label htmlFor="new-password">New Password</label>
+                  <div className="auth-input-wrap">
+                    <span className="material-symbols-outlined">lock</span>
+                    <input
+                      id="new-password" type={showPw ? 'text' : 'password'} className="auth-input"
+                      value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Min 6 characters" minLength={6} autoComplete="new-password"
+                      autoFocus
+                    />
+                    <button type="button" className="auth-pw-toggle" onClick={() => setShowPw(!showPw)}>
+                      <span className="material-symbols-outlined">{showPw ? 'visibility_off' : 'visibility'}</span>
+                    </button>
+                  </div>
+                  {newPassword.length > 0 && newPassword.length < 6 && (
+                    <p style={{ fontSize: '11px', color: '#f59e0b', margin: '4px 0 0', fontWeight: 500 }}>
+                      ⚠ Password must be at least 6 characters
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  className="auth-btn-primary"
+                  disabled={loading || resetOtpCode.length < 6 || newPassword.length < 6}
+                  style={{ marginTop: '8px' }}
+                >
+                  {loading ? <div className="auth-spinner" /> : (
+                    <><span>Reset Password</span><span className="material-symbols-outlined">lock_reset</span></>
+                  )}
+                </button>
+              </form>
+
+              <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '12px', color: '#64748b' }}>
+                {canResetResend ? (
+                  <>
+                    Didn't receive the code?{' '}
+                    <button type="button" onClick={handleResetResendCode}
+                      disabled={loading}
+                      style={{ background: 'none', border: 'none', color: '#4F46E5', fontWeight: 700, cursor: 'pointer', fontSize: '12px', fontFamily: "'Inter', system-ui, sans-serif" }}>
+                      Resend code
+                    </button>
+                  </>
+                ) : (
+                  <span>Resend code in <strong>{resetResendTimer}s</strong></span>
+                )}
               </div>
 
-              <div className="auth-input-group">
-                <label htmlFor="new-password">New Password</label>
-                <div className="auth-input-wrap">
-                  <span className="material-symbols-outlined">lock</span>
-                  <input
-                    id="new-password" type={showPw ? 'text' : 'password'} className="auth-input"
-                    value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min 6 characters" required
-                  />
-                  <button type="button" className="auth-pw-toggle" onClick={() => setShowPw(!showPw)}>
-                    <span className="material-symbols-outlined">{showPw ? 'visibility_off' : 'visibility'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {loading && (
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
-                  <div className="auth-spinner" style={{ borderColor: 'rgba(79,70,229,0.2)', borderTopColor: '#4F46E5' }} />
-                </div>
-              )}
-
-              <button type="button" onClick={() => { setShowResetFlow(false); setShowForgotFlow(true); setError(''); setOtpError(false); }} style={{
-                background: 'none', border: 'none', color: '#64748b', display: 'block', margin: '24px auto 0',
+              <button type="button" onClick={() => { setShowResetFlow(false); setShowForgotFlow(true); setError(''); setOtpError(false); setResetOtpCode(''); }} style={{
+                background: 'none', border: 'none', color: '#64748b', display: 'block', margin: '16px auto 0',
                 fontSize: '13px', cursor: 'pointer', fontWeight: 500, fontFamily: "'Inter', system-ui, sans-serif",
               }}>
                 ← Back to email input

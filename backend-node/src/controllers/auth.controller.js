@@ -5,7 +5,7 @@ const User = require('../models/User.model');
 const Wallet = require('../models/Wallet.model');
 const { signToken } = require('../utils/jwt');
 const { GOOGLE_CLIENT_ID } = require('../config/env');
-const { sendOTPEmail, sendLoginNotificationEmail } = require('../utils/emailer');
+const { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail } = require('../utils/emailer');
 
 // ─── Helper: generate 6-digit OTP and its bcrypt hash ───
 const generateOtp = async () => {
@@ -135,8 +135,12 @@ const verifyOtp = async (req, res, next) => {
     // Issue JWT
     const token = signToken(user._id);
 
-    // Fire-and-forget login notification email
-    sendLoginNotificationEmail(user.email, user.name, 'password');
+    // Await email to prevent serverless function from freezing before sending
+    try {
+      await sendWelcomeEmail(user.email, user.name);
+    } catch (err) {
+      console.error('Non-fatal: failed to send welcome email', err);
+    }
 
     res.json({
       success: true,
@@ -373,16 +377,6 @@ const googleLogin = async (req, res, next) => {
       }
     }
 
-    // 3. Fallback: demo / mock credential support
-    if (!payload && (credential === 'demo_google_credential' || process.env.NODE_ENV === 'development')) {
-      payload = {
-        sub: 'google_demo_user_1001',
-        email: 'alex.google@metromind.in',
-        name: 'Alex Commuter (Google)',
-        picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-      };
-    }
-
     if (!payload || (!payload.email && !payload.sub)) {
       const err = new Error('Invalid Google credential');
       err.statusCode = 401;
@@ -436,9 +430,15 @@ const googleLogin = async (req, res, next) => {
     // Generate MetroMind JWT
     const token = signToken(user._id);
 
-    // Fire-and-forget login notification email (skip for brand-new users — they just registered)
-    if (!isNewUser) {
-      sendLoginNotificationEmail(user.email, user.name, 'google');
+    // Await email to prevent serverless function from freezing before sending
+    try {
+      if (isNewUser) {
+        await sendWelcomeEmail(user.email, user.name);
+      } else {
+        await sendLoginNotificationEmail(user.email, user.name, 'google');
+      }
+    } catch (err) {
+      console.error('Non-fatal: failed to send google auth email', err);
     }
 
     res.json({

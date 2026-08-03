@@ -10,6 +10,7 @@ import { useTickets } from '../hooks/useTickets';
 import { predictCrowd, checkAnomaly, getBestDeparture, getPersonalityProfile } from '../api/predict.api';
 import { formatCurrency } from '../utils/formatters';
 import { getNetworkPulse } from '../api/analytics.api';
+import { fetchWeather } from '../api/weather.api';
 import QRModal from '../components/common/QRModal';
 import CoachHeatmap from '../components/metro/CoachHeatmap';
 import VoiceAssistantModal from '../components/common/VoiceAssistantModal';
@@ -19,13 +20,7 @@ import SmartRoutesWidget from '../components/metro/SmartRoutesWidget';
 import CarbonTreeWidget from '../components/metro/CarbonTreeWidget';
 import PersonalityBadge from '../components/analytics/PersonalityBadge';
 import AccessibilityToggle from '../components/common/AccessibilityToggle';
-import ActiveRidePass from '../components/metro/ActiveRidePass';
-import LastMileConnect from '../components/metro/LastMileConnect';
 import LiveTrainRadar from '../components/metro/LiveTrainRadar';
-import ExitOptimizer from '../components/metro/ExitOptimizer';
-import TimeToLeaveWidget from '../components/metro/TimeToLeaveWidget';
-import GiftRideWidget from '../components/metro/GiftRideWidget';
-import CommuterLeaderboard from '../components/analytics/CommuterLeaderboard';
 
 /* ═══════════════════════════════════════════════════════════
    CONSTANTS
@@ -64,26 +59,34 @@ const S = {
 
   // ── Hero Card ──────────────────────────────────────────────
   heroCard: {
-    borderRadius: '24px',
-    padding: '24px 28px',
-    marginBottom: '24px',
+    borderRadius: '32px',
+    padding: '32px 36px',
+    marginBottom: '28px',
     overflow: 'hidden',
     position: 'relative',
+    transition: 'transform 0.4s cubic-bezier(0.2,0.8,0.2,1)',
   },
   heroClear: {
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border-color)',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+    background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+    border: '1px solid rgba(255,255,255,0.5)',
+    boxShadow: '0 12px 40px rgba(99,102,241,0.08), inset 0 1px 0 rgba(255,255,255,0.8)',
   },
   heroClearDark: {
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border-color)',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    background: 'linear-gradient(135deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.4) 100%)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    boxShadow: '0 12px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
   },
   heroGreeting: {
-    fontSize: '40px', fontWeight: 700, lineHeight: '48px', letterSpacing: '-0.02em',
+    fontSize: '48px', fontWeight: 800, lineHeight: '56px', letterSpacing: '-0.03em',
     color: 'var(--text-primary)',
     fontFamily: "'Inter', system-ui, sans-serif",
+    background: 'linear-gradient(90deg, var(--text-primary), var(--text-secondary))',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
   },
   heroClock: {
     fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -105,44 +108,52 @@ const S = {
   },
   heroChip: {
     display: 'inline-flex', alignItems: 'center', gap: '6px',
-    padding: '5px 14px', borderRadius: 'var(--radius-full)',
-    fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)',
+    padding: '6px 16px', borderRadius: 'var(--radius-full)',
+    fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)',
     fontVariantNumeric: 'tabular-nums', textDecoration: 'none',
-    transition: 'background 150ms ease',
+    transition: 'all 0.2s ease',
+    border: '1px solid var(--border-color)',
+    backdropFilter: 'blur(12px)',
   },
 
-  // Quick Actions (Stitch pill chips)
+  // Quick Actions (Premium Glass Pills)
   quickActions: {
-    display: 'flex', justifyContent: 'center', gap: '32px',
-    margin: '4px 0 32px', flexWrap: 'wrap',
+    display: 'flex', justifyContent: 'center', gap: '20px',
+    margin: '12px 0 36px', flexWrap: 'wrap',
   },
   quickAction: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    gap: '8px', textDecoration: 'none', cursor: 'pointer',
-    background: 'none', border: 'none', padding: 0,
+    display: 'flex', flexDirection: 'row', alignItems: 'center',
+    gap: '12px', textDecoration: 'none', cursor: 'pointer',
+    background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+    padding: '12px 20px', borderRadius: '32px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+    transition: 'all 0.3s cubic-bezier(0.2,0.8,0.2,1)',
+    backdropFilter: 'blur(16px)',
   },
   quickCircle: {
-    width: '56px', height: '56px', borderRadius: '50%',
+    width: '36px', height: '36px', borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '1.25rem', transition: 'transform 150ms ease, box-shadow 150ms ease',
+    fontSize: '1rem', transition: 'transform 0.3s ease',
+    background: 'transparent',
   },
   quickLabel: {
-    fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-secondary)',
-    textAlign: 'center',
+    fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)',
   },
 
-  // ── Card shell (elevated — Stitch rounded-[24px]) ─────────────────
+  // ── Card shell (elevated — Premium Glass) ─────────────────
   card: {
-    background: 'var(--bg-secondary)',
+    background: 'var(--bg-card)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
     border: '1px solid var(--border-color)',
-    borderRadius: '24px',
+    borderRadius: '28px',
     overflow: 'hidden',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-    transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.3s cubic-bezier(0.2,0.8,0.2,1)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.04)',
+    transition: 'transform 0.4s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.4s cubic-bezier(0.2,0.8,0.2,1)',
   },
   liveCard: {
-    borderLeft: '3px solid var(--accent-primary)',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04), 0 0 12px var(--accent-glow)',
+    border: '1px solid rgba(99,102,241,0.3)',
+    boxShadow: '0 8px 32px rgba(99,102,241,0.1), 0 0 20px var(--accent-glow)',
   },
   cardPad: {
     padding: '16px 20px',
@@ -345,217 +356,6 @@ function deriveUsualRoute(tickets) {
   const [route] = sorted[0];
   const [source, destination] = route.split('→');
   return { source, destination };
-}
-
-/* ═══════════════════════════════════════════════════════════
-   CROWD STRIP COMPONENT — "My Line Right Now"
-   ═══════════════════════════════════════════════════════════ */
-function MyLineStrip({ corridor, userDestination }) {
-  const [crowdData, setCrowdData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(null);
-
-  const fetchCrowdData = useCallback(async () => {
-    setLoading(true);
-    const hour = new Date().getHours();
-    const day = new Date().getDay();
-
-    try {
-      const results = await Promise.all(
-        corridor.stations.map(station =>
-          predictCrowd({ station, hour, day, passengers: 1 })
-            .then(res => ({
-              station,
-              level: classifyCrowd(res.data.prediction?.crowdLevel || res.data.prediction?.level),
-              pct: res.data.prediction?.percentage || res.data.prediction?.crowdPercentage || 50,
-            }))
-            .catch(() => null)
-        )
-      );
-
-      const successResults = results.filter(Boolean);
-      if (successResults.length > 0) {
-        const data = {};
-        successResults.forEach(r => { data[r.station] = { level: r.level, pct: r.pct }; });
-        // Fill in any failed stations with mock data
-        corridor.stations.forEach(s => {
-          if (!data[s]) data[s] = MOCK_CROWD[s] || { level: 'low', pct: 30 };
-        });
-        setCrowdData(data);
-        setLastUpdated(new Date());
-      } else {
-        // All API calls failed — use mock
-        setCrowdData(MOCK_CROWD);
-        setLastUpdated(null);
-      }
-    } catch {
-      setCrowdData(MOCK_CROWD);
-      setLastUpdated(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [corridor.stations]);
-
-  useEffect(() => {
-    fetchCrowdData();
-    const interval = setInterval(fetchCrowdData, 60000); // refresh every 60s
-    return () => clearInterval(interval);
-  }, [fetchCrowdData]);
-
-  // Smart suggestion: if destination is HIGH, suggest adjacent LOW station
-  const suggestion = useMemo(() => {
-    if (!crowdData || !userDestination) return null;
-    const destData = crowdData[userDestination];
-    if (!destData || destData.level !== 'high') return null;
-
-    const destIdx = corridor.stations.indexOf(userDestination);
-    if (destIdx < 0) return null;
-
-    // Check adjacent stations for a lower-crowd alternative
-    const adjacent = [destIdx - 1, destIdx + 1]
-      .filter(i => i >= 0 && i < corridor.stations.length)
-      .map(i => ({ name: corridor.stations[i], ...crowdData[corridor.stations[i]] }))
-      .filter(s => s.level !== 'high')
-      .sort((a, b) => a.pct - b.pct);
-
-    if (adjacent.length === 0) return null;
-    return adjacent[0];
-  }, [crowdData, userDestination, corridor.stations]);
-
-  const lineColor = corridor.line.toLowerCase().includes('blue') ? '#3b82f6' : '#ef4444';
-
-  if (loading) {
-    return (
-      <div style={{ ...S.card, ...S.liveCard, marginBottom: '12px' }}>
-        <div className="dash-line-header" style={S.lineHeader}>
-          <span style={S.lineBadge}>Pulse</span>
-          <span>Network Pulse (TESTING VITE)</span>
-          <span style={S.liveBadge}><span style={S.liveDot} /> Live</span>
-        </div>
-        <div style={{ padding: '8px 0' }}>
-          {corridor.stations.slice(0, 4).map((_, i) => (
-            <div key={i} style={S.transitStation}>
-              <div style={{ ...S.skeleton, width: '100px', height: '14px' }} />
-              <div style={{ ...S.skeleton, width: '48px', height: '14px' }} />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ ...S.card, ...S.liveCard, marginBottom: '12px' }}>
-      {/* Header: line badge + updated time + LIVE */}
-      <div className="dash-line-header" style={S.lineHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ ...S.lineBadge, background: lineColor }}>{corridor.line}</span>
-          {lastUpdated && (
-            <span className="mm-num" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {lastUpdated.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })}
-            </span>
-          )}
-        </div>
-        <span style={S.liveBadge}><span style={S.liveDot} /> Live</span>
-      </div>
-
-      {/* Station list with vertical connector */}
-      <div style={{ position: 'relative', padding: '4px 0' }}>
-        {/* Full-height vertical line */}
-        <div style={{
-          position: 'absolute', left: '18px',
-          top: '28px', bottom: '28px',
-          width: '2px', background: 'var(--border-color)',
-          borderRadius: '1px',
-        }} />
-
-        {corridor.stations.map((station, i) => {
-          const data = crowdData?.[station] || { level: 'low', pct: 30 };
-          const crowd = CROWD_COLORS[data.level];
-          const isDestination = station === userDestination;
-
-          return (
-            <div
-              key={station}
-              className="dash-station-row"
-              style={{
-                ...S.transitStation,
-                background: isDestination ? 'var(--bg-tertiary)' : 'transparent',
-              }}
-            >
-              {/* Crowd-colored dot on the line */}
-              <div style={{
-                position: 'absolute', left: '13px', top: '50%',
-                transform: 'translateY(-50%)',
-                width: '12px', height: '12px', borderRadius: '50%',
-                background: crowd.color,
-                border: '2.5px solid var(--bg-secondary)',
-                zIndex: 1,
-                boxShadow: `0 0 0 1px ${crowd.color}33`,
-              }} />
-
-              {/* Station info — left side */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                <span style={S.stationName}>
-                  {station.replace(' Railway Station', ' Ry.')}
-                </span>
-                {isDestination && (
-                  <span style={{
-                    fontSize: '0.5625rem', fontWeight: 700, color: '#fff',
-                    background: '#0B7DC3', padding: '2px 7px',
-                    borderRadius: '3px', letterSpacing: '0.04em', whiteSpace: 'nowrap',
-                    textTransform: 'uppercase',
-                  }}>
-                    📍 YOUR STOP
-                  </span>
-                )}
-              </div>
-
-              {/* Right side: crowd pct + label + ETA */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                <span className="mm-num" style={{
-                  fontSize: '0.75rem', fontWeight: 700, color: crowd.color,
-                  minWidth: '32px', textAlign: 'right',
-                }}>
-                  {data.pct}%
-                </span>
-                <span style={{
-                  fontSize: '0.6875rem', fontWeight: 600, color: crowd.color,
-                  minWidth: '48px',
-                }}>
-                  {crowd.label}
-                </span>
-                <span className="mm-num dash-hide-mobile" style={{
-                  fontSize: '0.75rem', color: 'var(--text-muted)',
-                  minWidth: '64px', textAlign: 'right',
-                }}>
-                  {getEstimatedTime(i)}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Smart suggestion */}
-      {suggestion && (
-        <div className="dash-suggestion" style={S.suggestion}>
-          <i className="fas fa-lightbulb" style={{ color: '#D97706', marginTop: '2px', flexShrink: 0 }} />
-          <span>
-            <strong>{userDestination.replace(' Railway Station', ' Ry.')}</strong> is crowded now. Consider boarding at{' '}
-            <strong>{suggestion.name}</strong> ({suggestion.level === 'low' ? 'Low' : 'Medium'} crowd) to avoid the peak.
-          </span>
-        </div>
-      )}
-
-      {!lastUpdated && (
-        <div style={{ ...S.suggestion, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <i className="fas fa-info-circle" style={{ marginTop: '1px', flexShrink: 0 }} />
-          <span>Showing estimated crowd levels. Live data will update when the prediction server is available.</span>
-        </div>
-      )}
-    </div>
-  );
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -804,6 +604,18 @@ export default function Dashboard() {
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [isPulseOpen, setIsPulseOpen] = useState(false);
 
+  // ── Live weather state ──
+  const [weather, setWeather] = useState(null); // null = loading
+
+  useEffect(() => {
+    fetchWeather()
+      .then(setWeather)
+      .catch(() => {
+        // fallback — show a sensible default rather than crashing
+        setWeather({ tempC: 31, emoji: '☀️', condition: 'Clear', isRaining: false, fallback: true });
+      });
+  }, []);
+
   // ── Lifted pulse state (shared between hero + NetworkPulsePanel) ──
   const [pulse, setPulse] = useState(null);
   const [pulseLoading, setPulseLoading] = useState(true);
@@ -892,6 +704,7 @@ export default function Dashboard() {
   const avgWait = pulseData.avgWaitMinutes ?? 4;
   const busiest = pulseData.busiest || { name: 'Kalupur Ry.', pct: 82 };
   const quietest = pulseData.quietest || { name: 'GNLU', pct: 18 };
+  const anomaly = pulseData.anomaly;
 
   // ── Quick action items ──
   const quickActionItems = [
@@ -976,375 +789,339 @@ export default function Dashboard() {
         }
       `}</style>
 
-      {/* ═══ 1. HERO SECTION (Stitch-style greeting or Active Pass) ═══ */}
-      {activeTicket ? (
-        <ActiveRidePass ticket={activeTicket} />
-      ) : (
-        <div style={{
-          ...S.heroCard,
-          ...(isDark ? S.heroClearDark : S.heroClear),
-        }}>
-        {/* Decorative blur circle */}
-        <div style={{
-          position: 'absolute', top: '-30px', right: '-30px',
-          width: '200px', height: '200px', borderRadius: '50%',
-          background: 'rgba(79, 70, 229, 0.03)', filter: 'blur(40px)',
-          pointerEvents: 'none',
-        }} />
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          {/* Top row: greeting + weather/status pills */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <h1 style={S.heroGreeting}>
-                {getGreeting()}, {user?.name?.split(' ')[0] || 'there'}!
-              </h1>
-              {/* Weather + City pill */}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '6px 14px', borderRadius: '9999px',
-                background: isDark ? 'rgba(255,255,255,0.06)' : 'var(--bg-tertiary)',
-                border: '1px solid var(--border-color)',
-                fontSize: '14px', fontWeight: 600,
-              }}>
-                <span>Ahmedabad ·</span>
-                <span style={{ color: '#F59E0B' }}>☀️</span>
-                <span>28°C</span>
-              </div>
-            </div>
-            <p style={{ fontSize: '16px', color: 'var(--text-secondary)', margin: 0 }}>
-              {showCountdown
-                ? <>Your train departs in <strong style={{ color: '#4F46E5' }}>{minutesToDeparture} min</strong> to {activeTicket?.destination?.replace(' Railway Station', ' Ry.')}</>
-                : "It's a clear day — perfect for your commute."
-              }
-            </p>
-          </div>
-
-          {/* Status + Service pills row */}
-          <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Service status pill */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '8px 18px', borderRadius: '9999px',
-              background: isDark ? 'rgba(255,255,255,0.06)' : 'var(--bg-tertiary)',
-              border: '1px solid var(--border-color)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-              fontSize: '14px', fontWeight: 600,
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#F59E0B' }}>sunny</span>
-              <span>Ahmedabad · 28°C</span>
-              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--text-muted)', margin: '0 4px' }} />
-              <span style={{
-                width: '8px', height: '8px', borderRadius: '50%',
-                background: '#10B981',
-                animation: 'dashPulse 2s infinite cubic-bezier(0.4,0,0.6,1)',
-              }} />
-              <span>Normal Service</span>
-            </div>
-
-            {/* Wallet + rides chips */}
-            <Link to="/wallet" style={{
-              ...S.heroChip,
-              background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-            }}>
-              💰 <span className="mm-num">{formatCurrency(wallet.balance)}</span>
-            </Link>
-            <Link to="/analytics" style={{
-              ...S.heroChip,
-              background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-            }}>
-              🎫 <span className="mm-num">{totalTrips}</span> ride{totalTrips !== 1 ? 's' : ''}
-            </Link>
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* ═══ 2. QUICK ACTIONS (circular, Google Pay style) ═══ */}
-      <div className="dash-quick-actions" style={S.quickActions}>
-        {quickActionItems.map((action, idx) => (
-          action.to ? (
-            <Link
-              key={action.to}
-              to={action.to}
-              className="dash-quick-action"
-              style={S.quickAction}
-              title={action.title || action.label}
-            >
-              <div className="dash-quick-circle" style={{ ...S.quickCircle, background: action.bg }}>
-                <i className={action.icon} style={{ color: action.color }} />
-              </div>
-              <span style={S.quickLabel}>{action.label}</span>
-            </Link>
-          ) : (
-            <button
-              key={idx}
-              onClick={action.onClick}
-              className="dash-quick-action"
-              style={{ ...S.quickAction, border: 'none', background: 'none' }}
-              title={action.label}
-            >
-              <div className="dash-quick-circle" style={{ ...S.quickCircle, background: action.bg }}>
-                <i className={action.icon} style={{ color: action.color }} />
-              </div>
-              <span style={S.quickLabel}>{action.label}</span>
-            </button>
-          )
-        ))}
-      </div>
-
-      {/* ═══ 2.5 AI COMMUTE ASSISTANT BANNER ═══ */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(79,70,229,0.1), rgba(124,58,237,0.1))',
-        border: '1px solid rgba(79,70,229,0.2)',
-        borderRadius: '20px',
-        padding: '16px 20px',
-        marginBottom: '24px',
-        display: 'flex',
-        alignItems: 'center',
-        justify: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px',
-        animation: 'fadeInUp 0.4s ease',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '240px' }}>
+      {/* ═══ 1. HERO SECTION ═══ */}
+      <div style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden', marginBottom: '28px' }}>
+          {/* Vivid gradient background */}
           <div style={{
-            width: '40px', height: '40px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: '20px', flexShrink: 0,
-            boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
+            background: 'linear-gradient(135deg, #312e81 0%, #4F46E5 40%, #7C3AED 70%, #9d174d 100%)',
+            padding: '32px 36px 0',
+            position: 'relative',
           }}>
-            <span className="material-symbols-outlined">auto_awesome</span>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              MetroMind AI Coach
+            {/* Decorative elements */}
+            <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '280px', height: '280px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', bottom: '0', left: '200px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+
+            {/* Content row */}
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '260px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>MetroMind · Ahmedabad GMRC</span>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', animation: 'dashPulse 2s infinite' }} />
+                </div>
+                <h1 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'white', margin: '0 0 8px', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                  {getGreeting()}, {user?.name?.split(' ')[0] || 'there'}! 👋
+                </h1>
+                <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.75)', margin: '0 0 20px', lineHeight: 1.5 }}>
+                  {showCountdown
+                    ? <>Your train departs in <strong style={{ color: '#fde68a' }}>{minutesToDeparture} min</strong> to {activeTicket?.destination?.replace(' Railway Station', ' Ry.')}</>
+                    : weather?.isRaining
+                      ? "It's raining — consider the covered route via Old High Court 🌧️"
+                      : "Great day for commuting — network is running smoothly."
+                  }
+                </p>
+
+                {/* Status pills */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: weather?.isRaining ? '12px' : '24px' }}>
+                  {/* Live weather pill */}
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255,255,255,0.95)' }}>
+                    {weather
+                      ? <>{weather.emoji} {weather.tempC}°C &middot; Ahmedabad</>
+                      : <span style={{ opacity: 0.6 }}>⏳ Loading weather...</span>
+                    }
+                  </div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', background: 'rgba(34,197,94,0.2)', backdropFilter: 'blur(8px)', border: '1px solid rgba(34,197,94,0.3)', fontSize: '0.82rem', fontWeight: 600, color: '#86efac' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
+                    Normal Service
+                  </div>
+                  <Link to="/wallet" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255,255,255,0.95)', textDecoration: 'none' }}>
+                    💳 {formatCurrency(wallet.balance)}
+                  </Link>
+                  <Link to="/analytics" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255,255,255,0.95)', textDecoration: 'none' }}>
+                    🎫 {totalTrips} ride{totalTrips !== 1 ? 's' : ''}
+                  </Link>
+                </div>
+
+                {/* Rain alert banner — contextual, only when raining */}
+                {weather?.isRaining && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 14px', marginBottom: '20px', borderRadius: '14px',
+                    background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.35)',
+                    backdropFilter: 'blur(8px)', animation: 'fadeInUp 0.3s ease',
+                  }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>🌧️</span>
+                    <div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fde68a', marginBottom: '1px' }}>Rain Alert — {weather.description}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.75)' }}>
+                        Consider the covered route via <strong style={{ color: '#fde68a' }}>Old High Court</strong> interchange.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* CTA Buttons */}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingBottom: '28px' }}>
+                  <Link
+                    to="/book"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '20px', background: 'white', color: '#4F46E5', fontSize: '0.9rem', fontWeight: 800, textDecoration: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.2)', transition: 'all 0.2s ease' }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.2)'; }}
+                  >
+                    🎫 Book Ticket
+                  </Link>
+                  {usualRoute && (
+                    <Link
+                      to="/book"
+                      state={{ source: usualRoute.source, destination: usualRoute.destination }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 22px', borderRadius: '20px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', color: 'white', fontSize: '0.9rem', fontWeight: 700, textDecoration: 'none', border: '1px solid rgba(255,255,255,0.25)', transition: 'all 0.2s ease' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
+                    >
+                      🔄 Rebook Usual Route
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: stat card */}
+              {!pulseLoading && (
+                <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '24px', padding: '18px 20px', minWidth: '160px', flexShrink: 0 }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Network Live</div>
+                  {[
+                    ['🚇', riders.toLocaleString(), 'riders now'],
+                    ['⏱️', `${avgWait}m`, 'avg wait'],
+                    ['💚', `${healthScore}%`, healthLabel],
+                  ].map(([icon, val, label]) => (
+                    <div key={label} style={{ marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '12px' }}>{icon}</span>
+                        <span className="mm-num" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', fontVariantNumeric: 'tabular-nums' }}>{val}</span>
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', marginLeft: '18px' }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
-              IPL Match at Stadium Station today 🏏 · Peak crowd expected 5:30 - 8:00 PM. Book your return ticket early!
+
+            {/* Animated metro track strip at bottom */}
+            <div style={{ overflow: 'hidden', height: '32px', position: 'relative', marginTop: '-4px' }}>
+              <div style={{ position: 'absolute', bottom: '8px', left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.15)' }} />
+              <div style={{ position: 'absolute', bottom: '6px', fontSize: '20px', animation: 'metroSlide 12s linear infinite', whiteSpace: 'nowrap' }}>🚇</div>
             </div>
           </div>
+
+          {/* Glassmorphism bottom panel */}
+          <div style={{
+            background: isDark ? 'rgba(10,14,26,0.5)' : 'rgba(255,255,255,0.7)',
+            backdropFilter: 'blur(20px)',
+            borderTop: '1px solid rgba(255,255,255,0.15)',
+            padding: '14px 36px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap',
+          }}>
+            {[
+              { icon: '🏆', value: `${streakDays}d`, label: 'Streak' },
+              { icon: '🌿', value: `${Math.round(totalCO2)}g`, label: 'CO₂ saved' },
+              { icon: '🎫', value: totalTrips, label: 'Total rides' },
+              { icon: '💳', value: formatCurrency(wallet.balance), label: 'Wallet' },
+            ].map(({ icon, value, label }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>{icon}</span>
+                <div>
+                  <div className="mm-num" style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <style>{`@keyframes metroSlide { from { transform: translateX(-60px); } to { transform: translateX(110vw); } }`}</style>
         </div>
-        <button
-          onClick={() => setIsVoiceOpen(true)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 16px', borderRadius: '9999px',
-            background: '#4F46E5', color: '#fff', border: 'none',
-            fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
-          }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>mic</span>
-          Ask Voice AI
-        </button>
+
+      {/* ═══ 2. QUICK ACTIONS — Premium gradient pills ═══ */}
+      <div style={{ marginBottom: '28px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {quickActionItems.map((action, idx) => {
+            const content = (
+              <>
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: '50%',
+                  background: action.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '1rem', flexShrink: 0, transition: 'transform 0.25s ease',
+                }}>
+                  <i className={action.icon} style={{ color: action.color }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>{action.label}</div>
+                  {action.title && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{action.title}</div>}
+                </div>
+              </>
+            );
+            const pillStyle = {
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 18px', borderRadius: '24px',
+              background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              transition: 'all 0.25s cubic-bezier(0.2,0.8,0.2,1)',
+              cursor: 'pointer', textDecoration: 'none',
+            };
+            return action.to ? (
+              <Link key={action.to} to={action.to} style={pillStyle} title={action.title || action.label}
+                state={action.state}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.04)'; }}
+              >{content}</Link>
+            ) : (
+              <button key={idx} type="button" onClick={action.onClick} style={{ ...pillStyle, border: 'none' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.04)'; }}
+                onFocus={() => {}}
+              >{content}</button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Gift a Ride (Epic Phase 4) */}
-      <GiftRideWidget />
 
-      {/* ═══ BENTO BOX GRID LAYOUT ═══ */}
-      <div className="bento-grid">
-        <div className="bento-span-2">
-          {/* ═══ 3. NETWORK PULSE ═══ */}
-      <NetworkPulsePanel
-        pulseLoading={pulseLoading}
-        riders={riders}
-        avgWait={avgWait}
-        busiest={busiest}
-        quietest={quietest}
-        healthScore={healthScore}
-        healthColor={healthColor}
-        healthLabel={healthLabel}
-        arcCircumference={arcCircumference}
-        arcOffset={arcOffset}
-      />
+      {/* ═══════════════════════════════════════════════════
+          MAIN CONTENT — 2-column layout
+          Left (2fr): transit intelligence
+          Right (1fr): personal status
+          ═══════════════════════════════════════════════════ */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '20px', marginBottom: '20px', alignItems: 'start' }}
+        className="dash-main-cols">
 
-        </div>
+        {/* ─── LEFT COLUMN ─────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-        <div className="bento-span-2">
-          {/* ═══ 4. MY LINE RIGHT NOW ═══ */}
-          <MyLineStrip corridor={corridor} userDestination={userDestination} />
-        </div>
-
-        {/* ═══ 4.5 TRAIN COACH DENSITY HEATMAP ═══ */}
-        <div className="bento-span-2">
-          <CoachHeatmap stationName={userDestination} />
-        </div>
-
-        {/* ═══ 5. ANOMALY WHISPER ═══ */}
-        {anomaly && (
-          <div className="bento-span-2">
-            <AnomalyWhisper
-              station={userDestination}
-              hour={new Date().getHours()}
-              dayOfWeek={new Date().getDay() === 0 ? 6 : new Date().getDay() - 1}
-              predictedCrowd={85}
-            />
-          </div>
-        )}
-
-        {/* ═══ 6. BEST DEPARTURE CARD ═══ */}
-        <BestDepartureCard usualRoute={usualRoute} />
-
-        {/* ═══ 7. WALLET ═══ */}
-        {/* Wallet — Stitch dark gradient card */}
-        <div style={{
-          borderRadius: '24px', overflow: 'hidden', position: 'relative',
-          background: 'linear-gradient(135deg, #151c27, #1e293b)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-        }}>
-          {/* Decorative blur circles */}
+          {/* AI Coach Banner */}
           <div style={{
-            position: 'absolute', top: '-20px', right: '-20px',
-            width: '120px', height: '120px', borderRadius: '50%',
-            background: 'rgba(79, 70, 229, 0.15)', filter: 'blur(40px)',
-            pointerEvents: 'none',
-          }} />
-          <div style={{
-            position: 'absolute', bottom: '-30px', left: '-20px',
-            width: '100px', height: '100px', borderRadius: '50%',
-            background: 'rgba(124, 58, 237, 0.1)', filter: 'blur(30px)',
-            pointerEvents: 'none',
-          }} />
-          <div className="dash-card-pad" style={{ ...S.cardPad, position: 'relative', zIndex: 1, padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Wallet Balance</span>
-              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'rgba(255,255,255,0.3)' }}>account_balance_wallet</span>
+            background: 'linear-gradient(135deg, rgba(79,70,229,0.1), rgba(124,58,237,0.08))',
+            border: '1px solid rgba(79,70,229,0.18)',
+            borderRadius: '20px', padding: '14px 18px',
+            display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',
+          }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(79,70,229,0.3)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#fff' }}>auto_awesome</span>
             </div>
-            <div className="mm-num" style={{
-              fontSize: '32px', fontWeight: 700, color: '#ffffff',
-              fontFamily: "'Inter', system-ui, sans-serif", lineHeight: 1.2, marginBottom: '4px',
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {formatCurrency(wallet.balance)}
-            </div>
-            {walletWarning && (
-              <div style={{
-                fontSize: '12px', fontWeight: 500, marginTop: '4px',
-                color: walletWarning === 'critical' ? '#fca5a5' : '#fde68a',
-              }}>
-                {walletWarning === 'critical'
-                  ? 'Critical — top up before your next ride'
-                  : 'Low balance — consider topping up'}
+            <div style={{ flex: 1, minWidth: '180px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>MetroMind AI Coach</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                IPL Match at Stadium today 🏏 — Peak crowd 5:30–8 PM. Book your return early!
               </div>
-            )}
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <Link to="/wallet" style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '10px 20px', borderRadius: '9999px',
-                background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
-                color: '#fff', fontSize: '13px', fontWeight: 600,
-                textDecoration: 'none', border: 'none',
-                boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
-                transition: 'transform 0.2s ease',
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
-                Top Up
-              </Link>
-              <Link to="/wallet" style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '10px 20px', borderRadius: '9999px',
-                background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
-                color: 'rgba(255,255,255,0.8)', fontSize: '13px', fontWeight: 600,
-                textDecoration: 'none', transition: 'background 0.2s ease',
-              }}>
-                Passes
-              </Link>
             </div>
+            <button onClick={() => setIsVoiceOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 14px', borderRadius: '20px', background: '#4F46E5', color: '#fff', border: 'none', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0, boxShadow: '0 3px 10px rgba(79,70,229,0.3)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>mic</span> Ask AI
+            </button>
           </div>
+
+
+          {/* Network Pulse */}
+          <NetworkPulsePanel
+            pulseLoading={pulseLoading} riders={riders} avgWait={avgWait}
+            busiest={busiest} quietest={quietest} healthScore={healthScore}
+            healthColor={healthColor} healthLabel={healthLabel}
+            arcCircumference={arcCircumference} arcOffset={arcOffset}
+          />
+
+          {/* Smart Routes */}
+          <SmartRoutesWidget />
         </div>
 
-        {/* Active Ticket */}
-        <div style={S.card}>
-          <div className="dash-card-pad" style={S.cardPad}>
-            <div style={S.label}>Active Ticket</div>
-            {activeTicket ? (
-              <>
-                <div style={S.ticketRoute}>
-                  <span style={S.ticketStation}>{activeTicket.source}</span>
-                  <i className="fas fa-arrow-right" style={S.ticketArrow} />
-                  <span style={S.ticketStation}>{activeTicket.destination}</span>
+        {/* ─── RIGHT SIDEBAR ────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {/* Wallet Card */}
+          <div style={{ borderRadius: '22px', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, #151c27, #1e293b)', boxShadow: '0 4px 20px rgba(0,0,0,0.18)' }}>
+            <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(79,70,229,0.15)', filter: 'blur(30px)', pointerEvents: 'none' }} />
+            <div style={{ padding: '20px', position: 'relative', zIndex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Wallet Balance</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'rgba(255,255,255,0.3)' }}>account_balance_wallet</span>
+              </div>
+              <div className="mm-num" style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', lineHeight: 1.1, marginBottom: '4px', fontVariantNumeric: 'tabular-nums' }}>
+                {formatCurrency(wallet.balance)}
+              </div>
+              {walletWarning && (
+                <div style={{ fontSize: '11px', color: walletWarning === 'critical' ? '#fca5a5' : '#fde68a', marginBottom: '8px' }}>
+                  {walletWarning === 'critical' ? '⚠️ Critical — top up now' : '⚠️ Low balance'}
                 </div>
-                <div style={S.ticketMeta}>
-                  {new Date(activeTicket.travelDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                  {' · '}
-                  {formatCurrency(activeTicket.fare)}
-                  {activeTicket.passengers?.length > 1 && ` · ${activeTicket.passengers.length} passengers`}
-                </div>
-                <button style={S.qrBtn} onClick={() => setQrTicket(activeTicket)}>
-                  <i className="fas fa-qrcode" />
-                  Show QR
-                </button>
-              </>
-            ) : (
-              <div style={S.emptyState}>
-                <span style={S.emptyIcon}>🎫</span>
-                <div style={S.emptyTitle}>No upcoming rides</div>
-                <div style={S.emptyDesc}>Book a ticket to get started</div>
-                <Link to="/book" style={{ ...S.qrBtn, textDecoration: 'none', display: 'inline-flex' }}>
-                  Book Now
+              )}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                <Link to="/wallet" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '9px', borderRadius: '12px', background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', color: '#fff', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none', boxShadow: '0 3px 10px rgba(79,70,229,0.35)' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>add</span> Top Up
+                </Link>
+                <Link to="/wallet" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '9px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none' }}>
+                  Passes
                 </Link>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* ═══ EPIC WIDGETS (Bento Grid) ═══ */}
-        <LiveTrainRadar homeStation={corridor.stations[0] || 'Thaltej'} />
-        <SmartRoutesWidget />
-        {userDestination && <ExitOptimizer destination={userDestination} />}
-        <TimeToLeaveWidget />
-        <CarbonTreeWidget />
-        <CommuterLeaderboard />
-        <LastMileConnect destination={userDestination} />
-        
-        <div className="bento-span-2">
-          {/* Smart Fare Optimizer Banner */}
-          <div style={{
-            background: 'linear-gradient(90deg, var(--bg-secondary), rgba(167, 139, 250, 0.15))',
-            borderLeft: '4px solid #a78bfa',
-            borderRadius: '12px',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
-          }}>
-            <div style={{ background: '#a78bfa', color: '#fff', padding: '8px', borderRadius: '50%', display: 'flex' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>savings</span>
-            </div>
-            <div>
-              <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Smart-Fare Optimizer
-              </h4>
-              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                Delay your trip by <strong>15 mins</strong> to travel off-peak and save <strong>₹10</strong> on your fare!
-              </p>
             </div>
           </div>
+
+          {/* Active Ticket */}
+          <div style={{ ...S.card }}>
+            <div style={{ padding: '18px 20px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>Active Ticket</div>
+              {activeTicket ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{activeTicket.source}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>→</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{activeTicket.destination}</span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '12px', fontVariantNumeric: 'tabular-nums' }}>
+                    {new Date(activeTicket.travelDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {formatCurrency(activeTicket.fare)}
+                    {activeTicket.passengers?.length > 1 && ` · ${activeTicket.passengers.length} pax`}
+                  </div>
+                  <button style={S.qrBtn} onClick={() => setQrTicket(activeTicket)}>
+                    <i className="fas fa-qrcode" /> Show QR
+                  </button>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🎫</div>
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)', marginBottom: '4px' }}>No upcoming rides</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '12px' }}>Book a ticket to get started</div>
+                  <Link to="/book" style={{ ...S.qrBtn, textDecoration: 'none', display: 'inline-flex' }}>Book Now</Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Best Departure */}
+          <BestDepartureCard usualRoute={usualRoute} />
+
+          {/* Personality Badge */}
+          <PersonalityBadge />
         </div>
-
-      </div> {/* END BENTO GRID */}
-
-      {/* ═══ 8. STATS ROW (compact, low-priority) ═══ */}
-      <div className="dash-stats-row" style={S.statsRow}>
-        <Link to="/analytics" style={S.statItem}>
-          <i className="fas fa-chart-bar" style={{ fontSize: '0.75rem' }} />
-          <span className="mm-num" style={S.statValue}>{totalTrips}</span> rides
-        </Link>
-        <span style={S.separator} />
-        <Link to="/carbon-passport" style={S.statItem}>
-          <i className="fas fa-leaf" style={{ fontSize: '0.75rem', color: '#15803D' }} />
-          <span className="mm-num" style={S.statValue}>{totalCO2.toFixed(1)} kg</span> CO₂ saved
-        </Link>
-        <span style={S.separator} />
-        <Link to="/achievements" style={S.statItem}>
-          <i className="fas fa-fire" style={{ fontSize: '0.75rem', color: '#D97706' }} />
-          <span className="mm-num" style={S.statValue}>{streakDays}</span> day streak
-        </Link>
       </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .dash-main-cols { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+
+      {/* ═══════════════════════════════════════════════════
+          BOTTOM BENTO — 3 equal columns
+          ═══════════════════════════════════════════════════ */}
+      <div style={{ marginBottom: '8px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
+          Live Intelligence
+          <span style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' }} className="dash-bento-3">
+        <LiveTrainRadar homeStation={corridor.stations[0] || 'Thaltej'} />
+        <CoachHeatmap stationName={userDestination} />
+        <CarbonTreeWidget />
+      </div>
+
+      <style>{`
+        @media (max-width: 1024px) { .dash-bento-3 { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (max-width: 640px)  { .dash-bento-3 { grid-template-columns: 1fr !important; } }
+      `}</style>
 
       {/* QR Modal */}
       {qrTicket && (
@@ -1360,6 +1137,7 @@ export default function Dashboard() {
         isOpen={isVoiceOpen}
         onClose={() => setIsVoiceOpen(false)}
         walletBalance={wallet.balance}
+        weatherData={weather}
       />
 
       {/* Commuter Pulse Modal */}
