@@ -293,6 +293,7 @@ const login = async (req, res, next) => {
         loyaltyPoints: user.loyaltyPoints,
         streakDays: user.streakDays,
         avatar: user.avatar,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -314,6 +315,7 @@ const getMe = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         avatar: user.avatar,
+        role: user.role,
         loyaltyPoints: user.loyaltyPoints,
         streakDays: user.streakDays,
         lastTravelDate: user.lastTravelDate,
@@ -451,6 +453,7 @@ const googleLogin = async (req, res, next) => {
         email: user.email,
         phone: user.phone || '',
         avatar: user.avatar || '',
+        role: user.role,
         authProvider: user.authProvider || 'google',
         isVerified: user.isVerified,
         loyaltyPoints: user.loyaltyPoints || 0,

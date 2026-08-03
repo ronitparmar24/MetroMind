@@ -29,6 +29,7 @@ const liveTrainsRoutes = require('./routes/liveTrains.routes');
 const weatherRoutes    = require('./routes/weather.routes');
 const geocodeRoutes    = require('./routes/geocode.routes');
 const voiceRoutes      = require('./routes/voice.routes');
+const adminRoutes      = require('./routes/admin.routes');
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use('/api/live-trains', liveTrainsRoutes);
 app.use('/api/weather',    weatherRoutes);
 app.use('/api/geocode',    geocodeRoutes);
 app.use('/api/voice',      voiceRoutes);
+app.use('/api/admin',      adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
