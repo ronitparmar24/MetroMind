@@ -36,4 +36,14 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+const requireAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    const err = new Error('Access denied — Admin privileges required');
+    err.statusCode = 403;
+    next(err);
+  }
+};
+
+module.exports = { protect, requireAdmin };

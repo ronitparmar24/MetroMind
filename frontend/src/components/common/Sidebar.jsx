@@ -2,12 +2,14 @@
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { NAV_ROUTES } from '../../constants/routes';
+import { useAuth } from '../../hooks/useAuth';
 
 // Nav items that carry live data — show pulsing dot
 const LIVE_PATHS = new Set(['/dashboard', '/live-trains']);
 
 export default function Sidebar({ isOpen }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
 
   return (
     <aside
@@ -89,6 +91,42 @@ export default function Sidebar({ isOpen }) {
             })}
           </div>
         ))}
+
+        {user && user.role === 'admin' && (
+          <div style={{ marginTop: 'auto', marginBottom: '8px' }}>
+            <p style={{
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '1.2px',
+              padding: '8px 20px 4px',
+            }}>
+              Administration
+            </p>
+            <NavLink
+              to="/admin"
+              style={({ isActive }) => ({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '10px 20px',
+                margin: '2px 8px',
+                borderRadius: 'var(--radius-md)',
+                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                background: isActive ? 'var(--bg-tertiary)' : 'transparent',
+                fontWeight: isActive ? 600 : 500,
+                textDecoration: 'none',
+                transition: 'all var(--transition-fast)',
+              })}
+            >
+              <span style={{ fontSize: '1.1rem', width: '24px', textAlign: 'center' }}>
+                🛡️
+              </span>
+              <span>Admin Panel</span>
+            </NavLink>
+          </div>
+        )}
       </div>
     </aside>
   );

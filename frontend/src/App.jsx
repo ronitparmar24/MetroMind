@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/common/Toast';
 import AuthGuard from './components/common/AuthGuard';
+import AdminGuard from './components/common/AdminGuard';
 import DashboardLayout from './components/common/DashboardLayout';
 import SOSButton from './components/common/SOSButton';
 
@@ -36,6 +37,7 @@ import Settings from './pages/Settings';
 import Feedback from './pages/Feedback';
 import LostFound from './pages/LostFound';
 import EmergencySOS from './pages/EmergencySOS';
+import AdminDashboard from './pages/admin/AdminDashboard';
 
 export default function App() {
   return (
@@ -82,6 +84,13 @@ export default function App() {
                 <Route path="lost-found" element={<LostFound />} />
                 <Route path="emergency" element={<EmergencySOS />} />
               </Route>
+
+              {/* Admin routes wrapped in AdminGuard */}
+              <Route path="/admin/*" element={
+                <AdminGuard>
+                  <AdminDashboard />
+                </AdminGuard>
+              } />
 
               {/* Catch-all → landing page */}
               <Route path="*" element={<Navigate to="/" replace />} />

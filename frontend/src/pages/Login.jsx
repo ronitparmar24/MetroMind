@@ -238,7 +238,7 @@ export default function Login() {
           : `Welcome back, ${res.data.user.name}!`
       );
       setShowSuccess(true);
-      setTimeout(() => navigate('/dashboard'), 1800);
+      setTimeout(() => navigate(res.data.user.role === 'admin' ? '/admin' : '/dashboard'), 1800);
     } catch (err) {
       setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
       setLoading(false);
@@ -273,7 +273,7 @@ export default function Login() {
       login(res.data.token, res.data.user);
       toast.success(`Welcome back, ${res.data.user.name || 'User'}!`);
       setShowSuccess(true);
-      setTimeout(() => navigate('/dashboard'), 1800);
+      setTimeout(() => navigate(res.data.user.role === 'admin' ? '/admin' : '/dashboard'), 1800);
     } catch (err) {
       const data = err.response?.data;
 
@@ -314,7 +314,7 @@ export default function Login() {
       login(res.data.token, res.data.user);
       toast.success('Email verified! Welcome aboard 🎉');
       setShowSuccess(true);
-      setTimeout(() => navigate('/dashboard'), 1800);
+      setTimeout(() => navigate(res.data.user.role === 'admin' ? '/admin' : '/dashboard'), 1800);
     } catch (err) {
       setError(err.response?.data?.error || 'Invalid verification code');
       setOtpError(true);
@@ -788,8 +788,8 @@ export default function Login() {
                 </p>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button type="button" className="auth-quick-btn"
-                    onClick={() => { setEmail('admin@metromind.in'); setPassword('admin123'); }}>
-                    🛡️ Admin
+                    onClick={() => { setEmail('adminofmetromind@metromind.com'); setPassword('Admin@123'); }}>
+                    👑 Admin
                   </button>
                   <button type="button" className="auth-quick-btn"
                     onClick={() => { setEmail('user@metromind.in'); setPassword('user123'); }}>

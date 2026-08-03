@@ -12,6 +12,14 @@ import pandas as pd
 import numpy as np
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.http import JsonResponse
+from django.utils.decorators import method_decorator
+from functools import wraps
+import os
+import datetime
+from django.utils import timezone
+from django.db import models
+from apps.predict.models import BookingSample, PredictionLog
 
 from apps.predict.ml.features import STATIONS, is_peak_hour
 
@@ -385,3 +393,97 @@ def _fig_to_base64(fig):
     fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
     buf.seek(0)
     return base64.b64encode(buf.read()).decode('utf-8')
+
+# ==========================================
+# ADMIN ML ANALYTICS ENDPOINTS
+# ==========================================
+
+def admin_proxy_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        # HTTP_X_INTERNAL_SECRET is how Django sees the X-Internal-Secret header
+        secret = request.META.get('HTTP_X_INTERNAL_SECRET')
+        expected = os.environ.get('ADMIN_PROXY_SECRET')
+        if not expected or secret != expected:
+            return JsonResponse({'error': 'Unauthorized admin proxy request'}, status=403)
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+@method_decorator(admin_proxy_required, name='dispatch')
+class AdminModelPerformanceView(APIView):
+    def get(self, request):
+        report_path = Path(__file__).resolve().parent.parent.parent / 'predict' / 'ml' / 'saved' / 'comparison_report.json'
+        try:
+            with open(report_path, 'r') as f:
+                report = json.load(f)
+            return Response(report)
+        except FileNotFoundError:
+            return Response({'error': 'Model comparison report not found'}, status=404)
+
+@method_decorator(admin_proxy_required, name='dispatch')
+class AdminPredictionVolumeView(APIView):
+    def get(self, request):
+        thirty_days_ago = timezone.now() - datetime.timedelta(days=30)
+        logs = PredictionLog.objects.filter(created_at__gte=thirty_days_ago)
+        
+        from django.db.models import Count
+        from django.db.models.functions import TruncDate
+        
+        daily_counts = logs.annotate(date=TruncDate('created_at')) \
+                           .values('date', 'prediction_type') \
+                           .annotate(count=Count('id')) \
+                           .order_by('date')
+                           
+        result = {}
+        for entry in daily_counts:
+            date_str = entry['date'].strftime('%Y-%m-%d')
+            ptype = entry['prediction_type']
+            if date_str not in result:
+                result[date_str] = {}
+            result[date_str][ptype] = entry['count']
+            
+        return Response({'volume_last_30_days': result})
+
+@method_decorator(admin_proxy_required, name='dispatch')
+class AdminFeatureDriftView(APIView):
+    def get(self, request):
+        seven_days_ago = timezone.now() - datetime.timedelta(days=7)
+        recent_logs = PredictionLog.objects.filter(created_at__gte=seven_days_ago)
+        
+        orig_hour_avg = BookingSample.objects.aggregate(models.Avg('hour'))['hour__avg'] or 0
+        recent_hour_avg = recent_logs.aggregate(models.Avg('hour'))['hour__avg'] or 0
+        
+        orig_stations = list(BookingSample.objects.values('station').annotate(count=models.Count('id')).order_by('-count')[:5])
+        recent_stations = list(recent_logs.values('station').annotate(count=models.Count('id')).order_by('-count')[:5])
+        
+        return Response({
+            'drift': {
+                'average_hour': {
+                    'training': round(orig_hour_avg, 2),
+                    'live_last_7d': round(recent_hour_avg, 2),
+                    'delta': round(recent_hour_avg - orig_hour_avg, 2)
+                },
+                'top_stations': {
+                    'training': orig_stations,
+                    'live_last_7d': recent_stations
+                }
+            }
+        })
+
+@method_decorator(admin_proxy_required, name='dispatch')
+class AdminNetworkSummaryView(APIView):
+    def get(self, request):
+        bucket_dist = list(BookingSample.objects.values('bucket').annotate(count=models.Count('id')).order_by('-count'))
+        high_stations = list(BookingSample.objects.filter(bucket='High').values('station').annotate(count=models.Count('id')).order_by('-count')[:5])
+        
+        recent_logs = PredictionLog.objects.all().order_by('-created_at')[:1000]
+        if recent_logs:
+            avg_confidence = sum(log.pred_score for log in recent_logs) / len(recent_logs)
+        else:
+            avg_confidence = 0
+            
+        return Response({
+            'bucket_distribution': bucket_dist,
+            'high_crowd_stations': high_stations,
+            'recent_model_confidence_avg': round(avg_confidence, 2)
+        })
