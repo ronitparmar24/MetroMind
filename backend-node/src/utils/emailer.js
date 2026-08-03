@@ -10,6 +10,17 @@ if (EMAIL_USER && EMAIL_APP_PASSWORD) {
     service: 'gmail',
     auth: { user: EMAIL_USER, pass: EMAIL_APP_PASSWORD },
   });
+  // Verify SMTP connection at startup
+  transporter.verify((err) => {
+    if (err) {
+      console.error('❌ Email SMTP connection failed:', err.message);
+      transporter = null; // disable so errors don't silently swallow
+    } else {
+      console.log('✅ Email SMTP ready — sending from:', EMAIL_USER);
+    }
+  });
+} else {
+  console.warn('⚠️  Email not configured (EMAIL_USER / EMAIL_APP_PASSWORD missing) — emails will be logged to console only');
 }
 
 /**
@@ -19,15 +30,16 @@ if (EMAIL_USER && EMAIL_APP_PASSWORD) {
  */
 const sendOTPEmail = async (toEmail, otp) => {
   if (!transporter) {
-    console.warn('⚠️  Email not configured — OTP for', toEmail, 'is:', otp);
-    return; // Graceful fallback: log OTP to console in dev
+    console.warn('⚠️  [OTP Email] Not configured — OTP for', toEmail, 'is:', otp);
+    return;
   }
 
-  await transporter.sendMail({
-    from: `"MetroMind" <${EMAIL_USER}>`,
-    to: toEmail,
-    subject: 'Verify your MetroMind account',
-    html: `
+  try {
+    await transporter.sendMail({
+      from: `"MetroMind" <${EMAIL_USER}>`,
+      to: toEmail,
+      subject: 'Verify your MetroMind account',
+      html: `
       <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;padding:0">
         <!-- Header -->
         <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);padding:32px 24px;border-radius:16px 16px 0 0;text-align:center">
@@ -63,7 +75,12 @@ const sendOTPEmail = async (toEmail, otp) => {
         </div>
       </div>
     `,
-  });
+    });
+    console.log('📧 [OTP] Sent to', toEmail);
+  } catch (err) {
+    console.error('❌ [OTP Email] Failed to send to', toEmail, ':', err.message);
+    throw err; // Re-throw so caller can handle
+  }
 };
 /**
  * Send a login notification email
@@ -72,7 +89,10 @@ const sendOTPEmail = async (toEmail, otp) => {
  * @param {string} method - Login method ('password', 'google')
  */
 const sendLoginNotificationEmail = async (toEmail, userName, method = 'password') => {
-  if (!transporter) return; // Skip in dev if email isn't configured
+  if (!transporter) {
+    console.warn('⚠️  [Login Notification] Not configured — skipping email to', toEmail);
+    return;
+  }
 
   const now = new Date();
   const timeStr = now.toLocaleString('en-IN', {
@@ -161,10 +181,99 @@ const sendLoginNotificationEmail = async (toEmail, userName, method = 'password'
         </div>
       `,
     });
+    console.log('📧 [Login Notification] Sent to', toEmail, '| method:', method);
   } catch (err) {
-    // Don't let email failures break login
-    console.error('Failed to send login notification email:', err.message);
+    console.error('❌ [Login Notification] Failed to send to', toEmail, ':', err.message);
   }
 };
 
-module.exports = { sendOTPEmail, sendLoginNotificationEmail };
+/**
+ * Send a welcome email to a newly registered user
+ * @param {string} toEmail - Recipient email
+ * @param {string} userName - User's display name
+ */
+const sendWelcomeEmail = async (toEmail, userName) => {
+  if (!transporter) {
+    console.log('📧 [Welcome Email] Would send to:', toEmail, '— email not configured in dev');
+    return;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: `"MetroMind" <${EMAIL_USER}>`,
+      to: toEmail,
+      subject: `🎉 Welcome to MetroMind, ${userName}!`,
+      html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:0 auto;padding:0">
+          <!-- Header -->
+          <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);padding:36px 28px;border-radius:16px 16px 0 0;text-align:center">
+            <div style="font-size:44px;margin-bottom:12px">🚇</div>
+            <h1 style="color:white;font-size:26px;margin:0 0 6px;letter-spacing:-0.5px;font-weight:800">Welcome aboard, ${userName}!</h1>
+            <p style="color:rgba(255,255,255,0.85);font-size:14px;margin:0">Your MetroMind account is ready to go</p>
+          </div>
+
+          <!-- Welcome Bonus Banner -->
+          <div style="background:linear-gradient(135deg,#f59e0b,#f97316);padding:18px 28px;text-align:center">
+            <p style="color:white;font-size:15px;margin:0;font-weight:700">🎁 ₹500 welcome bonus has been added to your wallet!</p>
+            <p style="color:rgba(255,255,255,0.85);font-size:12px;margin:4px 0 0">Start booking metro tickets right away</p>
+          </div>
+
+          <!-- Body -->
+          <div style="background:#ffffff;padding:32px 28px;border:1px solid #e2e8f0;border-top:none">
+            <p style="color:#0f172a;font-size:15px;margin:0 0 24px;line-height:1.6">
+              Hi <strong>${userName}</strong>,<br/>
+              Thank you for joining MetroMind — the smartest way to commute. Here's what you can do right now:
+            </p>
+
+            <!-- Feature List -->
+            <div style="display:grid;gap:12px;margin:0 0 28px">
+              ${[
+                ['🎫', 'Book Tickets', 'Quick QR-code metro tickets for any route'],
+                ['💳', 'Digital Wallet', 'Top up and pay instantly — ₹500 already loaded!'],
+                ['🗺️', 'Journey Planner', 'Find the fastest route with live train times'],
+                ['🌿', 'Carbon Passport', 'Track CO₂ you save every trip'],
+                ['🏆', 'Achievements', 'Earn badges and loyalty points as you commute'],
+              ].map(([icon, title, desc]) => `
+                <div style="display:flex;align-items:flex-start;gap:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px">
+                  <span style="font-size:22px;flex-shrink:0">${icon}</span>
+                  <div>
+                    <div style="font-weight:700;font-size:13px;color:#0f172a">${title}</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:2px">${desc}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- CTA -->
+            <div style="text-align:center;margin:0 0 24px">
+              <a href="http://localhost:3000/dashboard"
+                style="display:inline-block;background:linear-gradient(135deg,#4F46E5,#7C3AED);color:white;
+                text-decoration:none;padding:14px 36px;border-radius:10px;font-weight:700;font-size:15px;
+                letter-spacing:0.2px">
+                Go to Dashboard →
+              </a>
+            </div>
+
+            <p style="color:#94a3b8;font-size:12px;line-height:1.5;margin:0;text-align:center">
+              Need help? Reply to this email or visit our support page.<br/>
+              Happy commuting! 🚇
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div style="background:#f8fafc;padding:16px 28px;border-radius:0 0 16px 16px;border:1px solid #e2e8f0;border-top:none;text-align:center">
+            <p style="color:#94a3b8;font-size:11px;margin:0">
+              © ${new Date().getFullYear()} MetroMind · Gujarat Metro Rail Corporation<br/>
+              You're receiving this because you created a MetroMind account.
+            </p>
+          </div>
+        </div>
+      `,
+    });
+    console.log('🎉 [Welcome Email] Sent to', toEmail);
+  } catch (err) {
+    console.error('❌ [Welcome Email] Failed to send to', toEmail, ':', err.message);
+  }
+};
+
+module.exports = { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail };

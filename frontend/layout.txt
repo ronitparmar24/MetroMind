@@ -1,0 +1,133 @@
+937: <div className="dash-page" style={S.page}>
+1010: <ActiveRidePass ticket={activeTicket} />
+1012: <div style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden', ma
+1014: <div style={{
+1020: <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '280px'
+1021: <div style={{ position: 'absolute', bottom: '0', left: '200px', width: '160px', 
+1024: <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'fle
+1025: <div style={{ flex: 1, minWidth: '260px' }}>
+1026: <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '
+1029: </div>
+1043: <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: weath
+1045: <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding:
+1050: </div>
+1051: <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding:
+1054: </div>
+1055: <Link to="/wallet" style={{ display: 'inline-flex', alignItems: 'center', gap: '
+1058: <Link to="/analytics" style={{ display: 'inline-flex', alignItems: 'center', gap
+1061: </div>
+1065: <div style={{
+1072: <div>
+1073: <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fde68a', marginBotto
+1074: <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.75)' }}>
+1076: </div>
+1077: </div>
+1078: </div>
+1082: <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingBottom: '28
+1083: <Link
+1092: <Link
+1102: </div>
+1103: </div>
+1107: <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(16px)',
+1108: <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.6)',
+1114: <div key={label} style={{ marginBottom: '10px' }}>
+1115: <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+1118: </div>
+1119: <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', marginLeft: '18
+1120: </div>
+1122: </div>
+1124: </div>
+1127: <div style={{ overflow: 'hidden', height: '32px', position: 'relative', marginTo
+1128: <div style={{ position: 'absolute', bottom: '8px', left: 0, right: 0, height: '2
+1129: <div style={{ position: 'absolute', bottom: '6px', fontSize: '20px', animation: 
+1130: </div>
+1131: </div>
+1134: <div style={{
+1147: <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+1149: <div>
+1150: <div className="mm-num" style={{ fontSize: '0.95rem', fontWeight: 700, color: 'v
+1151: <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500 }}>{
+1152: </div>
+1153: </div>
+1155: </div>
+1158: </div>
+1162: <div style={{ marginBottom: '28px' }}>
+1163: <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'c
+1167: <div style={{
+1173: </div>
+1174: <div>
+1175: <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)'
+1176: {action.title && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', m
+1177: </div>
+1189: <Link key={action.to} to={action.to} style={pillStyle} title={action.title || ac
+1202: </div>
+1203: </div>
+1211: <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '20px', ma
+1215: <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+1218: <div style={{
+1224: <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '
+1226: </div>
+1227: <div style={{ flex: 1, minWidth: '180px' }}>
+1228: <div style={{ fontSize: '10px', fontWeight: 700, color: '#6366f1', textTransform
+1229: <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)'
+1231: </div>
+1232: </div>
+1236: </div>
+1239: <MyLineStrip corridor={corridor} userDestination={userDestination} />
+1242: <NetworkPulsePanel
+1250: <SmartRoutesWidget />
+1251: </div>
+1254: <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+1257: <div style={{ borderRadius: '22px', overflow: 'hidden', position: 'relative', ba
+1258: <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px'
+1259: <div style={{ padding: '20px', position: 'relative', zIndex: 1 }}>
+1260: <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'cen
+1263: </div>
+1264: <div className="mm-num" style={{ fontSize: '2rem', fontWeight: 700, color: '#fff
+1266: </div>
+1268: <div style={{ fontSize: '11px', color: walletWarning === 'critical' ? '#fca5a5' 
+1270: </div>
+1272: <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+1273: <Link to="/wallet" style={{ flex: 1, display: 'inline-flex', alignItems: 'center
+1276: <Link to="/wallet" style={{ flex: 1, display: 'inline-flex', alignItems: 'center
+1279: </div>
+1280: </div>
+1281: </div>
+1284: <div style={{ ...S.card }}>
+1285: <div style={{ padding: '18px 20px' }}>
+1286: <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', tex
+1289: <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '
+1293: </div>
+1294: <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '12
+1297: </div>
+1303: <div style={{ textAlign: 'center', padding: '16px 0' }}>
+1304: <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🎫</div>
+1305: <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)
+1306: <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '12
+1307: <Link to="/book" style={{ ...S.qrBtn, textDecoration: 'none', display: 'inline-f
+1308: </div>
+1310: </div>
+1311: </div>
+1314: <BestDepartureCard usualRoute={usualRoute} />
+1317: <TimeToLeaveWidget />
+1320: <PersonalityBadge />
+1321: </div>
+1322: </div>
+1333: <div style={{ marginBottom: '8px' }}>
+1334: <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', tex
+1338: </div>
+1339: </div>
+1340: <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px
+1341: <CoachHeatmap stationName={userDestination} />
+1342: {userDestination && <ExitOptimizer destination={userDestination} />}
+1343: <CarbonTreeWidget />
+1344: <LiveTrainRadar homeStation={corridor.stations[0] || 'Thaltej'} />
+1345: <CommuterLeaderboard />
+1346: <LastMileConnect destination={userDestination} />
+1347: </div>
+1356: <QRModal
+1364: <VoiceAssistantModal
+1372: <CommunityPulseModal
+1378: <SOSButton />
+1381: <AccessibilityToggle />
+1382: </div>

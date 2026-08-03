@@ -26,6 +26,9 @@ const feedbackRoutes = require('./routes/feedback.routes');
 const notificationRoutes = require('./routes/notifications.routes');
 const routeCompareRoutes = require('./routes/routes.routes');
 const liveTrainsRoutes = require('./routes/liveTrains.routes');
+const weatherRoutes    = require('./routes/weather.routes');
+const geocodeRoutes    = require('./routes/geocode.routes');
+const voiceRoutes      = require('./routes/voice.routes');
 
 const app = express();
 
@@ -78,6 +81,9 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/routes', routeCompareRoutes);
 app.use('/api/live-trains', liveTrainsRoutes);
+app.use('/api/weather',    weatherRoutes);
+app.use('/api/geocode',    geocodeRoutes);
+app.use('/api/voice',      voiceRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
