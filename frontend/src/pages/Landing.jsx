@@ -2,6 +2,7 @@
 // MetroMind — Full production landing page with premium auth-matching theme
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useSystemTheme } from '../hooks/useSystemTheme';
 import '../styles/style.css';
 import '../styles/responsive.css';
 
@@ -256,6 +257,9 @@ export default function Landing() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
   const activeSection = useActiveSection(SECTION_IDS);
+
+  // Always follow OS/system theme on this public page
+  useSystemTheme();
 
   useEffect(() => {
     const onScroll = () => {

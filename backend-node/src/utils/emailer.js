@@ -24,6 +24,14 @@ if (EMAIL_USER && EMAIL_APP_PASSWORD) {
 }
 
 /**
+ * Utility to prevent sending emails to mock domains used in testing or demo.
+ */
+const isTestEmail = (email) => {
+  const lowerEmail = email.toLowerCase();
+  return lowerEmail.endsWith('@metromind.com') || lowerEmail.endsWith('@metromind.in') || lowerEmail.endsWith('@example.com');
+};
+
+/**
  * Send a 6-digit OTP verification email
  * @param {string} toEmail - Recipient email
  * @param {string} otp - Plain 6-digit OTP code
@@ -31,6 +39,11 @@ if (EMAIL_USER && EMAIL_APP_PASSWORD) {
 const sendOTPEmail = async (toEmail, otp) => {
   if (!transporter) {
     console.warn('⚠️  [OTP Email] Not configured — OTP for', toEmail, 'is:', otp);
+    return;
+  }
+  
+  if (isTestEmail(toEmail)) {
+    console.log(`⚠️  [OTP Email] Skipped for test domain: ${toEmail}. OTP is: ${otp}`);
     return;
   }
 
@@ -91,6 +104,11 @@ const sendOTPEmail = async (toEmail, otp) => {
 const sendLoginNotificationEmail = async (toEmail, userName, method = 'password') => {
   if (!transporter) {
     console.warn('⚠️  [Login Notification] Not configured — skipping email to', toEmail);
+    return;
+  }
+
+  if (isTestEmail(toEmail)) {
+    console.log(`⚠️  [Login Notification] Skipped for test domain: ${toEmail}`);
     return;
   }
 
@@ -195,6 +213,11 @@ const sendLoginNotificationEmail = async (toEmail, userName, method = 'password'
 const sendWelcomeEmail = async (toEmail, userName) => {
   if (!transporter) {
     console.log('📧 [Welcome Email] Would send to:', toEmail, '— email not configured in dev');
+    return;
+  }
+
+  if (isTestEmail(toEmail)) {
+    console.log(`⚠️  [Welcome Email] Skipped for test domain: ${toEmail}`);
     return;
   }
 

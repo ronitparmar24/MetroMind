@@ -50,58 +50,67 @@ export default function AdminUsers() {
   });
 
   return (
-    <div style={{ color: 'var(--text-primary)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, margin: 0 }}>Users</h1>
-        <input 
-          type="text"
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
-          style={{
-            padding: '10px 16px',
-            borderRadius: '8px',
-            border: '1px solid var(--border-color)',
-            background: 'var(--bg-secondary)',
-            color: 'var(--text-primary)',
-            width: '300px',
-            outline: 'none'
-          }}
-        />
+    <div style={{ color: 'var(--text-primary)', maxWidth: '1400px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0, textShadow: '0 2px 10px rgba(255,255,255,0.1)' }}>User Management</h1>
+        <div style={{ position: 'relative' }}>
+          <input 
+            type="text"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            style={{
+              padding: '12px 16px 12px 40px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.03)',
+              color: 'var(--text-primary)',
+              width: '320px',
+              outline: 'none',
+              backdropFilter: 'blur(10px)',
+              transition: 'border-color 0.2s',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}
+            onFocus={(e) => e.target.style.borderColor = 'rgba(99,102,241,0.5)'}
+            onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+          />
+          <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>🔍</span>
+        </div>
       </div>
 
       <div style={{
-        background: 'var(--bg-secondary)',
+        background: 'rgba(255,255,255,0.02)',
         borderRadius: '16px',
-        boxShadow: '0px 4px 20px rgba(0,0,0,0.05)',
-        border: '1px solid var(--border-color)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+        border: '1px solid rgba(255,255,255,0.05)',
+        backdropFilter: 'blur(10px)',
         overflow: 'hidden'
       }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr style={{ background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid var(--border-color)' }}>
-              <th style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Name</th>
-              <th style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Email</th>
-              <th style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Role</th>
-              <th style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Ride Count</th>
-              <th style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Wallet</th>
-              <th style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Status</th>
-              <th style={{ padding: '16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Actions</th>
+            <tr style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              <th style={{ padding: '16px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Name</th>
+              <th style={{ padding: '16px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Email</th>
+              <th style={{ padding: '16px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Role</th>
+              <th style={{ padding: '16px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Ride Count</th>
+              <th style={{ padding: '16px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Wallet</th>
+              <th style={{ padding: '16px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Status</th>
+              <th style={{ padding: '16px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="7" style={{ padding: '24px', textAlign: 'center' }}>Loading...</td></tr>
+              <tr><td colSpan="7" style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>Loading users...</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan="7" style={{ padding: '24px', textAlign: 'center' }}>No users found.</td></tr>
+              <tr><td colSpan="7" style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>No users found.</td></tr>
             ) : (
               users.map(u => (
-                <tr key={u._id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px' }}>{u.name}</td>
-                  <td style={{ padding: '16px', color: 'var(--text-secondary)' }}>{u.email}</td>
+                <tr key={u._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }} className="hover-lift">
+                  <td style={{ padding: '16px', fontWeight: 600 }}>{u.name}</td>
+                  <td style={{ padding: '16px', color: 'rgba(255,255,255,0.7)' }}>{u.email}</td>
                   <td style={{ padding: '16px' }}><span style={pillStyle(u.role)}>{u.role}</span></td>
-                  <td style={{ padding: '16px', fontVariantNumeric: 'tabular-nums' }}>{u.rideCount}</td>
-                  <td style={{ padding: '16px', fontVariantNumeric: 'tabular-nums' }}>₹{u.walletBalance.toFixed(2)}</td>
+                  <td style={{ padding: '16px', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{u.rideCount}</td>
+                  <td style={{ padding: '16px', fontVariantNumeric: 'tabular-nums', color: '#34d399', fontWeight: 600 }}>₹{u.walletBalance.toFixed(2)}</td>
                   <td style={{ padding: '16px' }}>
                     <span style={pillStyle(u.isActive ? 'user' : 'disabled')}>
                       {u.isActive ? 'Active' : 'Disabled'}
@@ -111,15 +120,19 @@ export default function AdminUsers() {
                     <button
                       onClick={() => handleToggle(u._id, u.isActive)}
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid',
+                        borderColor: u.isActive ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)',
                         background: u.isActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
                         color: u.isActive ? '#f87171' : '#34d399',
                         cursor: 'pointer',
                         fontWeight: 600,
-                        transition: 'background 0.2s'
+                        transition: 'all 0.2s',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                       }}
+                      onMouseOver={(e) => e.target.style.background = u.isActive ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}
+                      onMouseOut={(e) => e.target.style.background = u.isActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)'}
                     >
                       {u.isActive ? 'Disable' : 'Enable'}
                     </button>

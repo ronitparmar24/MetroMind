@@ -1,11 +1,12 @@
 // frontend/src/pages/JourneyPlanner.jsx
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GlassCard from '../components/common/GlassCard';
 import StationSelector from '../components/booking/StationSelector';
 import CrowdBadge from '../components/booking/CrowdBadge';
 import { STATIONS } from '../constants/stations';
 import { compareRoutes } from '../api/analytics.api';
+import { fetchWeather } from '../api/weather.api';
 import { geocodeLocation } from '../api/geocode.api';
 import { haversine } from '../utils/haversine';
 import { formatCurrency } from '../utils/formatters';
@@ -59,6 +60,14 @@ export default function JourneyPlanner() {
   // ── Nearest Station / Will I Make It? state ──────────────────────────
   const [locationQuery,   setLocationQuery]   = useState('');
   const [geoLoading,      setGeoLoading]      = useState(false);
+
+  // ── Weather (for night safety banner) ───────────────────────────────────
+  const [weather, setWeather] = useState(null);
+  useEffect(() => {
+    fetchWeather()
+      .then(setWeather)
+      .catch(() => setWeather({ isDark: false, fallback: true }));
+  }, []);
   const [geoError,        setGeoError]        = useState('');
   const [resolvedAddr,    setResolvedAddr]     = useState(null);   // { lat, lng, displayName }
   const [nearestResults,  setNearestResults]   = useState([]);     // top 3 stations
@@ -224,6 +233,24 @@ export default function JourneyPlanner() {
           <p style={{ fontSize: '2rem', marginBottom: '12px' }}>📊</p>
           <p style={{ color: 'var(--text-secondary)' }}>Select stations above and click <strong>Compare Routes</strong> to see your options</p>
         </GlassCard>
+      )}
+
+      {/* Night safety banner — shown when routes are visible and it's dark outside */}
+      {routes.length > 0 && weather?.isDark && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          padding: '10px 16px', marginBottom: 'var(--space-xl)', borderRadius: '14px',
+          background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(139,92,246,0.3)',
+          animation: 'fadeInUp 0.3s ease',
+        }}>
+          <span style={{ fontSize: '18px', flexShrink: 0 }}>🌙</span>
+          <div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: '2px' }}>Travelling after dark — stay safe</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+              <strong>Old High Court</strong> &amp; <strong>Kalupur</strong> stations have well-lit exits and 24 h CCTV security.
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── SECTION 2: Nearest Station Finder ────────────────────────── */}

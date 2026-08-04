@@ -7,3 +7,5 @@ export const getLiveTrains = (station) => api.get(`/api/live-trains/${encodeURIC
 export const checkAnomaly = (data) => api.post('/api/predict/anomaly', data);
 export const getPersonalityProfile = () => api.get('/api/predict/personality');
 export const getBestDeparture = (data) => api.post('/api/predict/best-departure', data);
+export const getCommuterCluster = () => api.get('/api/predict/cluster');
+export const getCrowdForecast = (data) => api.post('/api/predict/forecast', data);

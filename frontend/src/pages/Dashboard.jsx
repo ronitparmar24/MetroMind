@@ -845,7 +845,7 @@ export default function Dashboard() {
                 {weather?.isRaining && (
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '10px 14px', marginBottom: '20px', borderRadius: '14px',
+                    padding: '10px 14px', marginBottom: '12px', borderRadius: '14px',
                     background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.35)',
                     backdropFilter: 'blur(8px)', animation: 'fadeInUp 0.3s ease',
                   }}>
@@ -854,6 +854,24 @@ export default function Dashboard() {
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fde68a', marginBottom: '1px' }}>Rain Alert — {weather.description}</div>
                       <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.75)' }}>
                         Consider the covered route via <strong style={{ color: '#fde68a' }}>Old High Court</strong> interchange.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Night safety banner — contextual, only after sunset */}
+                {weather?.isDark && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 14px', marginBottom: '20px', borderRadius: '14px',
+                    background: 'rgba(99,102,241,0.18)', border: '1px solid rgba(139,92,246,0.35)',
+                    backdropFilter: 'blur(8px)', animation: 'fadeInUp 0.35s ease',
+                  }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>🌙</span>
+                    <div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#c4b5fd', marginBottom: '1px' }}>Travelling after dark — stay safe</div>
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.75)' }}>
+                        <strong style={{ color: '#c4b5fd' }}>Old High Court</strong> &amp; <strong style={{ color: '#c4b5fd' }}>Kalupur</strong> have well-lit exits and 24 h security.
                       </div>
                     </div>
                   </div>

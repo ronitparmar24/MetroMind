@@ -13,6 +13,7 @@ import joblib
 from pathlib import Path
 
 from .features import build_feature_vector, BUCKET_MAP, STATIONS, is_peak_hour, is_weekend_day
+from .explain import explain_prediction
 
 SAVED_DIR = Path(__file__).resolve().parent / 'saved'
 
@@ -133,11 +134,15 @@ def run_prediction(data: dict) -> dict:
         for i in top_indices
     ]
 
+    # SHAP local explanation
+    shap_explanation = explain_prediction(X_scaled, _feature_names)
+
     return {
         'bucket': BUCKET_MAP[int(bucket_idx)],
         'confidence': round(float(max(proba)) * 100, 1),
         'score': round(float(proba[int(bucket_idx)]), 4),
         'top_features': top_features,
+        'shap_explanation': shap_explanation,
     }
 
 

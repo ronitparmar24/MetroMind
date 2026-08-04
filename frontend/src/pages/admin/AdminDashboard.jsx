@@ -11,10 +11,10 @@ export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ minHeight: '100vh', background: 'radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 40%, #000000 100%)', color: '#fff' }}>
       {/* Decorative glow orbs */}
-      <div className="glow-orb glow-orb-1" />
-      <div className="glow-orb glow-orb-2" />
+      <div className="glow-orb glow-orb-1" style={{ opacity: 0.5, filter: 'blur(80px)' }} />
+      <div className="glow-orb glow-orb-2" style={{ opacity: 0.3, background: 'radial-gradient(circle, rgba(16,185,129,0.4) 0%, transparent 70%)', filter: 'blur(100px)' }} />
 
       <Navbar onToggleSidebar={() => setSidebarOpen((prev) => !prev)} />
       

@@ -1,5 +1,6 @@
 // frontend/src/pages/FareCalculator.jsx
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import GlassCard from '../components/common/GlassCard';
 import StationSelector from '../components/booking/StationSelector';
 import { STATIONS } from '../constants/stations';
@@ -11,6 +12,7 @@ export default function FareCalculator() {
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
   const [passengers, setPassengers] = useState(1);
+  const navigate = useNavigate();
 
   const result = useMemo(() => {
     if (!source || !destination) return null;
@@ -21,7 +23,8 @@ export default function FareCalculator() {
     const peak = calculateFare(src, dst, 9, 1, passengers); // Peak: 9am Monday
     const offPeak = calculateFare(src, dst, 14, 1, passengers); // Off-peak: 2pm Monday
     const co2 = calculateCO2Saved(peak.distance, passengers);
-    const cabCost = Math.round(peak.distance * 12 * passengers);
+    const numCabs = Math.ceil(passengers / 4); // 4 passengers per cab
+    const cabCost = Math.round(peak.distance * 12 * numCabs);
     return { peak, offPeak, co2, cabCost };
   }, [source, destination, passengers]);
 
@@ -72,6 +75,38 @@ export default function FareCalculator() {
                 </div>
               ))}
             </GlassCard>
+
+            <button
+              onClick={() => navigate('/book', { state: { source, destination } })}
+              style={{
+                marginTop: 'var(--space-xl)',
+                width: '100%',
+                padding: '16px',
+                borderRadius: '16px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                color: 'white',
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 8px 24px rgba(79,70,229,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 12px 32px rgba(79,70,229,0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(79,70,229,0.3)';
+              }}
+            >
+              🎫 Book this Route
+            </button>
           </div>
         )}
       </div>

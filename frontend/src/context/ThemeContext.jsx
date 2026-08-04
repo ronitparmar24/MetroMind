@@ -19,14 +19,7 @@ function resolveTheme(preference) {
  * Only trusts the saved value if the user explicitly set it (mm_theme_manual=1).
  */
 function getInitialPreference() {
-  try {
-    const manual = localStorage.getItem('mm_theme_manual');
-    if (manual === '1') {
-      const saved = localStorage.getItem('mm_theme');
-      if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
-    }
-  } catch (_) { /* localStorage unavailable */ }
-  // No explicit user choice → follow the OS
+  // Always follow the OS on initial load
   return 'system';
 }
 
@@ -36,8 +29,7 @@ function getInitialPreference() {
  */
 (function applyThemeEarly() {
   try {
-    const pref = getInitialPreference();
-    const theme = resolveTheme(pref);
+    const theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', theme);
   } catch (_) { /* noop */ }
 })();

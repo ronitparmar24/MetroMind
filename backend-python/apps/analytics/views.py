@@ -19,9 +19,9 @@ import os
 import datetime
 from django.utils import timezone
 from django.db import models
-from apps.predict.models import BookingSample, PredictionLog
+from apps.predict.models import BookingSample, PredictionLog  # pyrefly: ignore [missing-import]
 
-from apps.predict.ml.features import STATIONS, is_peak_hour
+from apps.predict.ml.features import STATIONS, is_peak_hour  # pyrefly: ignore [missing-import]
 
 DATA_PATH = Path(__file__).resolve().parent.parent.parent / 'data' / 'raw' / 'ahmedabad_metro_bookings.csv'
 
@@ -277,7 +277,7 @@ class NetworkPulseView(APIView):
 
     def get(self, request):
         from datetime import datetime
-        from apps.predict.ml.predict import run_prediction, is_model_loaded
+        from apps.predict.ml.predict import run_prediction, is_model_loaded  # pyrefly: ignore [missing-import]
 
         now = datetime.now()
         hour = now.hour
@@ -413,9 +413,21 @@ def admin_proxy_required(view_func):
 class AdminModelPerformanceView(APIView):
     def get(self, request):
         report_path = Path(__file__).resolve().parent.parent.parent / 'predict' / 'ml' / 'saved' / 'comparison_report.json'
+        hyper_path = Path(__file__).resolve().parent.parent.parent / 'predict' / 'ml' / 'saved' / 'hyperparameter_search.json'
+        
         try:
             with open(report_path, 'r') as f:
                 report = json.load(f)
+            
+            hyperparameters = None
+            try:
+                with open(hyper_path, 'r') as f:
+                    tuning = json.load(f)
+                    hyperparameters = tuning.get('best_params')
+            except FileNotFoundError:
+                pass
+                
+            report['hyperparameters'] = hyperparameters
             return Response(report)
         except FileNotFoundError:
             return Response({'error': 'Model comparison report not found'}, status=404)

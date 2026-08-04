@@ -157,3 +157,80 @@ class BestDepartureView(APIView):
             print(f"⚠️ Failed to log best departure: {e}")
 
         return Response(result)
+
+
+class ClusterView(APIView):
+    """
+    POST /api/predict/cluster/
+    Takes {user_profile: {avg_hour, weekend_ratio, peak_ratio, avg_distance, trip_count}}
+    → returns {clusterId, clusterLabel, similarCommuterCount}
+    """
+
+    def post(self, request):
+        from .serializers import ClusterInputSerializer
+        serializer = ClusterInputSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+
+        from .ml.clustering import assign_cluster
+        result = assign_cluster(data['user_profile'])
+
+        # Log to PredictionLog
+        try:
+            PredictionLog.objects.create(
+                station='N/A',
+                hour=0,
+                day=0,
+                pred_bucket=result['clusterLabel'],
+                pred_score=result['clusterId'],
+                prediction_type='cluster',
+            )
+        except Exception as e:
+            print(f"⚠️ Failed to log cluster: {e}")
+
+        return Response(result)
+
+
+class ForecastView(APIView):
+    """
+    POST /api/predict/forecast/
+    Takes {station, start_datetime, hours_ahead}
+    → returns {forecast: [{time, hour, bucket, confidence, score, shap_explanation}, ...]}
+    
+    This is feature-based multi-step forecasting (running the point-in-time model iteratively),
+    not a time-series model (e.g., ARIMA/Prophet) as the synthetic dataset lacks true autocorrelation.
+    """
+
+    def post(self, request):
+        from .serializers import ForecastInputSerializer
+        serializer = ForecastInputSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+
+        from .ml.forecast import forecast_next_hours
+        result = forecast_next_hours(
+            station=data['station'],
+            start_datetime=data['start_datetime'],
+            hours_ahead=data['hours_ahead']
+        )
+
+        # Log to PredictionLog
+        try:
+            if result:
+                first = result[0]
+                PredictionLog.objects.create(
+                    station=data['station'],
+                    hour=first['hour'],
+                    day=data['start_datetime'].weekday(),
+                    pred_bucket=first['bucket'],
+                    pred_score=first['confidence'],
+                    prediction_type='forecast',
+                )
+        except Exception as e:
+            print(f"⚠️ Failed to log forecast: {e}")
+
+        return Response({'forecast': result})

@@ -48,6 +48,8 @@ exports.getAhmedabadWeather = async () => {
   const isRaining = ['Rain', 'Thunderstorm', 'Drizzle'].includes(main);
   const emoji     = WEATHER_EMOJI[main] ?? '🌡️';
 
+  const now = Date.now();
+
   return {
     tempC,
     feelsLike,
@@ -57,5 +59,8 @@ exports.getAhmedabadWeather = async () => {
     windKph,
     isRaining,
     emoji,
+    sunrise:  new Date(data.sys.sunrise * 1000).toISOString(),
+    sunset:   new Date(data.sys.sunset  * 1000).toISOString(),
+    isDark:   now > data.sys.sunset * 1000 || now < data.sys.sunrise * 1000,
   };
 };

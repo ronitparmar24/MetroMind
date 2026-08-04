@@ -10,6 +10,7 @@ const morgan = require('morgan');
 const { CLIENT_URL } = require('./config/env');
 const { limiter } = require('./middleware/rateLimit.middleware');
 const errorHandler = require('./middleware/error.middleware');
+const auditMiddleware = require('./middleware/audit.middleware');
 
 // Route imports
 const authRoutes = require('./routes/auth.routes');
@@ -67,7 +68,10 @@ app.use(morgan('dev'));
 // 5. Rate limiting — 100 requests per 15 minutes
 app.use(limiter);
 
-// 6. Mount routes
+// 6. Audit Logging (MUST be before routes)
+app.use(auditMiddleware);
+
+// 7. Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/wallet', walletRoutes);

@@ -4,6 +4,7 @@ const Transaction = require('../models/Transaction.model');
 const axios = require('axios');
 const { DJANGO_API_URL } = require('../config/env');
 const { generateWeeklyDigestText, generatePersonalityDescription } = require('../services/gemini.service');
+const { generateCarbonPassportPDF } = require('../utils/pdfReport');
 
 // GET /api/analytics/weekly-digest
 const getWeeklyDigest = async (req, res, next) => {
@@ -362,4 +363,73 @@ const getNetworkPulse = async (req, res, next) => {
   }
 };
 
-module.exports = { getWeeklyDigest, getSpending, getHeatmap, getPersonality, getLeaderboard, getStationProfile, getNetworkPulse };
+// GET /api/analytics/carbon-passport/pdf  (protected)
+// Assembles a full Carbon Passport PDF with an embedded CO2 chart.
+const getCarbonPassportPDF = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    // ── 1. All-time totals ──────────────────────────────────────
+    const tickets = await Ticket.find({
+      userId,
+      status: { $in: ['completed', 'upcoming'] },
+    });
+
+    const totalCO2      = tickets.reduce((s, t) => s + (t.co2Saved  || 0), 0);
+    const totalDistance = tickets.reduce((s, t) => s + (t.distance  || 0), 0);
+    const totalTrips    = tickets.length;
+    const treesEquivalent = (totalCO2 / 21).toFixed(1);
+
+    // ── 2. Monthly CO2 for the last 6 months ───────────────────
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    const monthlyRaw = await Ticket.aggregate([
+      { $match: { userId, createdAt: { $gte: sixMonthsAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          co2: { $sum: '$co2Saved' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Fill any missing months with 0
+    const monthlyMap = {};
+    monthlyRaw.forEach(m => { monthlyMap[m._id] = m.co2; });
+    const monthlyData = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlyData.push({ month: key, co2: monthlyMap[key] || 0 });
+    }
+    monthlyData.sort((a, b) => (a.month > b.month ? 1 : -1));
+
+    // ── 3. Generate PDF ────────────────────────────────────────
+    const pdfBuffer = await generateCarbonPassportPDF({
+      user:          { name: req.user.name, email: req.user.email },
+      totalCO2,
+      totalDistance,
+      totalTrips,
+      treesEquivalent,
+      monthlyData,
+    });
+
+    // ── 4. Stream to client ────────────────────────────────────
+    const filename = `MetroMind_CarbonPassport_${req.user.name?.replace(/\s+/g, '_') || 'user'}.pdf`;
+    res.set({
+      'Content-Type':        'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length':      pdfBuffer.length,
+    });
+    res.send(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getWeeklyDigest, getSpending, getHeatmap, getPersonality, getLeaderboard, getStationProfile, getNetworkPulse, getCarbonPassportPDF };

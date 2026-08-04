@@ -4,18 +4,7 @@
     <!-- Inline theme init: runs BEFORE CSS to prevent flash of wrong theme -->
     <script>
       (function() {
-        var saved = localStorage.getItem('mm_theme');
-        var manual = localStorage.getItem('mm_theme_manual');
-        // If no explicit user choice has been saved, always follow the system
-        var pref = (manual === '1' && (saved === 'light' || saved === 'dark' || saved === 'system'))
-          ? saved
-          : 'system';
-        var theme;
-        if (pref === 'system') {
-          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        } else {
-          theme = pref;
-        }
+        var theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', theme);
         
         // Prevent white flash by applying background immediately

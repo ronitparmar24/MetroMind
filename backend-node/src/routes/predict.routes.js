@@ -7,11 +7,15 @@ const {
   getAnomalyCheck,
   getPersonalityProfile,
   getBestDeparture,
+  getCommuterCluster,
+  getForecast,
 } = require('../controllers/predict.controller');
 
 router.post('/crowd', protect, predictCrowd);
 router.post('/anomaly', protect, getAnomalyCheck);
 router.get('/personality', protect, getPersonalityProfile);
 router.post('/best-departure', protect, getBestDeparture);
+router.get('/cluster', protect, getCommuterCluster);
+router.post('/forecast', protect, getForecast);
 
 module.exports = router;

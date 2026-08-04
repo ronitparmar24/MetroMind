@@ -51,6 +51,7 @@ export const calculateFare = (source, dest, hour, dayOfWeek, passengers = 1) => 
   const peak = isPeakHour(hour, dayOfWeek);
   const perPassenger = Math.round(baseFare * (peak ? 1.2 : 1.0));
   return {
+    baseFare: Math.round(baseFare),
     fare: perPassenger * passengers,
     perPassenger,
     distance: Math.round(distance * 100) / 100,
