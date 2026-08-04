@@ -33,6 +33,8 @@ class PredictionLog(models.Model):
         ('anomaly', 'Anomaly Check'),
         ('personality', 'Personality Analysis'),
         ('best_departure', 'Best Departure'),
+        ('cluster', 'Commuter Cluster'),
+        ('forecast', 'Crowd Forecast'),
     ]
 
     station = models.CharField(max_length=100)

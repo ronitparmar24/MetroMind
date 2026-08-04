@@ -20,11 +20,12 @@ import os
 import sys
 import json
 import random
+import datetime
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from sklearn.ensemble import (
-    RandomForestClassifier,
+    RandomForestClassifier, 
     GradientBoostingClassifier,
     IsolationForest,
 )
@@ -45,7 +46,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from apps.predict.ml.features import (
+from apps.predict.ml.features import (  # pyrefly: ignore [missing-import]
     engineer_features, bucket_crowd, STATIONS,
     REVERSE_BUCKET_MAP, is_peak_hour, is_weekend_day,
 )
@@ -90,7 +91,12 @@ def generate_dataset(n_rows=500):
         # Add noise
         actual_crowd = max(5, int(base + random.gauss(0, 30)))
 
+        # Simulate a recorded_at timestamp over the past year
+        days_ago = random.randint(0, 365)
+        recorded_at = datetime.datetime.now() - datetime.timedelta(days=days_ago)
+
         rows.append({
+            'recorded_at': recorded_at.isoformat(),
             'station': station,
             'hour': hour,
             'day_of_week': day,
@@ -129,6 +135,13 @@ def train_model():
 
     # ── Feature engineering ──────────────────────────────────────
     print("\n[FEAT] Engineering features...")
+    
+    # Time-aware split: sort by recorded_at to prevent future data leakage
+    # Crowd patterns evolve over time, so random splitting can overstate real-world accuracy
+    if 'recorded_at' in df.columns:
+        df = df.sort_values('recorded_at').reset_index(drop=True)
+        print("   [INFO] Dataset sorted chronologically by recorded_at for time-aware split.")
+    
     X = engineer_features(df)
     y_class = df['bucket'].map(REVERSE_BUCKET_MAP)  # Classification target
     y_reg = df['actual_crowd']  # Regression target
@@ -136,10 +149,11 @@ def train_model():
     feature_names = list(X.columns)
     print(f"   Feature count: {len(feature_names)}")
 
-    # Train/test split
-    X_train, X_test, y_cls_train, y_cls_test, y_reg_train, y_reg_test = train_test_split(
-        X, y_class, y_reg, test_size=0.2, random_state=42
-    )
+    # Time-aware split: use the most recent 20% as test set instead of random split
+    split_idx = int(len(df) * 0.8)
+    X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
+    y_cls_train, y_cls_test = y_class.iloc[:split_idx], y_class.iloc[split_idx:]
+    y_reg_train, y_reg_test = y_reg.iloc[:split_idx], y_reg.iloc[split_idx:]
 
     # Scale features
     scaler = StandardScaler()
@@ -147,14 +161,28 @@ def train_model():
     X_test_scaled = scaler.transform(X_test)
 
     # ── 1. RandomForestClassifier (Primary) ──────────────────────
-    print("\n[TRAIN] 1/4 — RandomForestClassifier (primary crowd model)...")
-    rf_clf = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=10,
-        random_state=42,
-        n_jobs=-1,
+    print("\n[TRAIN] 1/4 — RandomForestClassifier (GridSearchCV hyperparameter tuning)...")
+    from sklearn.model_selection import GridSearchCV
+    
+    param_grid = {
+        'n_estimators': [50, 100, 150],
+        'max_depth': [8, 12, None],
+        'min_samples_split': [2, 5, 10],
+    }
+    
+    grid = GridSearchCV(
+        RandomForestClassifier(random_state=42),
+        param_grid,
+        cv=3,
+        scoring='f1_weighted',
+        n_jobs=-1
     )
-    rf_clf.fit(X_train_scaled, y_cls_train)
+    grid.fit(X_train_scaled, y_cls_train)
+    rf_clf = grid.best_estimator_
+    
+    print('   Best params:', grid.best_params_)
+    print('   Best CV F1:', grid.best_score_)
+    
     rf_pred = rf_clf.predict(X_test_scaled)
 
     rf_accuracy = accuracy_score(y_cls_test, rf_pred)
@@ -285,8 +313,20 @@ def train_model():
     with open(report_path, 'w') as f:
         json.dump(comparison_report, f, indent=2)
 
+    # Save hyperparameter tuning results
+    tuning_results = {
+        'best_params': grid.best_params_,
+        'best_score': round(float(grid.best_score_), 4),
+        'cv_results': {
+            'mean_test_score': [round(float(s), 4) for s in grid.cv_results_['mean_test_score']],
+            'params': grid.cv_results_['params'],
+        }
+    }
+    with open(SAVED_DIR / 'hyperparameter_search.json', 'w') as f:
+        json.dump(tuning_results, f, indent=2)
+
     print(f"\n[SAVE] Saved artifacts to {SAVED_DIR}/")
-    for filename in list(artifacts.keys()) + ['feature_names.json', 'comparison_report.json']:
+    for filename in list(artifacts.keys()) + ['feature_names.json', 'comparison_report.json', 'hyperparameter_search.json']:
         path = SAVED_DIR / filename
         size_kb = path.stat().st_size / 1024
         print(f"   [OK] {filename} ({size_kb:.1f} KB)")

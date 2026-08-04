@@ -1,5 +1,5 @@
 // frontend/src/components/metro/InteractiveMetroMap.jsx
-// Full interactive SVG metro map with click-to-book, zoom/pan, route highlighting
+// Full interactive SVG schematic metro map matching real Ahmedabad topology
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { STATIONS, LINES } from '../../constants/stations';
@@ -9,76 +9,93 @@ import { useAccessibility } from '../../hooks/useAccessibility';
 import { formatCurrency } from '../../utils/formatters';
 
 /* ═══════════════════════════════════════════════════════════
-   SVG LAYOUT — station positions on a 1400×900 canvas
-   Blue: horizontal across middle
-   Red: vertical crossing Blue at Old High Court
-   Yellow: extends NE from Motera Stadium
-   Pink: short spur NW from Koteshwar area
-   Purple: short spur E from GNLU
+   SVG LAYOUT — Precise Schematic Coordinates (1600x1400 canvas)
    ═══════════════════════════════════════════════════════════ */
+
+const SCHEMATIC = {
+  // RED LINE (South to North)
+  'apmc': { x: 640, y: 1290, anchor: 'end', dx: -15, dy: 4 },
+  'jivraj-park': { x: 680, y: 1250, anchor: 'end', dx: -15, dy: 4 },
+  'rajivnagar': { x: 720, y: 1210, anchor: 'end', dx: -15, dy: 4 },
+  'shreyas': { x: 760, y: 1170, anchor: 'end', dx: -15, dy: 4 },
+  'paldi': { x: 800, y: 1130, anchor: 'end', dx: -15, dy: 4 },
+  'gandhigram': { x: 800, y: 1090, anchor: 'end', dx: -15, dy: 4 },
+  'old-high-court': { x: 800, y: 1050, anchor: 'end', dx: -15, dy: -15 }, // Interchange
+  'old-high-court-red': { x: 800, y: 1050, anchor: 'end', dx: -15, dy: -15 }, // Interchange
+  'usmanpura': { x: 800, y: 1010, anchor: 'end', dx: -15, dy: 4 },
+  'vijaynagar': { x: 800, y: 970, anchor: 'end', dx: -15, dy: 4 },
+  'vadaj': { x: 800, y: 930, anchor: 'end', dx: -15, dy: 4 },
+  'ranip': { x: 840, y: 890, anchor: 'end', dx: -15, dy: 4 },
+  'sabarmati-railway': { x: 880, y: 850, anchor: 'end', dx: -15, dy: 4 },
+  'aec': { x: 920, y: 810, anchor: 'end', dx: -15, dy: 4 },
+  'sabarmati': { x: 960, y: 770, anchor: 'end', dx: -15, dy: 4 },
+  'motera-stadium': { x: 1000, y: 730, anchor: 'end', dx: -15, dy: 4 },
+
+  // BLUE LINE (West to East)
+  'thaltej-gam': { x: 460, y: 1010, anchor: 'middle', dx: 0, dy: 20 },
+  'thaltej': { x: 510, y: 1010, anchor: 'middle', dx: 0, dy: 20 },
+  'doordarshan-kendra': { x: 560, y: 1010, anchor: 'middle', dx: 0, dy: -15 },
+  'gurukul-road': { x: 610, y: 1010, anchor: 'middle', dx: 0, dy: 20 },
+  'gujarat-university': { x: 660, y: 1010, anchor: 'middle', dx: 0, dy: -15 },
+  'commerce-six-road': { x: 710, y: 1010, anchor: 'middle', dx: 0, dy: 20 },
+  'sp-stadium': { x: 760, y: 1010, anchor: 'middle', dx: -10, dy: 20 },
+  // old-high-court defined above
+  'shahpur': { x: 840, y: 1010, anchor: 'start', dx: 10, dy: -10 },
+  'gheekanta': { x: 880, y: 1050, anchor: 'start', dx: 15, dy: -5 },
+  'kalupur': { x: 920, y: 1090, anchor: 'start', dx: 15, dy: -5 },
+  'kankaria-east': { x: 960, y: 1130, anchor: 'middle', dx: 0, dy: 20 },
+  'apparel-park': { x: 1010, y: 1130, anchor: 'middle', dx: 0, dy: -15 },
+  'amraivadi': { x: 1060, y: 1130, anchor: 'middle', dx: 0, dy: 20 },
+  'rabari-colony': { x: 1110, y: 1130, anchor: 'middle', dx: 0, dy: -15 },
+  'vastral': { x: 1160, y: 1130, anchor: 'middle', dx: 0, dy: 20 },
+  'nirant-cross-road': { x: 1210, y: 1130, anchor: 'middle', dx: 0, dy: -15 },
+  'vastral-gam': { x: 1250, y: 1170, anchor: 'start', dx: 15, dy: 4 },
+
+  // YELLOW LINE (North from Motera)
+  'koteshwar-road': { x: 1040, y: 690, anchor: 'end', dx: -15, dy: 0 },
+  'vishwakarma-college': { x: 1080, y: 650, anchor: 'start', dx: 15, dy: 4 },
+  'tapovan-circle': { x: 1120, y: 610, anchor: 'end', dx: -15, dy: 4 },
+  'narmada-canal': { x: 1160, y: 570, anchor: 'start', dx: 15, dy: 4 },
+  'koba-circle': { x: 1200, y: 530, anchor: 'end', dx: -15, dy: 4 },
+  'juna-koba': { x: 1240, y: 490, anchor: 'start', dx: 15, dy: 4 },
+  'koba-gam': { x: 1280, y: 450, anchor: 'start', dx: 15, dy: 4 },
+  'gnlu': { x: 1280, y: 410, anchor: 'end', dx: -15, dy: 4 },
+  'raysan': { x: 1280, y: 370, anchor: 'start', dx: 15, dy: 4 },
+  'randesan': { x: 1240, y: 330, anchor: 'start', dx: 15, dy: 4 },
+  'dholakuva-circle': { x: 1200, y: 290, anchor: 'start', dx: 15, dy: 4 },
+  'infocity': { x: 1200, y: 250, anchor: 'end', dx: -15, dy: 4 },
+  'sector-1': { x: 1240, y: 210, anchor: 'start', dx: 15, dy: 4 },
+  'sector-10a': { x: 1280, y: 170, anchor: 'start', dx: 15, dy: 4 },
+  'sachivalaya': { x: 1280, y: 130, anchor: 'start', dx: 15, dy: 4 },
+  'akshardham': { x: 1240, y: 90, anchor: 'start', dx: 10, dy: -10 },
+  'juna-sachivalaya': { x: 1190, y: 90, anchor: 'middle', dx: 0, dy: -15 },
+  'sector-16': { x: 1140, y: 90, anchor: 'middle', dx: 0, dy: 20 },
+  'sector-24': { x: 1090, y: 90, anchor: 'middle', dx: 0, dy: -15 },
+  'mahatma-mandir': { x: 1040, y: 90, anchor: 'middle', dx: 0, dy: 20 },
+
+  // PINK LINE
+  'koteshwar-prachin-mandir': { x: 1160, y: 690, anchor: 'middle', dx: 0, dy: -15 },
+  'ashram-road': { x: 1100, y: 690, anchor: 'middle', dx: 0, dy: 20 },
+  'sabarmati-river': { x: 1200, y: 730, anchor: 'start', dx: 15, dy: 4 },
+  'sardarnagar': { x: 1200, y: 780, anchor: 'start', dx: 15, dy: 4 },
+  'airport': { x: 1200, y: 830, anchor: 'start', dx: 15, dy: 4 },
+
+  // PURPLE LINE
+  'pdeu': { x: 1400, y: 410, anchor: 'middle', dx: 0, dy: 20 },
+  'gift-city': { x: 1520, y: 410, anchor: 'middle', dx: 0, dy: 20 },
+};
 
 function computeStationPositions() {
   const positions = {};
-
-  // BLUE LINE — horizontal, y=480, from x=60 to x=1340
-  const blueStations = STATIONS.filter(s => s.line === 'blue').sort((a, b) => a.order - b.order);
-  const blueY = 480;
-  const blueXStart = 60;
-  const blueXEnd = 1340;
-  const blueStep = (blueXEnd - blueXStart) / (blueStations.length - 1);
-  blueStations.forEach((s, i) => {
-    positions[s.id] = { x: blueXStart + i * blueStep, y: blueY };
+  STATIONS.forEach(s => {
+    const loc = SCHEMATIC[s.id];
+    if (loc) {
+      positions[s.id] = loc;
+    } else {
+      // Fallback in case a station is missing from schematic
+      positions[s.id] = { x: 800, y: 800, anchor: 'middle', dx: 0, dy: 0 };
+    }
   });
-
-  // RED LINE — vertical, x = Old High Court's x, from y=80 (Motera) to y=800 (APMC)
-  const redStations = STATIONS.filter(s => s.line === 'red').sort((a, b) => a.order - b.order);
-  // Old High Court is Blue station order 8 — find its x position
-  const ohcX = positions['old-high-court']?.x || 620;
-  const redYStart = 800; // APMC at bottom (order 1)
-  const redYEnd = 80;    // Motera at top (order 14)
-  const redStep = (redYEnd - redYStart) / (redStations.length - 1);
-  redStations.forEach((s, i) => {
-    positions[s.id] = { x: ohcX, y: redYStart + i * redStep };
-  });
-
-  // YELLOW LINE — extending from Motera Stadium (top of Red) going northeast then curving east
-  const yellowStations = STATIONS.filter(s => s.line === 'yellow').sort((a, b) => a.order - b.order);
-  const moteraPos = positions['motera-stadium'] || { x: ohcX, y: 80 };
-  // Start from Motera position, go right and slightly down
-  yellowStations.forEach((s, i) => {
-    const t = i / (yellowStations.length - 1);
-    // Arc from Motera: go right with a gentle downward curve
-    const startX = moteraPos.x + 30;
-    const endX = 1360;
-    const x = startX + (endX - startX) * t;
-    // Gentle sine curve for visual appeal
-    const y = moteraPos.y + 20 + t * 200 + Math.sin(t * Math.PI) * 60;
-    positions[s.id] = { x, y };
-  });
-
-  // PINK LINE — short spur branching NW from near Koteshwar/Motera area
-  const pinkStations = STATIONS.filter(s => s.line === 'pink').sort((a, b) => a.order - b.order);
-  const pinkStartX = moteraPos.x - 40;
-  const pinkStartY = moteraPos.y + 40;
-  pinkStations.forEach((s, i) => {
-    const t = i / Math.max(pinkStations.length - 1, 1);
-    positions[s.id] = {
-      x: pinkStartX - t * 280,
-      y: pinkStartY - t * 100,
-    };
-  });
-
-  // PURPLE LINE — short spur from GNLU going east
-  const purpleStations = STATIONS.filter(s => s.line === 'purple').sort((a, b) => a.order - b.order);
-  const gnluPos = positions['gnlu'] || { x: 900, y: 200 };
-  purpleStations.forEach((s, i) => {
-    const t = i / Math.max(purpleStations.length - 1, 1);
-    positions[s.id] = {
-      x: gnluPos.x + 20 + t * 120,
-      y: gnluPos.y + 40 + t * 70,
-    };
-  });
-
   return positions;
 }
 
@@ -88,7 +105,18 @@ const stationById = Object.fromEntries(STATIONS.map(s => [s.id, s]));
 // ── Line path generator ──
 function getLinePath(lineKey) {
   const stations = STATIONS.filter(s => s.line === lineKey).sort((a, b) => a.order - b.order);
-  return stations.map(s => POSITIONS[s.id]).filter(Boolean);
+  const points = stations.map(s => POSITIONS[s.id]).filter(Boolean);
+
+  // Visually connect spurs to their main lines
+  if (lineKey === 'yellow') {
+    points.unshift(POSITIONS['motera-stadium']);
+  } else if (lineKey === 'pink') {
+    points.unshift(POSITIONS['koteshwar-road']);
+  } else if (lineKey === 'purple') {
+    points.unshift(POSITIONS['gnlu']);
+  }
+
+  return points;
 }
 
 function pointsToSvgPath(points) {
@@ -107,22 +135,22 @@ function Tooltip({ station, position }) {
       position: 'absolute',
       left: position.clientX + 14,
       top: position.clientY - 40,
-      background: 'var(--bg-secondary)',
+      background: 'var(--bg-primary)',
       border: '1px solid var(--border-color)',
-      borderRadius: 'var(--radius-md)',
-      padding: '8px 14px',
+      borderRadius: '12px',
+      padding: '12px 16px',
       pointerEvents: 'none',
       zIndex: 100,
-      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)',
       whiteSpace: 'nowrap',
     }}>
-      <p style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{station.name}</p>
-      <p style={{ fontSize: '0.75rem', color: line?.color || 'var(--text-muted)', fontWeight: 500 }}>
-        {line?.name || station.line} · Station {station.order}
+      <p style={{ fontWeight: 800, fontSize: '0.95rem', margin: '0 0 4px', color: 'var(--text-primary)' }}>{station.name}</p>
+      <p style={{ fontSize: '0.75rem', margin: 0, color: line?.color || 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        {line?.name || `${station.line} Line`}
       </p>
       {station.interchange && (
-        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-          ⇄ Interchange: {station.interchange.map(l => LINES[l]?.name || l).join(', ')}
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '6px 0 0', fontWeight: 600 }}>
+          <span style={{ marginRight: '4px' }}>⇄</span> Interchange
         </p>
       )}
     </div>
@@ -172,7 +200,7 @@ function RouteSummaryCard({ fromStation, toStation, route, onContinue, onClear, 
             background: '#22c55e', flexShrink: 0,
           }} />
           <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-            {fromStation?.name || 'Select FROM station'}
+            {fromStation?.name || 'Select FROM station 🔄'}
           </span>
         </div>
 
@@ -198,7 +226,7 @@ function RouteSummaryCard({ fromStation, toStation, route, onContinue, onClear, 
             background: '#ef4444', flexShrink: 0,
           }} />
           <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-            {toStation?.name || 'Select TO station'}
+            {toStation?.name || 'Select TO station 🔄'}
           </span>
         </div>
       </div>
@@ -244,7 +272,7 @@ function RouteSummaryCard({ fromStation, toStation, route, onContinue, onClear, 
             style={{ flex: 1 }}
             onClick={handleContinue}
           >
-            🎫 Continue to Booking
+            🎫 Continue
           </button>
         )}
         <button
@@ -301,6 +329,7 @@ export default function InteractiveMetroMap({
   initialFrom,
   initialTo,
   onStationInfo,
+  onContinueAction,
 }) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
@@ -312,7 +341,7 @@ export default function InteractiveMetroMap({
   const { accessible } = useAccessibility();
 
   // Zoom/pan state
-  const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: 1400, h: 900 });
+  const [viewBox, setViewBox] = useState({ x: 300, y: 0, w: 1300, h: 1400 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState(null);
 
@@ -337,6 +366,12 @@ export default function InteractiveMetroMap({
 
   // Click handler — select stations
   const handleStationClick = useCallback((stationId) => {
+    // If we're on the map page (no select handler), just show station info
+    if (onStationInfo && !onStationSelect) {
+      onStationInfo(stationById[stationId]);
+      return;
+    }
+
     if (!fromId) {
       // First click → FROM
       setFromId(stationId);
@@ -352,7 +387,7 @@ export default function InteractiveMetroMap({
       setToId(null);
       if (onStationSelect) onStationSelect(stationById[stationId]?.name || '', '');
     }
-  }, [fromId, toId, onStationSelect]);
+  }, [fromId, toId, onStationSelect, onStationInfo]);
 
   const handleClear = useCallback(() => {
     setFromId(null);
@@ -362,7 +397,8 @@ export default function InteractiveMetroMap({
 
   const handleContinue = useCallback((from, to) => {
     if (onStationSelect) onStationSelect(from, to);
-  }, [onStationSelect]);
+    if (onContinueAction) onContinueAction();
+  }, [onStationSelect, onContinueAction]);
 
   // Hover handlers
   const handleMouseEnter = useCallback((station, e) => {
@@ -384,21 +420,35 @@ export default function InteractiveMetroMap({
   // Zoom via scroll
   const handleWheel = useCallback((e) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+    if (!svgRef.current) return;
+    
+    const rect = svgRef.current.getBoundingClientRect();
+    const scaleX = viewBox.w / rect.width;
+    const scaleY = viewBox.h / rect.height;
+
+    // Mouse position in SVG coordinates
+    const mouseX = (e.clientX - rect.left) * scaleX + viewBox.x;
+    const mouseY = (e.clientY - rect.top) * scaleY + viewBox.y;
+
+    const zoomFactor = e.deltaY > 0 ? 1.15 : 0.85; // Slightly faster zoom
+    
     setViewBox(prev => {
-      const newW = Math.max(400, Math.min(1400, prev.w * zoomFactor));
-      const newH = Math.max(260, Math.min(900, prev.h * zoomFactor));
-      // Zoom toward center
-      const cx = prev.x + prev.w / 2;
-      const cy = prev.y + prev.h / 2;
+      // Constrain zoom levels (min 400px wide, max 1800px wide)
+      const newW = Math.max(400, Math.min(1800, prev.w * zoomFactor));
+      const newH = Math.max(400, Math.min(1800, prev.h * zoomFactor));
+
+      // Calculate new x, y to keep mouseX, mouseY at the same screen position
+      const ratioW = newW / prev.w;
+      const ratioH = newH / prev.h;
+
       return {
-        x: cx - newW / 2,
-        y: cy - newH / 2,
+        x: mouseX - (mouseX - prev.x) * ratioW,
+        y: mouseY - (mouseY - prev.y) * ratioH,
         w: newW,
         h: newH,
       };
     });
-  }, []);
+  }, [viewBox]);
 
   // Pan handlers
   const handlePanStart = useCallback((e) => {
@@ -453,21 +503,6 @@ export default function InteractiveMetroMap({
   // ── Render ──
   const lineKeys = Object.keys(LINES);
 
-  // Determine label angle per station to avoid overlaps
-  const getLabelAngle = (station) => {
-    // Yellow line is dense — rotate labels
-    if (station.line === 'yellow') return -35;
-    if (station.line === 'blue') return -45;
-    if (station.line === 'pink') return -30;
-    return 0;
-  };
-
-  const getLabelAnchor = (station) => {
-    if (station.line === 'red') return { dx: 14, dy: 5, rotate: 0 };
-    const angle = getLabelAngle(station);
-    return { dx: 0, dy: -14, rotate: angle };
-  };
-
   return (
     <div
       ref={containerRef}
@@ -518,6 +553,22 @@ export default function InteractiveMetroMap({
             `}</style>
           </defs>
 
+          {/* ── Background Map Elements (Sabarmati River) ── */}
+          <path
+            d="M 1250 0 Q 1200 400 1150 700 T 1100 1400"
+            fill="none"
+            stroke="rgba(59, 130, 246, 0.15)"
+            strokeWidth="80"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 1250 0 Q 1200 400 1150 700 T 1100 1400"
+            fill="none"
+            stroke="rgba(59, 130, 246, 0.25)"
+            strokeWidth="30"
+            strokeLinecap="round"
+          />
+
           {/* ── Line paths (background) ── */}
           {lineKeys.map(lineKey => {
             const points = getLinePath(lineKey);
@@ -528,10 +579,10 @@ export default function InteractiveMetroMap({
                 d={pathD}
                 fill="none"
                 stroke={LINES[lineKey].color}
-                strokeWidth="5"
+                strokeWidth="6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                opacity={route ? 0.2 : 0.8}
+                opacity={route ? 0.2 : 1}
               />
             );
           })}
@@ -548,7 +599,7 @@ export default function InteractiveMetroMap({
                 d={pathD}
                 fill="none"
                 stroke={seg.color}
-                strokeWidth="10"
+                strokeWidth="12"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 filter="url(#glow)"
@@ -558,7 +609,7 @@ export default function InteractiveMetroMap({
             );
           })}
 
-          {/* ── Station dots ── */}
+          {/* ── Station dots and labels ── */}
           {STATIONS.map(station => {
             const pos = POSITIONS[station.id];
             if (!pos) return null;
@@ -569,11 +620,27 @@ export default function InteractiveMetroMap({
             const isInterchange = station.interchange && station.interchange.length > 0;
             const isHovered = hoveredStation?.id === station.id;
 
-            const baseRadius = isInterchange ? 10 : 7;
+            const baseRadius = isInterchange ? 9 : 6;
             const radius = (isFrom || isTo || isHovered) ? baseRadius + 3 : baseRadius;
+            const labelOpacity = route && !isOnRoute && !isFrom && !isTo ? 0.2 : 1;
 
             return (
               <g key={station.id}>
+                {/* Station Label */}
+                <text
+                  x={pos.x + (pos.dx || 0)}
+                  y={pos.y + (pos.dy || 0)}
+                  textAnchor={pos.anchor || 'start'}
+                  alignmentBaseline="middle"
+                  fontSize="12"
+                  fontWeight={isFrom || isTo ? 800 : isInterchange ? 700 : 500}
+                  fill="var(--text-primary)"
+                  opacity={labelOpacity}
+                  style={{ pointerEvents: 'none', textShadow: '0 1px 3px var(--bg-primary), 0 -1px 3px var(--bg-primary), 1px 0 3px var(--bg-primary), -1px 0 3px var(--bg-primary)' }}
+                >
+                  {station.name}
+                </text>
+
                 {/* Interchange outer ring */}
                 {isInterchange && (
                   <circle
@@ -631,30 +698,6 @@ export default function InteractiveMetroMap({
                     ♿
                   </text>
                 )}
-
-                {/* Station label */}
-                {(() => {
-                  const labelInfo = getLabelAnchor(station);
-                  const showLabel = !compact || isFrom || isTo || isHovered || isOnRoute;
-                  if (!showLabel) return null;
-                  return (
-                    <text
-                      x={pos.x + labelInfo.dx}
-                      y={pos.y + labelInfo.dy}
-                      textAnchor={station.line === 'red' ? 'start' : 'middle'}
-                      fontSize={compact ? '8' : '9'}
-                      fontWeight={isFrom || isTo ? 700 : 400}
-                      fill={route && !isOnRoute && !isFrom && !isTo ? 'var(--text-muted, #999)' : 'var(--text-primary, #333)'}
-                      style={{
-                        pointerEvents: 'none',
-                        userSelect: 'none',
-                      }}
-                      transform={labelInfo.rotate ? `rotate(${labelInfo.rotate}, ${pos.x + labelInfo.dx}, ${pos.y + labelInfo.dy})` : undefined}
-                    >
-                      {station.name}
-                    </text>
-                  );
-                })()}
               </g>
             );
           })}
@@ -718,10 +761,12 @@ export default function InteractiveMetroMap({
           zIndex: 10,
           backdropFilter: 'blur(8px)',
         }}>
-          Click any station to select your <strong>FROM</strong> station
+          {onStationSelect 
+            ? <>Click any station to select your <strong>FROM</strong> station</> 
+            : 'Click any station for details'}
         </div>
       )}
-      {fromId && !toId && (
+      {fromId && !toId && onStationSelect && (
         <div style={{
           position: 'absolute',
           top: compact ? '12px' : '16px',

@@ -60,6 +60,10 @@ services:
       - DJANGO_API_URL=http://intelligence-api:8000
       - CLIENT_URL=http://localhost:3000
       - NODE_ENV=development
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD}
     depends_on:
       - mongo
       - intelligence-api

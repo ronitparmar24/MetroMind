@@ -40,3 +40,21 @@ class BestDepartureInputSerializer(serializers.Serializer):
     station = serializers.CharField(max_length=100)
     hour = serializers.IntegerField(min_value=0, max_value=23)
     day = serializers.IntegerField(min_value=0, max_value=6)
+
+
+class ClusterProfileSerializer(serializers.Serializer):
+    avg_hour = serializers.FloatField(min_value=0, max_value=24, default=12.0)
+    weekend_ratio = serializers.FloatField(min_value=0, max_value=1.0, default=0.0)
+    peak_ratio = serializers.FloatField(min_value=0, max_value=1.0, default=0.0)
+    avg_distance = serializers.FloatField(min_value=0, default=5.0)
+    trip_count = serializers.IntegerField(min_value=0, default=1)
+
+
+class ClusterInputSerializer(serializers.Serializer):
+    user_profile = ClusterProfileSerializer()
+
+
+class ForecastInputSerializer(serializers.Serializer):
+    station = serializers.CharField(max_length=100)
+    start_datetime = serializers.DateTimeField()
+    hours_ahead = serializers.IntegerField(min_value=1, max_value=24, default=17)

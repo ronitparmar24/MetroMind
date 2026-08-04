@@ -36,17 +36,18 @@ export const STATIONS = [
   { id: 'shreyas',             name: 'Shreyas',                   line: 'red',    order: 4,  lat: 23.0118, lng: 72.5726 },
   { id: 'paldi',               name: 'Paldi',                     line: 'red',    order: 5,  lat: 23.0178, lng: 72.5701 },
   { id: 'gandhigram',          name: 'Gandhigram',                line: 'red',    order: 6,  lat: 23.0228, lng: 72.5686 },
-  { id: 'usmanpura',           name: 'Usmanpura',                 line: 'red',    order: 7,  lat: 23.0353, lng: 72.5663 },
-  { id: 'vijaynagar',          name: 'Vijaynagar',                line: 'red',    order: 8,  lat: 23.0478, lng: 72.5643 },
-  { id: 'vadaj',               name: 'Vadaj',                     line: 'red',    order: 9,  lat: 23.0578, lng: 72.5619 },
-  { id: 'ranip',               name: 'Ranip',                     line: 'red',    order: 10, lat: 23.0683, lng: 72.5591 },
-  { id: 'sabarmati-railway',   name: 'Sabarmati Railway Station', line: 'red',    order: 11, lat: 23.0776, lng: 72.5563 },
-  { id: 'aec',                 name: 'AEC',                       line: 'red',    order: 12, lat: 23.0853, lng: 72.5543 },
-  { id: 'sabarmati',           name: 'Sabarmati',                 line: 'red',    order: 13, lat: 23.0918, lng: 72.5521 },
-  { id: 'motera-stadium',      name: 'Motera Stadium',            line: 'red',    order: 14, lat: 23.0993, lng: 72.5497, interchange: ['yellow'] },
+  { id: 'old-high-court-red',  name: 'Old High Court',            line: 'red',    order: 7,  lat: 23.0253, lng: 72.5778, interchange: ['blue'] },
+  { id: 'usmanpura',           name: 'Usmanpura',                 line: 'red',    order: 8,  lat: 23.0353, lng: 72.5663 },
+  { id: 'vijaynagar',          name: 'Vijaynagar',                line: 'red',    order: 9,  lat: 23.0478, lng: 72.5643 },
+  { id: 'vadaj',               name: 'Vadaj',                     line: 'red',    order: 10, lat: 23.0578, lng: 72.5619 },
+  { id: 'ranip',               name: 'Ranip',                     line: 'red',    order: 11, lat: 23.0683, lng: 72.5591 },
+  { id: 'sabarmati-railway',   name: 'Sabarmati Railway Station', line: 'red',    order: 12, lat: 23.0776, lng: 72.5563 },
+  { id: 'aec',                 name: 'AEC',                       line: 'red',    order: 13, lat: 23.0853, lng: 72.5543 },
+  { id: 'sabarmati',           name: 'Sabarmati',                 line: 'red',    order: 14, lat: 23.0918, lng: 72.5521 },
+  { id: 'motera-stadium',      name: 'Motera Stadium',            line: 'red',    order: 15, lat: 23.0993, lng: 72.5497, interchange: ['yellow'] },
 
   // YELLOW LINE — Koteshwar Road to Mahatma Mandir (through GNLU)
-  { id: 'koteshwar-road',      name: 'Koteshwar Road',            line: 'yellow', order: 1,  lat: 23.1038, lng: 72.5571 },
+  { id: 'koteshwar-road',      name: 'Koteshwar Road',            line: 'yellow', order: 1,  lat: 23.1038, lng: 72.5571, interchange: ['pink'] },
   { id: 'vishwakarma-college', name: 'Vishwakarma College',       line: 'yellow', order: 2,  lat: 23.1108, lng: 72.5631 },
   { id: 'tapovan-circle',      name: 'Tapovan Circle',            line: 'yellow', order: 3,  lat: 23.1178, lng: 72.5683 },
   { id: 'narmada-canal',       name: 'Narmada Canal',             line: 'yellow', order: 4,  lat: 23.1251, lng: 72.5741 },
@@ -94,25 +95,51 @@ export const NCMC_INFO = {
 
 // ═══════════════════════════════════════════════════════════
 // STATION FACILITIES — per-station facility availability
-// Structured so individual stations can be overridden later
 // ═══════════════════════════════════════════════════════════
 const DEFAULT_FACILITIES = {
   ticketVendingMachine: true,
-  liftsAndEscalators: true,
-  securityCheck: true,
-  publicWashrooms: true,
+  parking: false,
+  drinkingWater: true,
+  washroom: true,
+  wheelchairAccess: true,
+  foodKiosks: false,
+};
+
+const OVERRIDE_FACILITIES = {
+  // Major inter-city hubs / Interchanges
+  'kalupur': { ...DEFAULT_FACILITIES, parking: true, foodKiosks: true, wheelchairAccess: true },
+  'sabarmati-railway': { ...DEFAULT_FACILITIES, parking: true, foodKiosks: true },
+  'old-high-court': { ...DEFAULT_FACILITIES, foodKiosks: true, parking: false },
+  
+  // Tourist / Stadium / End of lines
+  'motera-stadium': { ...DEFAULT_FACILITIES, parking: true, foodKiosks: true },
+  'kankaria-east': { ...DEFAULT_FACILITIES, foodKiosks: true },
+  'thaltej-gam': { ...DEFAULT_FACILITIES, parking: true },
+  'vastral-gam': { ...DEFAULT_FACILITIES, parking: true },
+  'apmc': { ...DEFAULT_FACILITIES, parking: true, foodKiosks: true },
+
+  // Gandhinagar & GIFT City
+  'gift-city': { ...DEFAULT_FACILITIES, foodKiosks: true, parking: true },
+  'mahatma-mandir': { ...DEFAULT_FACILITIES, parking: true },
+  'akshardham': { ...DEFAULT_FACILITIES, foodKiosks: true },
+  'gnlu': { ...DEFAULT_FACILITIES, parking: true, foodKiosks: true },
+  
+  // Airport
+  'airport': { ...DEFAULT_FACILITIES, parking: true, foodKiosks: true },
 };
 
 export const FACILITY_LABELS = {
   ticketVendingMachine: { label: 'Ticket Vending Machine (TVM)', icon: '🎫' },
-  liftsAndEscalators: { label: 'Lifts & Escalators', icon: '🛗' },
-  securityCheck: { label: 'Security Check', icon: '🛡️' },
-  publicWashrooms: { label: 'Public Washrooms', icon: '🚻' },
+  parking: { label: 'Parking Available', icon: '🅿️' },
+  drinkingWater: { label: 'Drinking Water', icon: '💧' },
+  washroom: { label: 'Public Washrooms', icon: '🚻' },
+  wheelchairAccess: { label: 'Wheelchair Access', icon: '♿' },
+  foodKiosks: { label: 'Food & Beverages', icon: '🍔' },
 };
 
-// Build per-station facilities map — default all stations to having all facilities
+// Build per-station facilities map — merge overrides with default facilities
 export const STATION_FACILITIES = Object.fromEntries(
-  STATIONS.map(s => [s.id, { ...DEFAULT_FACILITIES }])
+  STATIONS.map(s => [s.id, OVERRIDE_FACILITIES[s.id] || { ...DEFAULT_FACILITIES }])
 );
 
 // ═══════════════════════════════════════════════════════════

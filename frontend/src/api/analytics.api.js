@@ -7,6 +7,7 @@ export const getHeatmap = () => api.get('/api/analytics/heatmap');
 export const getPersonality = () => api.get('/api/analytics/personality');
 export const compareRoutes = (source, destination) => api.post('/api/routes/compare', { source, destination });
 export const getLeaderboard = () => api.get('/api/analytics/leaderboard');
+export const downloadCarbonPassportPDF = () => api.get('/api/analytics/carbon-passport/pdf', { responseType: 'blob' });
 export const getPass = () => api.get('/api/pass');
 export const buyPass = (planType) => api.post('/api/pass/buy', { planType });
 export const getSavedRoutes = () => api.get('/api/savedroutes');

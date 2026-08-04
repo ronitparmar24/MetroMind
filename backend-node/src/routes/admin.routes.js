@@ -101,18 +101,18 @@ router.get('/revenue-summary', async (req, res) => {
     
     const revenueStats = await Ticket.aggregate([
       { $match: { createdAt: { $gte: startOfMonth }, status: { $ne: 'cancelled' } } },
-      { $group: { _id: null, totalRevenue: { $sum: '$totalFare' }, avgFare: { $avg: '$totalFare' }, count: { $sum: 1 } } }
+      { $group: { _id: null, totalRevenue: { $sum: '$fare' }, avgFare: { $avg: '$fare' }, count: { $sum: 1 } } }
     ]);
     
     const revenueByDay = await Ticket.aggregate([
       { $match: { createdAt: { $gte: startOfMonth }, status: { $ne: 'cancelled' } } },
-      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, dailyRevenue: { $sum: '$totalFare' } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, dailyRevenue: { $sum: '$fare' } } },
       { $sort: { _id: 1 } }
     ]);
 
     const topRoutes = await Ticket.aggregate([
       { $match: { status: { $ne: 'cancelled' } } },
-      { $group: { _id: { source: '$sourceStation', dest: '$destinationStation' }, count: { $sum: 1 } } },
+      { $group: { _id: { source: '$source', dest: '$destination' }, count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 5 },
       { $project: { _id: 0, route: { $concat: ['$_id.source', ' to ', '$_id.dest'] }, count: 1 } }

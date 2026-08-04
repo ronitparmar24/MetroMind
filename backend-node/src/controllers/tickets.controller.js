@@ -190,6 +190,20 @@ const bookTicket = async (req, res, next) => {
 // GET /api/tickets
 const getTickets = async (req, res, next) => {
   try {
+    // Automatically transition past tickets from 'upcoming' to 'completed'
+    // We use the start of today to ensure any date before today gets completed.
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startOfToday = new Date(todayStr);
+
+    await Ticket.updateMany(
+      {
+        userId: req.user._id,
+        status: 'upcoming',
+        travelDate: { $lt: startOfToday },
+      },
+      { $set: { status: 'completed' } }
+    );
+
     const { status } = req.query;
     const filter = { userId: req.user._id };
     if (status) filter.status = status;

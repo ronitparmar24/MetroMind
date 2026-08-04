@@ -30,15 +30,17 @@ export default function AdminSupport() {
   };
 
   const cardStyle = {
-    background: 'var(--bg-secondary)',
-    borderRadius: '12px',
-    padding: '20px',
-    boxShadow: '0px 4px 20px rgba(0,0,0,0.05)',
-    border: '1px solid var(--border-color)',
-    marginBottom: '16px',
+    background: 'rgba(255,255,255,0.03)',
+    borderRadius: '16px',
+    padding: '24px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    marginBottom: '20px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px'
+    gap: '16px',
+    transition: 'transform 0.2s',
   };
 
   const pillStyle = (type) => ({
@@ -55,28 +57,28 @@ export default function AdminSupport() {
   });
 
   return (
-    <div style={{ color: 'var(--text-primary)', maxWidth: '900px' }}>
-      <h1 style={{ marginBottom: '24px', fontSize: '1.8rem', fontWeight: 700 }}>Support Queue</h1>
+    <div style={{ color: 'var(--text-primary)', maxWidth: '1000px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
+      <h1 style={{ marginBottom: '32px', fontSize: '2.2rem', fontWeight: 800, textShadow: '0 2px 10px rgba(255,255,255,0.1)' }}>Support Queue</h1>
 
       {loading ? (
-        <div>Loading Queue...</div>
+        <div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>Loading Queue...</div>
       ) : queue.length === 0 ? (
-        <div style={{ ...cardStyle, textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-          No pending support tickets. Great job!
+        <div style={{ ...cardStyle, textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.6)', borderStyle: 'dashed' }}>
+          No pending support tickets. Great job! 🎉
         </div>
       ) : (
         queue.map(item => (
-          <div key={item._id} style={cardStyle}>
+          <div key={item._id} style={cardStyle} className="hover-lift">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                   <span style={pillStyle(item.queueType)}>{item.queueType === 'feedback' ? 'Feedback' : 'Lost & Found'}</span>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
                     {new Date(item.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem' }}>
-                  {item.userId?.name} <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 400 }}>({item.userId?.email})</span>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 700 }}>
+                  {item.userId?.name} <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>({item.userId?.email})</span>
                 </h3>
               </div>
               
@@ -84,30 +86,31 @@ export default function AdminSupport() {
                 <button
                   onClick={() => handleResolve(item._id, item.queueType)}
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: 'var(--accent-primary)',
-                    color: '#fff',
-                    fontWeight: 600,
+                    padding: '10px 20px',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(16,185,129,0.3)',
+                    background: 'linear-gradient(90deg, rgba(16,185,129,0.2) 0%, rgba(52,211,153,0.1) 100%)',
+                    color: '#34d399',
+                    fontWeight: 700,
                     cursor: 'pointer',
-                    transition: 'opacity 0.2s'
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 12px rgba(16,185,129,0.1)'
                   }}
-                  onMouseOver={(e) => e.target.style.opacity = 0.8}
-                  onMouseOut={(e) => e.target.style.opacity = 1}
+                  onMouseOver={(e) => e.target.style.background = 'linear-gradient(90deg, rgba(16,185,129,0.3) 0%, rgba(52,211,153,0.2) 100%)'}
+                  onMouseOut={(e) => e.target.style.background = 'linear-gradient(90deg, rgba(16,185,129,0.2) 0%, rgba(52,211,153,0.1) 100%)'}
                 >
                   Resolve
                 </button>
               )}
             </div>
             
-            <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-              <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+            <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, fontSize: '0.95rem' }}>
                 {item.text || item.itemDescription}
               </p>
               {item.category && (
-                <p style={{ margin: '12px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  <strong>Category:</strong> {item.category}
+                <p style={{ margin: '12px 0 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>
+                  <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Category:</strong> {item.category}
                 </p>
               )}
               {item.moodRating && (

@@ -37,11 +37,12 @@ export default function AdminModels() {
   })) : [];
 
   const cardStyle = {
-    background: 'var(--bg-secondary)',
+    background: 'rgba(255,255,255,0.03)',
     borderRadius: '16px',
     padding: '24px',
-    boxShadow: '0px 4px 20px rgba(0,0,0,0.05)',
-    border: '1px solid var(--border-color)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
     marginBottom: '24px'
   };
 
@@ -59,34 +60,36 @@ export default function AdminModels() {
   });
 
   return (
-    <div style={{ color: 'var(--text-primary)' }}>
-      <h1 style={{ marginBottom: '24px', fontSize: '1.8rem', fontWeight: 700 }}>ML Model Performance (MLOps)</h1>
+    <div style={{ color: 'var(--text-primary)', maxWidth: '1400px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
+      <h1 style={{ marginBottom: '24px', fontSize: '2.2rem', fontWeight: 800, textShadow: '0 2px 10px rgba(255,255,255,0.1)' }}>
+        ML Model Performance <span style={{ fontSize: '1rem', padding: '4px 10px', background: 'rgba(99,102,241,0.2)', color: '#818cf8', borderRadius: '20px', verticalAlign: 'middle', marginLeft: '12px' }}>MLOps Center</span>
+      </h1>
 
       <div style={cardStyle}>
-        <h3 style={{ marginBottom: '16px' }}>Trained Model Comparison</h3>
+        <h3 style={{ marginBottom: '16px', fontSize: '1.2rem', fontWeight: 700 }}>Trained Model Comparison</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-              <th style={{ padding: '12px', color: 'var(--text-secondary)' }}>Model Name</th>
-              <th style={{ padding: '12px', color: 'var(--text-secondary)' }}>Accuracy</th>
-              <th style={{ padding: '12px', color: 'var(--text-secondary)' }}>F1-Score</th>
-              <th style={{ padding: '12px', color: 'var(--text-secondary)' }}>Status</th>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              <th style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Model Architecture</th>
+              <th style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Accuracy</th>
+              <th style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>F1-Score</th>
+              <th style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Status</th>
             </tr>
           </thead>
           <tbody>
             {perf && perf.models && Object.entries(perf.models).map(([modelId, metrics]) => {
               const isLive = perf.deployed_model === modelId;
               return (
-                <tr key={modelId} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '12px', fontWeight: isLive ? 600 : 400 }}>{modelId}</td>
-                  <td style={{ padding: '12px', fontVariantNumeric: 'tabular-nums' }}>
+                <tr key={modelId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: isLive ? 'rgba(16,185,129,0.03)' : 'transparent', transition: 'background 0.2s' }} className="hover-lift">
+                  <td style={{ padding: '16px 12px', fontWeight: isLive ? 700 : 500, color: isLive ? '#fff' : 'var(--text-primary)' }}>{modelId}</td>
+                  <td style={{ padding: '16px 12px', fontVariantNumeric: 'tabular-nums', color: '#fff', fontSize: '1.1rem' }}>
                     {(metrics.accuracy * 100).toFixed(2)}%
                   </td>
-                  <td style={{ padding: '12px', fontVariantNumeric: 'tabular-nums' }}>
+                  <td style={{ padding: '16px 12px', fontVariantNumeric: 'tabular-nums', color: '#fff', fontSize: '1.1rem' }}>
                     {(metrics.f1 * 100).toFixed(2)}%
                   </td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={pillStyle(isLive)}>{isLive ? 'LIVE' : 'STANDBY'}</span>
+                  <td style={{ padding: '16px 12px' }}>
+                    <span style={{...pillStyle(isLive), animation: isLive ? 'dashPulse 3s infinite' : 'none'}}>{isLive ? 'LIVE' : 'STANDBY'}</span>
                   </td>
                 </tr>
               );
@@ -97,19 +100,37 @@ export default function AdminModels() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         <div style={cardStyle}>
-          <h3 style={{ marginBottom: '16px' }}>Prediction Volume (Last 30 Days)</h3>
+          <h3 style={{ marginBottom: '16px', fontSize: '1.2rem', fontWeight: 700 }}>Prediction Volume (Last 30 Days)</h3>
           <div style={{ height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={volumeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
                 <XAxis dataKey="date" stroke="var(--text-muted)" tick={{fill: 'var(--text-secondary)'}} />
                 <YAxis stroke="var(--text-muted)" tick={{fill: 'var(--text-secondary)'}} />
-                <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px' }} />
-                <Legend />
-                <Area type="monotone" dataKey="crowd" stackId="1" stroke="#6366f1" fill="#6366f1" />
-                <Area type="monotone" dataKey="anomaly" stackId="1" stroke="#ef4444" fill="#ef4444" />
-                <Area type="monotone" dataKey="personality" stackId="1" stroke="#10b981" fill="#10b981" />
-                <Area type="monotone" dataKey="best_departure" stackId="1" stroke="#f59e0b" fill="#f59e0b" />
+                <Tooltip contentStyle={{ background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', backdropFilter: 'blur(10px)', color: '#fff' }} itemStyle={{ color: '#fff' }} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px' }} />
+                <Area type="monotone" dataKey="crowd" stackId="1" stroke="#818cf8" fill="url(#colorCrowd)" strokeWidth={2} />
+                <Area type="monotone" dataKey="anomaly" stackId="1" stroke="#fb7185" fill="url(#colorAnomaly)" strokeWidth={2} />
+                <Area type="monotone" dataKey="personality" stackId="1" stroke="#34d399" fill="url(#colorPersonality)" strokeWidth={2} />
+                <Area type="monotone" dataKey="best_departure" stackId="1" stroke="#fbbf24" fill="url(#colorBestDeparture)" strokeWidth={2} />
+                <defs>
+                  <linearGradient id="colorCrowd" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#818cf8" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorAnomaly" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#fb7185" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#fb7185" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorPersonality" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#34d399" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#34d399" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorBestDeparture" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#fbbf24" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -117,45 +138,45 @@ export default function AdminModels() {
 
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0 }}>Feature Drift Monitor</h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Training vs Live (7d)</span>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Feature Drift Monitor</h3>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>Training vs Live (7d)</span>
           </div>
 
           {drift && (
             <div>
-              <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '16px' }}>
-                <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Average Hour of Booking</p>
+              <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '16px' }} className="hover-lift">
+                <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Average Hour of Booking</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{drift.average_hour.live_last_7d}</span>
-                    <span style={{ marginLeft: '8px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>vs {drift.average_hour.training} (Train)</span>
+                    <span style={{ fontSize: '1.8rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: '#fff', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>{drift.average_hour.live_last_7d}</span>
+                    <span style={{ marginLeft: '12px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>vs {drift.average_hour.training} (Train)</span>
                   </div>
                   {Math.abs(drift.average_hour.delta) > 1.5 && (
-                    <span style={{ ...pillStyle(false), background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.3)' }}>DRIFT DETECTED</span>
+                    <span style={{ ...pillStyle(false), background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', borderColor: 'rgba(245, 158, 11, 0.4)', animation: 'dashPulse 1.5s infinite', boxShadow: '0 0 15px rgba(245, 158, 11, 0.3)' }}>DRIFT DETECTED</span>
                   )}
                 </div>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: drift.average_hour.delta > 0 ? '#34d399' : '#f87171' }}>
+                <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', fontWeight: 600, color: drift.average_hour.delta > 0 ? '#34d399' : '#fb7185' }}>
                   Δ {drift.average_hour.delta > 0 ? '+' : ''}{drift.average_hour.delta} hours
                 </p>
               </div>
 
-              <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <p style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Top Frequency Stations Shift</p>
-                <div style={{ display: 'flex', gap: '20px' }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>TRAINING DATA</p>
+              <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }} className="hover-lift">
+                <p style={{ margin: '0 0 16px 0', fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Top Frequency Stations Shift</p>
+                <div style={{ display: 'flex', gap: '24px' }}>
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                    <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>TRAINING DATA</p>
                     {drift.top_stations.training.slice(0,3).map((st, i) => (
-                      <div key={i} style={{ fontSize: '0.85rem', marginBottom: '4px' }}>{i+1}. {st.station}</div>
+                      <div key={i} style={{ fontSize: '0.9rem', marginBottom: '8px', color: 'var(--text-primary)' }}>{i+1}. {st.station}</div>
                     ))}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>LIVE (LAST 7D)</p>
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                    <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>LIVE (LAST 7D)</p>
                     {drift.top_stations.live_last_7d.slice(0,3).map((st, i) => {
                       const changed = drift.top_stations.training[i]?.station !== st.station;
                       return (
-                        <div key={i} style={{ fontSize: '0.85rem', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div key={i} style={{ fontSize: '0.9rem', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', color: changed ? '#fff' : 'var(--text-primary)' }}>
                           {i+1}. {st.station}
-                          {changed && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}></span>}
+                          {changed && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fbbf24', display: 'inline-block', boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)' }}></span>}
                         </div>
                       );
                     })}

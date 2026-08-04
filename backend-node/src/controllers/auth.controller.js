@@ -6,6 +6,7 @@ const Wallet = require('../models/Wallet.model');
 const { signToken } = require('../utils/jwt');
 const { GOOGLE_CLIENT_ID } = require('../config/env');
 const { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail } = require('../utils/emailer');
+const { validateEmail } = require('../services/emailValidator.service');
 
 // ─── Helper: generate 6-digit OTP and its bcrypt hash ───
 const generateOtp = async () => {
@@ -27,6 +28,23 @@ const register = async (req, res, next) => {
       const err = new Error('User with this email already exists');
       err.statusCode = 409;
       return next(err);
+    }
+
+    // ── AbstractAPI email validation (before wasting OTP quota) ──────
+    const emailCheck = await validateEmail(email.toLowerCase());
+    if (!emailCheck.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'This email address looks invalid or undeliverable — please use a real email address.',
+        field: 'email',
+      });
+    }
+    if (emailCheck.isDisposable) {
+      return res.status(400).json({
+        success: false,
+        error: 'Temporary or disposable email addresses are not allowed. Please use your real email address.',
+        field: 'email',
+      });
     }
 
     // Hash password

@@ -8,7 +8,7 @@ const Wallet = require('../models/Wallet.model');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 // Use v1 endpoint — lower quota pressure than v1beta used by the JS SDK
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 // ── Gemini REST call (direct fetch, no SDK) ───────────────────────────────
 async function callGemini(systemPrompt, userMessage, history = []) {

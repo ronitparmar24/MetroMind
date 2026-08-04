@@ -2,6 +2,7 @@
 // MetroMind Voice AI — premium glassmorphic UI, fully readable.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/index';
 
@@ -266,7 +267,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, weatherData }) {
     : isSpeaking ? '🔊 Speaking…'
     : '✦ Gemini 2.0 Flash';
 
-  return (
+  return createPortal(
     <>
       <style>{`
         @keyframes vmBar0 { from{height:5px} to{height:12px} }
@@ -557,6 +558,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, weatherData }) {
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

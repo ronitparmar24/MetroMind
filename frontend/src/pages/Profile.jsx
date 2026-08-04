@@ -3,7 +3,7 @@
 // Layout: same S-object / CSS-variable pattern as Dashboard.jsx
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getPersonalityProfile } from '../api/predict.api';
+import { getPersonalityProfile, getCommuterCluster } from '../api/predict.api';
 import { getStationProfile } from '../api/analytics.api';
 import { STATIONS } from '../constants/stations';
 import { formatDate } from '../utils/formatters';
@@ -358,6 +358,64 @@ function PersonalityBreakdown() {
    STATION EXPLORER
    Django station-profile → global ML stats + personal trips
    ═══════════════════════════════════════════════════════════ */
+function CommuterClusterCard() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getCommuterCluster()
+      .then(res => {
+        if (res.data.cluster && res.data.cluster.clusterLabel) {
+          setData(res.data.cluster);
+        } else {
+          setData(null);
+        }
+      })
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ ...S.card, marginBottom: '16px' }}>
+        <div className="profile-card-pad" style={S.cardPad}>
+          <div style={{ ...S.skeleton, width: '150px', height: '14px', marginBottom: '16px' }} />
+          <div style={{ ...S.skeleton, width: '100%', height: '60px' }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  return (
+    <div style={{ ...S.card, marginBottom: '16px', background: 'var(--bg-tertiary)' }}>
+      <div className="profile-card-pad" style={S.cardPad}>
+        <div style={S.label}>Similar Commuters (Unsupervised ML)</div>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginTop: '12px' }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: 'var(--radius-md)',
+            background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.4rem', flexShrink: 0,
+          }}>
+            👥
+          </div>
+          <div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+              You're in the <span style={{ color: '#0B7DC3' }}>{data.clusterLabel}</span> group
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>
+              {data.similarCommuterCount} other commuters share your exact travel pattern. 
+              Unlike your rule-based Commute Personality, this insight is powered by a 
+              K-Means Clustering algorithm that groups users based on their multi-dimensional travel behavior.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StationExplorer() {
   const [station, setStation] = useState('');
   const [profile, setProfile] = useState(null);
@@ -632,6 +690,9 @@ export default function Profile() {
 
       {/* ═══ PERSONALITY BREAKDOWN (Django ML) ═══ */}
       <PersonalityBreakdown />
+
+      {/* ═══ SIMILAR COMMUTERS (Unsupervised ML) ═══ */}
+      <CommuterClusterCard />
 
       {/* ═══ STATION EXPLORER (Django station-profile + Node personal data) ═══ */}
       <StationExplorer />

@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../components/common/Toast';
-import { useCrowd } from '../hooks/useCrowd';
+import { useCrowdForecast } from '../hooks/useCrowd';
 import { useWallet } from '../hooks/useWallet';
 import { bookTicket } from '../api/tickets.api';
 import { STATIONS, LINES } from '../constants/stations';
@@ -19,11 +19,6 @@ const LINE_EMOJIS = { blue: '🔵', red: '🔴', yellow: '🟡', pink: '🩷', p
 
 /* ── Crowd helpers ─────────────────────────────────────────── */
 const CROWD_HOURS = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
-const crowdLevel = (h) => {
-  if ((h >= 8 && h <= 10) || (h >= 17 && h <= 19)) return 'high';
-  if ((h >= 7 && h <= 11) || (h >= 16 && h <= 20)) return 'med';
-  return 'low';
-};
 const CROWD_COLORS = { low: '#22c55e', med: '#f59e0b', high: '#ef4444' };
 const CROWD_LABELS = { low: 'Low', med: 'Moderate', high: 'Busy' };
 
@@ -103,7 +98,7 @@ function SearchableStationInput({ label, value, onChange, excludeStation, color 
           position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 200,
           background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
           borderRadius: '14px', boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
-          maxHeight: '320px', overflowY: 'auto',
+          maxHeight: '220px', overflowY: 'auto',
         }}>
           {Object.keys(grouped).length === 0 ? (
             <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No stations found</div>
@@ -137,25 +132,81 @@ function SearchableStationInput({ label, value, onChange, excludeStation, color 
 }
 
 /* ── CrowdHourBar ──────────────────────────────────────────── */
-function CrowdHourBar({ selectedHour, onSelect }) {
+function CrowdHourBar({ source, selectedHour, onSelect, travelDate }) {
+  const getLocalDateString = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+  };
+  const isToday = travelDate === getLocalDateString();
+  const currentHour = new Date().getHours();
+  const { forecast, loading } = useCrowdForecast(source, travelDate, 6, 17);
+  
+  const formatFeatureName = (name) => {
+    if (name.startsWith('station_')) return 'Station choice';
+    if (name === 'hour') return 'Hour of day';
+    if (name === 'is_weekend') return 'Weekend status';
+    if (name === 'is_peak') return 'Peak hour status';
+    if (name === 'passengers') return 'Party size';
+    if (name === 'hour_sin' || name === 'hour_cos') return 'Time of day';
+    return name;
+  };
+
+  // Helper to map ML Bucket (Low, Medium, High) to UI states
+  const getLevel = (h) => {
+    if (!source) return 'empty';
+    if (!forecast) return 'low';
+    const item = forecast.find(f => f.hour === h);
+    if (!item) return 'low';
+    const b = item.bucket.toLowerCase();
+    if (b === 'high') return 'high';
+    if (b === 'medium') return 'med';
+    return 'low';
+  };
+
+  const selectedPrediction = forecast?.find(f => f.hour === selectedHour);
+  const selectedLevel = getLevel(selectedHour);
+
   return (
     <div>
-      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-        Crowd Forecast — Pick Travel Time
+      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+        <span>Crowd Forecast — Pick Travel Time</span>
+        {loading && <span style={{ color: '#6366f1' }}>Updating Forecast...</span>}
       </div>
       <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '60px', marginBottom: '6px' }}>
         {CROWD_HOURS.map(h => {
-          const level = crowdLevel(h);
-          const heights = { low: 20, med: 40, high: 56 };
+          const level = getLevel(h);
+          const heights = { empty: 20, low: 20, med: 40, high: 56 };
           const isSelected = selectedHour === h;
+          const isDisabled = isToday && h < currentHour;
+          
+          let bgColor, borderColor, shadow;
+          if (isDisabled) {
+            bgColor = 'var(--bg-tertiary)';
+            borderColor = 'transparent';
+            shadow = 'none';
+          } else if (level === 'empty') {
+            bgColor = 'var(--bg-tertiary)';
+            borderColor = 'transparent';
+            shadow = 'none';
+          } else if (isSelected) {
+            bgColor = CROWD_COLORS[level];
+            borderColor = CROWD_COLORS[level];
+            shadow = `0 0 8px ${CROWD_COLORS[level]}66`;
+          } else {
+            bgColor = `${CROWD_COLORS[level]}55`;
+            borderColor = 'transparent';
+            shadow = 'none';
+          }
+
           return (
-            <div key={h} onClick={() => onSelect(h)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', gap: '3px' }}>
+            <div key={h} onClick={() => !isDisabled && onSelect(h)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: isDisabled ? 'not-allowed' : 'pointer', gap: '3px', opacity: isDisabled ? 0.4 : 1 }}>
               <div style={{
                 width: '100%', height: `${heights[level]}px`, borderRadius: '4px 4px 0 0',
-                background: isSelected ? CROWD_COLORS[level] : `${CROWD_COLORS[level]}55`,
-                transition: 'all 0.2s ease',
-                boxShadow: isSelected ? `0 0 8px ${CROWD_COLORS[level]}66` : 'none',
-                border: isSelected ? `1px solid ${CROWD_COLORS[level]}` : '1px solid transparent',
+                background: bgColor,
+                transition: 'all 0.4s ease',
+                boxShadow: shadow,
+                border: `1px solid ${borderColor}`,
               }} />
             </div>
           );
@@ -164,17 +215,45 @@ function CrowdHourBar({ selectedHour, onSelect }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)' }}>
         <span>6 AM</span><span>12 PM</span><span>6 PM</span><span>10 PM</span>
       </div>
-      {selectedHour !== null && (
-        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: `${CROWD_COLORS[crowdLevel(selectedHour)]}15`, borderRadius: '10px', border: `1px solid ${CROWD_COLORS[crowdLevel(selectedHour)]}30` }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-            {selectedHour < 12 ? `${selectedHour}:00 AM` : selectedHour === 12 ? '12:00 PM' : `${selectedHour - 12}:00 PM`}
-          </span>
-          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: CROWD_COLORS[crowdLevel(selectedHour)] }}>
-            {CROWD_LABELS[crowdLevel(selectedHour)]} crowd
-            {isPeakHour(selectedHour, new Date().getDay()) && ' · ⚡ +20% fare'}
-          </span>
+      {selectedHour !== null && source && selectedLevel !== 'empty' && (
+        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', padding: '12px', background: `${CROWD_COLORS[selectedLevel]}15`, borderRadius: '10px', border: `1px solid ${CROWD_COLORS[selectedLevel]}30`, transition: 'all 0.3s' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+              {selectedHour < 12 ? `${selectedHour}:00 AM` : selectedHour === 12 ? '12:00 PM' : `${selectedHour - 12}:00 PM`}
+            </span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: CROWD_COLORS[selectedLevel] }}>
+              {CROWD_LABELS[selectedLevel]} crowd
+              {isPeakHour(selectedHour, new Date(travelDate).getDay()) && ' · ⚡ +20% fare'}
+            </span>
+          </div>
+          
+          {selectedPrediction?.shap_explanation && (
+            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '8px', marginTop: '10px', animation: 'fadeIn 0.3s ease' }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
+                Model Explainability: SHAP
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                {selectedPrediction.shap_explanation.map((shap, idx) => (
+                  <div key={idx} style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ color: shap.direction === 'increased' ? '#ef4444' : '#22c55e', fontSize: '12px', fontWeight: 800 }}>
+                      {shap.direction === 'increased' ? '↑' : '↓'}
+                    </span>
+                    <span>
+                      <strong>{formatFeatureName(shap.feature)}</strong> {shap.direction} the crowd estimate
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
+      {(!source || selectedLevel === 'empty') && (
+        <div style={{ marginTop: '10px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '10px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          Select a departure station to view real-time crowd forecast.
+        </div>
+      )}
+      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
   );
 }
@@ -182,6 +261,9 @@ function CrowdHourBar({ selectedHour, onSelect }) {
 /* ── FareBreakdown ─────────────────────────────────────────── */
 function FareBreakdown({ fareData, passengers }) {
   if (!fareData) return null;
+  const chargeable = passengers.filter(p => !p.age || parseInt(p.age) > 4).length;
+  const free = passengers.filter(p => p.age && parseInt(p.age) <= 4).length;
+  
   return (
     <div style={{
       background: fareData.isPeak ? 'linear-gradient(135deg,rgba(245,158,11,0.08),rgba(239,68,68,0.05))' : 'linear-gradient(135deg,rgba(34,197,94,0.08),rgba(99,102,241,0.05))',
@@ -202,9 +284,10 @@ function FareBreakdown({ fareData, passengers }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.82rem' }}>
         {[
           ['📏 Distance', `${fareData.distance} km`],
-          ['👤 Per passenger', `₹${fareData.perPassenger}`],
-          ['👥 Passengers', `${passengers} × ₹${fareData.perPassenger}`],
-          fareData.isPeak ? ['⚡ Peak surcharge', '+20%'] : null,
+          ['🎫 Base fare', `₹${fareData.baseFare}`],
+          chargeable > 0 ? ['👥 Passengers', `${chargeable} × ₹${fareData.perPassenger}`] : null,
+          free > 0 ? ['👶 Child (Free)', `${free} × ₹0`] : null,
+          fareData.isPeak && chargeable > 0 ? ['⚡ Peak surcharge', '+20%'] : null,
         ].filter(Boolean).map(([label, val]) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
             <span>{label}</span><span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{val}</span>
@@ -256,11 +339,17 @@ function JourneySummary({ source, destination, travelDate, travelHour }) {
    ═══════════════════════════════════════════════════════════ */
 export default function BookTicket() {
   const location = useLocation();
+  const passengersRef = useRef(null);
   const prefilled = location.state || {};
 
   const [source, setSource] = useState(prefilled.source || '');
   const [destination, setDestination] = useState(prefilled.destination || '');
-  const [travelDate, setTravelDate] = useState(new Date().toISOString().split('T')[0]);
+  const getLocalDateString = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+  };
+  const [travelDate, setTravelDate] = useState(getLocalDateString());
   const [travelHour, setTravelHour] = useState(null);
   const [passengers, setPassengers] = useState([{ name: '', age: '' }]);
   const [loading, setLoading] = useState(false);
@@ -268,7 +357,8 @@ export default function BookTicket() {
   const [swapping, setSwapping] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
-  const { balance } = useWallet();
+  const { wallet } = useWallet();
+  const balance = wallet?.balance;
 
   useEffect(() => {
     if (prefilled.source && prefilled.destination) {
@@ -277,10 +367,19 @@ export default function BookTicket() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Default hour to now
+  // Default hour to now, and prevent past hours on today
   useEffect(() => {
-    if (travelHour === null) setTravelHour(new Date().getHours());
-  }, [travelHour]);
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    const today = d.toISOString().split('T')[0];
+    const currH = new Date().getHours();
+    const validH = Math.max(6, Math.min(22, currH));
+    if (travelHour === null) {
+      setTravelHour(validH);
+    } else if (travelDate === today && travelHour < currH) {
+      setTravelHour(validH);
+    }
+  }, [travelDate, travelHour]);
 
   const travelTime = travelHour !== null ? `${String(travelHour).padStart(2,'0')}:00` : '';
 
@@ -290,8 +389,9 @@ export default function BookTicket() {
     const destStation = STATIONS.find(s => s.name === destination);
     if (!srcStation || !destStation) return null;
     const dayOfWeek = new Date(travelDate).getDay();
-    return calculateFare(srcStation, destStation, travelHour || new Date().getHours(), dayOfWeek, passengers.length);
-  }, [source, destination, travelDate, travelHour, passengers.length]);
+    const chargeableCount = passengers.filter(p => !p.age || parseInt(p.age) > 4).length;
+    return calculateFare(srcStation, destStation, travelHour || new Date().getHours(), dayOfWeek, chargeableCount);
+  }, [source, destination, travelDate, travelHour, passengers]);
 
   const fromStationId = useMemo(() => STATIONS.find(s => s.name === source)?.id || null, [source]);
   const toStationId = useMemo(() => STATIONS.find(s => s.name === destination)?.id || null, [destination]);
@@ -350,9 +450,20 @@ export default function BookTicket() {
           {/* Decorative circles */}
           <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '200px', height: '200px', borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
           <div style={{ position: 'absolute', bottom: '-20px', right: '120px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-          {/* Animated metro train */}
-          <div style={{ position: 'absolute', bottom: '12px', right: '0', fontSize: '28px', animation: 'trainRide 8s linear infinite', whiteSpace: 'nowrap' }}>
-            🚇 — — — — — — —
+          {/* Realistic Animated Metro Train */}
+          <div style={{ position: 'absolute', bottom: '24px', left: '0', right: '0', height: '2px', background: 'rgba(255,255,255,0.15)', borderRadius: '2px', overflow: 'visible' }}>
+            <div style={{
+              position: 'absolute', top: '-18px', left: 0,
+              animation: 'trainRide 6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+              display: 'flex', alignItems: 'center'
+            }}>
+              <div style={{ fontSize: '26px', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}>🚇</div>
+              <div style={{
+                height: '4px', width: '60px', marginLeft: '-10px',
+                background: 'linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.8))',
+                borderRadius: '2px', filter: 'blur(1px)'
+              }} />
+            </div>
           </div>
         </div>
         <div style={{ position: 'relative', zIndex: 1 }}>
@@ -365,7 +476,7 @@ export default function BookTicket() {
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', margin: 0 }}>
             Real-time crowd intelligence · Instant QR tickets · 5 metro lines
           </p>
-          {balance !== null && (
+          {balance != null && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '12px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', borderRadius: '20px', padding: '6px 14px', fontSize: '0.82rem', color: 'white', fontWeight: 600 }}>
               💳 Wallet: ₹{balance}
             </div>
@@ -374,7 +485,12 @@ export default function BookTicket() {
       </div>
 
       <style>{`
-        @keyframes trainRide { from { transform: translateX(100px); } to { transform: translateX(-800px); } }
+        @keyframes trainRide { 
+          0% { transform: translateX(calc(-100% - 40px)); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateX(calc(100vw)); opacity: 0; }
+        }
       `}</style>
 
       <form onSubmit={handleSubmit}>
@@ -383,7 +499,7 @@ export default function BookTicket() {
           {/* ═══ LEFT COLUMN ═══ */}
           <div>
             {/* ── Route Card ── */}
-            <div style={{ background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '24px', padding: '24px', marginBottom: '20px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
+            <div style={{ position: 'relative', zIndex: 10, background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '24px', padding: '24px', marginBottom: '20px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
               {/* Input mode toggle */}
               <div style={{ display: 'flex', gap: '4px', marginBottom: '22px', padding: '4px', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
                 {[['search', '🔍', 'Search'], ['map', '🗺️', 'Metro Map']].map(([mode, icon, label]) => (
@@ -427,7 +543,7 @@ export default function BookTicket() {
 
               {inputMode === 'map' && (
                 <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading map...</div>}>
-                  <InteractiveMetroMap compact onStationSelect={(from, to) => { if (from) setSource(from); if (to !== undefined) setDestination(to); }} initialFrom={fromStationId} initialTo={toStationId} />
+                  <InteractiveMetroMap compact onStationSelect={(from, to) => { if (from) setSource(from); if (to !== undefined) setDestination(to); }} initialFrom={fromStationId} initialTo={toStationId} onContinueAction={() => { passengersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} />
                   {(source || destination) && (
                     <div style={{ display: 'flex', gap: '10px', marginTop: '12px', padding: '10px 14px', background: 'var(--bg-tertiary)', borderRadius: '12px', fontSize: '0.85rem' }}>
                       <span style={{ color: '#22c55e', fontWeight: 600 }}>🟢 {source || 'Select FROM'}</span>
@@ -442,7 +558,11 @@ export default function BookTicket() {
               <div style={{ marginTop: '20px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Travel Date</div>
                 <input type="date" value={travelDate} onChange={e => setTravelDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={(() => {
+                    const d = new Date();
+                    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                    return d.toISOString().split('T')[0];
+                  })()}
                   style={{ width: '100%', padding: '11px 14px', borderRadius: '14px', border: '2px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none', fontFamily: 'inherit', cursor: 'pointer' }}
                   onFocus={e => e.target.style.borderColor = '#6366f1'}
                   onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
@@ -452,11 +572,11 @@ export default function BookTicket() {
 
             {/* ── Time & Crowd Card ── */}
             <div style={{ background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '24px', padding: '24px', marginBottom: '20px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
-              <CrowdHourBar selectedHour={travelHour} onSelect={setTravelHour} />
+              <CrowdHourBar source={source} selectedHour={travelHour} onSelect={setTravelHour} travelDate={travelDate} />
             </div>
 
             {/* ── Passengers Card ── */}
-            <div style={{ background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '24px', padding: '24px', marginBottom: '20px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
+            <div ref={passengersRef} style={{ background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '24px', padding: '24px', marginBottom: '20px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Passengers</div>
@@ -490,6 +610,11 @@ export default function BookTicket() {
                       onFocus={e => e.target.style.borderColor = '#6366f1'}
                       onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
                     />
+                    {p.age && parseInt(p.age) <= 4 && (
+                      <div style={{ flexShrink: 0, background: 'rgba(34,197,94,0.15)', color: '#16a34a', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        👶 Free
+                      </div>
+                    )}
                     {passengers.length > 1 && (
                       <button type="button" onClick={() => removePassenger(i)}
                         style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer', fontSize: '14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -530,7 +655,7 @@ export default function BookTicket() {
             <JourneySummary source={source} destination={destination} travelDate={travelDate} travelHour={travelHour} />
 
             {/* Fare breakdown */}
-            {farePreview && <FareBreakdown fareData={farePreview} passengers={passengers.length} />}
+            {farePreview && <FareBreakdown fareData={farePreview} passengers={passengers} />}
 
             {/* Travel Tips */}
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '18px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
