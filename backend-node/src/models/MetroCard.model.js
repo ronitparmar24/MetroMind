@@ -26,6 +26,14 @@ const MetroCardSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    totalSaved: {
+      type: Number,
+      default: 0, // cumulative rupees saved via 10% discount
+    },
+    totalTrips: {
+      type: Number,
+      default: 0, // trips made using this card discount
+    },
   },
   { timestamps: true }
 );

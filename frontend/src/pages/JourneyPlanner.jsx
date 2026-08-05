@@ -1,7 +1,6 @@
 // frontend/src/pages/JourneyPlanner.jsx
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import GlassCard from '../components/common/GlassCard';
 import StationSelector from '../components/booking/StationSelector';
 import CrowdBadge from '../components/booking/CrowdBadge';
 import { STATIONS } from '../constants/stations';
@@ -11,72 +10,389 @@ import { geocodeLocation } from '../api/geocode.api';
 import { haversine } from '../utils/haversine';
 import { formatCurrency } from '../utils/formatters';
 
-const CROWD_ICON = { Low: '🟢', Medium: '🟡', High: '🔴' };
-
-// Walking speed: 5 km/h  ≈ 1 min per 83 m
+// ── Constants ──────────────────────────────────────────────────────────────
 const WALK_SPEED_KMH = 5;
+// Urban correction: actual road walking is ~1.3× straight-line (Ahmedabad road pattern)
+const URBAN_DETOUR = 1.3;
+// Platform buffer: 3 min needed to board after arriving at station
+const PLATFORM_BUFFER_MINS = 3;
+// Metro operational hours
+const METRO_OPEN_H  = 6;
+const METRO_CLOSE_H = 23;
 
-// ── Nearest-station engine (pure client-side after geocode) ───────────────
+// Popular quick-pick locations for Ahmedabad
+const QUICK_PICKS = [
+  'Bopal', 'SG Highway', 'Vastrapur', 'Science City',
+  'Navrangpura', 'Maninagar', 'Motera', 'ISKCON',
+  'Law Garden', 'Kankaria',
+];
+
+const LINE_COLORS = {
+  blue: '#2563EB', red: '#DC2626', yellow: '#EAB308',
+  pink: '#EC4899', purple: '#7C3AED',
+};
+const LINE_BG = {
+  blue: 'rgba(37,99,235,0.12)', red: 'rgba(220,38,38,0.12)',
+  yellow: 'rgba(234,179,8,0.12)', pink: 'rgba(236,72,153,0.12)',
+  purple: 'rgba(124,58,237,0.12)',
+};
+
+// ── Nearest station engine ──────────────────────────────────────────────────
+/**
+ * Find nearest N stations.
+ * Returns straight-line AND urban-corrected walking distance.
+ */
 function findNearestStations(userLat, userLng, count = 3) {
   return STATIONS
     .filter(s => s.lat && s.lng)
-    .map(s => ({
-      ...s,
-      distanceKm: haversine(userLat, userLng, s.lat, s.lng),
-    }))
+    .map(s => {
+      const straightKm = haversine(userLat, userLng, s.lat, s.lng);
+      const walkKm     = straightKm * URBAN_DETOUR; // realistic road distance
+      return { ...s, distanceKm: walkKm, straightKm, bearing: getBearing(userLat, userLng, s.lat, s.lng) };
+    })
     .sort((a, b) => a.distanceKm - b.distanceKm)
     .slice(0, count);
 }
 
-// Walking minutes from km distance
+/** Compass bearing from user to station (0–360°) */
+function getBearing(lat1, lon1, lat2, lon2) {
+  const toRad = d => d * Math.PI / 180;
+  const dLon = toRad(lon2 - lon1);
+  const x = Math.sin(dLon) * Math.cos(toRad(lat2));
+  const y = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2))
+          - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+  return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+}
+
+/** Convert bearing degrees to compass label */
+function bearingLabel(deg) {
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+/** Walking minutes from km (already urban-corrected) */
 function walkMinutes(km) {
   return Math.ceil((km / WALK_SPEED_KMH) * 60);
 }
 
-// Will I Make It? — given distance to station and minutes until departure
-function willMakeIt(distKm, minsUntilTrain) {
-  const walkMins = walkMinutes(distKm);
-  const buffer   = minsUntilTrain - walkMins;
-  return { walkMins, buffer, canMakeIt: buffer >= 2 }; // 2-min platform buffer
+/** Check metro is currently running */
+function metroStatus() {
+  const h = new Date().getHours();
+  const m = new Date().getMinutes();
+  const isOpen = h >= METRO_OPEN_H && h < METRO_CLOSE_H;
+  const minsToOpen  = isOpen ? null : (
+    h < METRO_OPEN_H
+      ? (METRO_OPEN_H - h) * 60 - m
+      : (24 - h + METRO_OPEN_H) * 60 - m
+  );
+  const minsToClose = isOpen ? (METRO_CLOSE_H - h) * 60 - m : null;
+  return { isOpen, minsToOpen, minsToClose, h };
 }
 
-const LINE_COLORS = {
-  blue:   '#2563EB',
-  red:    '#DC2626',
-  yellow: '#EAB308',
-  pink:   '#EC4899',
-  purple: '#7C3AED',
-};
+/** Estimate auto-rickshaw fare (Ahmedabad: ₹20 base + ₹15/km) */
+function rickshawFare(km) {
+  return Math.round(20 + 15 * km);
+}
+
+/** Will I Make It? — uses corrected walking distance + 3-min platform buffer */
+function willMakeIt(distKm, minsUntilTrain) {
+  const walkMins = walkMinutes(distKm);
+  const buffer   = minsUntilTrain - walkMins - PLATFORM_BUFFER_MINS;
+  return { walkMins, buffer, canMakeIt: buffer >= 0 };
+}
+
+// ── Recent searches (localStorage) ─────────────────────────────────────────
+const RECENT_KEY = 'mm_nearest_recent';
+function loadRecent() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; }
+}
+function saveRecent(query) {
+  const prev = loadRecent().filter(q => q.toLowerCase() !== query.toLowerCase());
+  const next = [query, ...prev].slice(0, 5);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+}
+
+
+/* ── Route Card ── */
+function RouteCard({ route, idx, onSelect }) {
+  const [hovered, setHovered] = useState(false);
+
+  const colorMap = {
+    0: { bg: 'linear-gradient(135deg,rgba(99,102,241,0.08),rgba(168,85,247,0.05))', border: route.isRecommended ? '#f59e0b' : 'rgba(99,102,241,0.25)', accent: '#6366f1' },
+    1: { bg: 'linear-gradient(135deg,rgba(34,197,94,0.06),rgba(20,184,166,0.04))',   border: 'rgba(34,197,94,0.25)',  accent: '#22c55e' },
+    2: { bg: 'linear-gradient(135deg,rgba(245,158,11,0.07),rgba(239,68,68,0.04))',   border: 'rgba(245,158,11,0.3)',  accent: '#f59e0b' },
+  };
+  const theme = colorMap[idx] || colorMap[0];
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        borderRadius: '24px',
+        padding: '24px',
+        position: 'relative',
+        overflow: 'hidden',
+        background: theme.bg,
+        border: `1.5px solid ${route.isRecommended ? '#f59e0b' : theme.border}`,
+        transition: 'all 0.25s ease',
+        transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
+        boxShadow: hovered ? `0 16px 48px ${theme.accent}22` : '0 2px 12px rgba(0,0,0,0.06)',
+        cursor: 'default',
+      }}
+    >
+      {/* Best Choice badge */}
+      {route.isRecommended && (
+        <div style={{
+          position: 'absolute', top: '14px', right: '14px',
+          background: 'linear-gradient(135deg,#f59e0b,#d97706)',
+          color: '#000', fontSize: '0.65rem', fontWeight: 800,
+          padding: '4px 10px', borderRadius: '20px',
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+          boxShadow: '0 4px 12px rgba(245,158,11,0.4)',
+        }}>
+          ⭐ Best Choice
+        </div>
+      )}
+
+      {/* Route type label */}
+      <div style={{ paddingRight: route.isRecommended ? '90px' : 0, marginBottom: '6px' }}>
+        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{route.label}</div>
+        {route.viaStation && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '4px',
+            marginTop: '4px', padding: '3px 10px',
+            background: 'rgba(99,102,241,0.1)', color: '#6366f1',
+            borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700,
+          }}>
+            🔀 via {route.viaStation}
+          </div>
+        )}
+      </div>
+
+      {/* Big fare */}
+      <div style={{ margin: '16px 0 18px', display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+        <div style={{ fontSize: '2.4rem', fontWeight: 900, color: theme.accent, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+          {formatCurrency(route.fare)}
+        </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>total fare</div>
+      </div>
+
+      {/* Stats grid */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+        {[
+          { icon: '⏱️', label: 'Journey Time', value: `${route.estimatedMinutes} min` },
+          { icon: '📏', label: 'Distance', value: `${route.distance} km` },
+          { icon: '👥', label: 'Crowd', value: <CrowdBadge level={route.crowdBucket} /> },
+          { icon: '🌿', label: 'CO₂ Saved', value: `${route.co2Saved} kg`, green: true },
+          { icon: '🕐', label: 'Status', value: (
+            <span style={{
+              padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700,
+              background: route.isPeak ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)',
+              color: route.isPeak ? '#d97706' : '#16a34a',
+            }}>
+              {route.isPeak ? '⚡ Peak' : '✨ Off-Peak'}
+            </span>
+          )},
+        ].map(({ icon, label, value, green }) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>{icon}</span>{label}
+            </span>
+            <span style={{ fontWeight: 600, fontSize: '0.88rem', color: green ? '#22c55e' : 'var(--text-primary)' }}>{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Action button */}
+      <button
+        onClick={() => onSelect(route)}
+        id={`select-route-${idx}`}
+        style={{
+          width: '100%', padding: '13px', borderRadius: '14px', border: 'none',
+          background: route.isRecommended
+            ? 'linear-gradient(135deg,#6366f1,#a855f7)'
+            : `${theme.accent}22`,
+          color: route.isRecommended ? 'white' : theme.accent,
+          fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          boxShadow: route.isRecommended ? '0 6px 20px rgba(99,102,241,0.35)' : 'none',
+        }}
+        onMouseEnter={e => { if (route.isRecommended) e.target.style.transform = 'scale(1.01)'; }}
+        onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+      >
+        {route.isRecommended ? '🎯 Select Best Route' : 'Select This Route'}
+      </button>
+    </div>
+  );
+}
+
+/* ── Improved Station Distance Card ── */
+function NearestCard({ s, i, onUse, minsUntilTrain }) {
+  const makeIt = minsUntilTrain && !isNaN(parseInt(minsUntilTrain))
+    ? willMakeIt(s.distanceKm, parseInt(minsUntilTrain))
+    : null;
+  const fare = rickshawFare(s.distanceKm);
+  const direction = s.bearing != null ? bearingLabel(s.bearing) : null;
+  const isInterchange = Array.isArray(s.interchange) && s.interchange.length > 0;
+
+  return (
+    <div style={{
+      borderRadius: '18px', overflow: 'hidden',
+      border: i === 0 ? '1.5px solid rgba(99,102,241,0.3)' : '1px solid var(--border-color)',
+      background: i === 0 ? 'linear-gradient(135deg,rgba(99,102,241,0.06),rgba(168,85,247,0.03))' : 'var(--bg-secondary)',
+      transition: 'box-shadow 0.2s',
+    }}>
+      {/* Line color bar */}
+      <div style={{ height: '3px', background: LINE_COLORS[s.line] || '#888' }} />
+
+      <div style={{ padding: '16px 18px' }}>
+        {/* Header row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Rank badge */}
+            <div style={{
+              width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
+              background: i === 0 ? 'linear-gradient(135deg,#6366f1,#a855f7)' : 'var(--bg-tertiary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.75rem', fontWeight: 800, color: i === 0 ? 'white' : 'var(--text-muted)',
+            }}>{i + 1}</div>
+
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                {i === 0 && (
+                  <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.06em', background: 'rgba(99,102,241,0.1)', padding: '2px 6px', borderRadius: '4px' }}>Closest</span>
+                )}
+                {isInterchange && (
+                  <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: '4px' }}
+                    title={`Interchange: connects to ${s.interchange.join(', ')} line`}>
+                    🔄 Interchange
+                  </span>
+                )}
+                <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{s.name}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: LINE_COLORS[s.line] || '#888', boxShadow: `0 0 5px ${LINE_COLORS[s.line] || '#888'}` }} />
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'capitalize', fontWeight: 600 }}>{s.line} Line</span>
+                </div>
+                {isInterchange && s.interchange.map(l => (
+                  <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: LINE_COLORS[l] || '#888' }} />
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{l}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Distance block */}
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>
+              {s.distanceKm < 1
+                ? `${(s.distanceKm * 1000).toFixed(0)} m`
+                : `${s.distanceKm.toFixed(2)} km`}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+              🚶 {walkMinutes(s.distanceKm)} min walk
+            </div>
+            {direction && (
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, color: LINE_COLORS[s.line] || 'var(--text-muted)', marginTop: '1px' }}>
+                🧭 Head {direction}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Info pills row */}
+        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+          {/* Straight-line note */}
+          {s.straightKm && (
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', padding: '3px 8px', borderRadius: '6px', background: 'var(--bg-tertiary)', fontWeight: 600 }}>
+              {(s.straightKm * 1000).toFixed(0)} m as-the-crow-flies
+            </span>
+          )}
+          {/* Rickshaw fallback fare */}
+          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', padding: '3px 8px', borderRadius: '6px', background: 'var(--bg-tertiary)', fontWeight: 600 }}>
+            🚨 Auto ₹{fare}
+          </span>
+        </div>
+
+        {/* Will I Make It — inline */}
+        {makeIt && (
+          <div style={{
+            marginTop: '12px', padding: '10px 12px', borderRadius: '12px',
+            background: makeIt.canMakeIt ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)',
+            border: `1px solid ${makeIt.canMakeIt ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                <div>⏱️ {makeIt.walkMins} min walk + {PLATFORM_BUFFER_MINS} min platform</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  {makeIt.canMakeIt
+                    ? `✔️ ${makeIt.buffer} min buffer — you're good`
+                    : `⚠️ ${Math.abs(makeIt.buffer)} min short — leave now or take auto`}
+                </div>
+              </div>
+              <div style={{
+                fontSize: '0.75rem', fontWeight: 800, padding: '4px 12px', borderRadius: '10px', flexShrink: 0, marginLeft: '8px',
+                background: makeIt.canMakeIt ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                color: makeIt.canMakeIt ? '#16a34a' : '#dc2626',
+              }}>
+                {makeIt.canMakeIt ? '✅ Make It' : '❌ Too Far'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Use button */}
+        <button
+          onClick={() => onUse(s.name)}
+          id={`use-station-${s.id}`}
+          style={{
+            marginTop: '12px', width: '100%', padding: '8px 12px', borderRadius: '10px',
+            border: `1px solid ${LINE_COLORS[s.line] || 'var(--border-color)'}`,
+            background: LINE_BG[s.line] || 'var(--bg-tertiary)',
+            color: LINE_COLORS[s.line] || 'var(--text-secondary)',
+            fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          📍 Use as Starting Station → Route Planner
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function JourneyPlanner() {
-  // ── Route comparison state ───────────────────────────────────────────
-  const [source,      setSource]      = useState('');
+  const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
-  const [routes,      setRoutes]      = useState([]);
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState('');
+  const [routes, setRoutes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // ── Nearest Station / Will I Make It? state ──────────────────────────
-  const [locationQuery,   setLocationQuery]   = useState('');
-  const [geoLoading,      setGeoLoading]      = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState('');
+  const [resolvedAddr, setResolvedAddr] = useState(null);
+  const [nearestResults, setNearestResults] = useState([]);
+  const [minsUntilTrain, setMinsUntilTrain] = useState('');
+  const [recentSearches, setRecentSearches] = useState(loadRecent);
+  const [metroStat] = useState(metroStatus);
 
-  // ── Weather (for night safety banner) ───────────────────────────────────
   const [weather, setWeather] = useState(null);
   useEffect(() => {
-    fetchWeather()
-      .then(setWeather)
-      .catch(() => setWeather({ isDark: false, fallback: true }));
+    fetchWeather().then(setWeather).catch(() => setWeather({ isDark: false, fallback: true }));
   }, []);
-  const [geoError,        setGeoError]        = useState('');
-  const [resolvedAddr,    setResolvedAddr]     = useState(null);   // { lat, lng, displayName }
-  const [nearestResults,  setNearestResults]   = useState([]);     // top 3 stations
 
-  // "Will I Make It?" extra inputs
-  const [minsUntilTrain,  setMinsUntilTrain]  = useState('');
-  const [makeItResults,   setMakeItResults]   = useState([]);
+  const clearNearest = () => { setGeoError(''); setResolvedAddr(null); setNearestResults([]); };
 
-  // ── Route comparison handlers ─────────────────────────────────────────
+
   const canCompare = source && destination && source !== destination;
 
   const handleCompare = useCallback(async () => {
@@ -94,278 +410,356 @@ export default function JourneyPlanner() {
 
   const handleSelectRoute = (route) => {
     navigate('/book', {
-      state: {
-        source:     route.source,
-        destination: route.destination,
-        viaStation: route.viaStation || null,
-      },
+      state: { source: route.source, destination: route.destination, viaStation: route.viaStation || null },
     });
   };
 
-  // ── Geocode + nearest station handler ────────────────────────────────
   const handleFindNearest = async () => {
     const q = locationQuery.trim();
     if (!q) return;
-    setGeoLoading(true);
-    setGeoError('');
-    setResolvedAddr(null);
-    setNearestResults([]);
-    setMakeItResults([]);
-
+    setGeoLoading(true); setGeoError(''); setResolvedAddr(null); setNearestResults([]);
     try {
       const geo = await geocodeLocation(q);
       setResolvedAddr(geo);
-      const nearest = findNearestStations(geo.lat, geo.lng, 3);
-      setNearestResults(nearest);
+      setNearestResults(findNearestStations(geo.lat, geo.lng, 3));
+      saveRecent(q);
+      setRecentSearches(loadRecent());
     } catch (err) {
       if (err.response?.status === 404) {
-        setGeoError(
-          `Location "${q}" not found in Ahmedabad. Try a nearby landmark, area name, or road (e.g. "Bopal", "SG Highway", "Shela Cross Road").`
-        );
+        setGeoError(`"${q}" not found in Ahmedabad. Try a landmark, area, or road name.`);
       } else {
-        setGeoError('Geocoding service temporarily unavailable. Try again in a moment.');
+        setGeoError('Location service unavailable. Please try again.');
       }
     } finally {
       setGeoLoading(false);
     }
   };
 
-  // ── Will I Make It? handler ───────────────────────────────────────────
-  const handleWillIMakeIt = () => {
-    const mins = parseInt(minsUntilTrain, 10);
-    if (!nearestResults.length || isNaN(mins) || mins <= 0) return;
-    setMakeItResults(
-      nearestResults.map(s => ({
-        ...s,
-        ...willMakeIt(s.distanceKm, mins),
-      }))
+  const handleUseGPS = () => {
+    if (!navigator.geolocation) { setGeoError('Geolocation not supported by your browser.'); return; }
+    setGeoLoading(true); setGeoError(''); setResolvedAddr(null); setNearestResults([]);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        setResolvedAddr({ lat, lng, displayName: 'Your current GPS location' });
+        setNearestResults(findNearestStations(lat, lng, 3));
+        setGeoLoading(false);
+      },
+      (e) => {
+        const msg = e.code === 1
+          ? 'Location permission denied. Please allow access in browser settings.'
+          : 'Could not determine your location. Try searching manually.';
+        setGeoError(msg); setGeoLoading(false);
+      },
+      { timeout: 8000, maximumAge: 60000 }
     );
   };
 
+  const handleQuickPick = (label) => {
+    setLocationQuery(label);
+    clearNearest();
+    // trigger search immediately
+    setTimeout(async () => {
+      setGeoLoading(true);
+      try {
+        const geo = await geocodeLocation(label);
+        setResolvedAddr(geo);
+        setNearestResults(findNearestStations(geo.lat, geo.lng, 3));
+        saveRecent(label);
+        setRecentSearches(loadRecent());
+      } catch { setGeoError(`"${label}" not found.`); }
+      finally { setGeoLoading(false); }
+    }, 0);
+  };
+
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1 className="page-title">Journey Planner 🗺️</h1>
-        <p className="page-subtitle">Compare route options, find nearby stations, and check if you'll make it</p>
+    <div className="page" style={{ maxWidth: '920px', fontFamily: "'Inter',system-ui,sans-serif" }}>
+      <style>{`
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+        @keyframes routeSkeleton { 0%,100%{opacity:0.5;} 50%{opacity:1;} }
+        .route-skeleton { animation: routeSkeleton 1.4s ease-in-out infinite; background: var(--bg-tertiary); border-radius: 10px; }
+      `}</style>
+
+      {/* ── Page Header ── */}
+      <div style={{ marginBottom: '28px' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>Journey Planner 🗺️</h1>
+        <p style={{ color: 'var(--text-muted)', marginTop: '6px', fontSize: '0.9rem' }}>
+          Compare routes, find nearby stations, and check if you'll make it in time
+        </p>
       </div>
 
-      {/* ── SECTION 1: Route Comparison ───────────────────────────────── */}
-      <GlassCard style={{ padding: '28px', maxWidth: '700px', marginBottom: 'var(--space-xl)' }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '18px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          📊 Route Comparison
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-lg)', alignItems: 'end' }}>
-          <StationSelector label="From" value={source}      onChange={(v) => { setSource(v);      setRoutes([]); }} excludeStation={destination} />
-          <StationSelector label="To"   value={destination} onChange={(v) => { setDestination(v); setRoutes([]); }} excludeStation={source} />
-        </div>
-        <div style={{ display: 'flex', gap: '12px', marginTop: 'var(--space-lg)' }}>
-          <button className="btn btn-secondary" onClick={() => { const t = source; setSource(destination); setDestination(t); setRoutes([]); }} disabled={!source || !destination}>
-            🔄 Swap
-          </button>
-          <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={handleCompare} disabled={!canCompare || loading} id="compare-routes-btn">
-            {loading ? 'Comparing…' : '📊 Compare Routes'}
-          </button>
-        </div>
-      </GlassCard>
-
-      {error && (
-        <div style={{ padding: '12px 20px', background: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-lg)', fontSize: '0.9rem' }}>
-          {error}
-        </div>
-      )}
-
-      {loading && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-lg)' }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} className="glass-card" style={{ padding: '28px' }}>
-              <div className="skeleton" style={{ width: '60%', height: '20px', borderRadius: '8px', marginBottom: '16px' }} />
-              <div className="skeleton" style={{ width: '100%', height: '14px', borderRadius: '6px', marginBottom: '10px' }} />
-              <div className="skeleton" style={{ width: '80%', height: '14px', borderRadius: '6px', marginBottom: '10px' }} />
-              <div className="skeleton" style={{ width: '40%', height: '14px', borderRadius: '6px', marginBottom: '20px' }} />
-              <div className="skeleton" style={{ width: '100%', height: '38px', borderRadius: '12px' }} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {routes.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(routes.length, 3)}, 1fr)`, gap: 'var(--space-lg)', marginBottom: 'var(--space-xl)' }}>
-          {routes.map((route, idx) => (
-            <div key={idx} className="glass-card" style={{ padding: '24px', position: 'relative', overflow: 'hidden', border: route.isRecommended ? '1.5px solid #f59e0b' : '1px solid var(--border-color)', transition: 'all 0.3s ease' }}>
-              {route.isRecommended && (
-                <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#000', fontSize: '0.7rem', fontWeight: 700, padding: '4px 10px', borderRadius: 'var(--radius-full)', textTransform: 'uppercase', letterSpacing: '0.5px', boxShadow: '0 2px 8px rgba(245,158,11,0.3)' }}>
-                  ⭐ Best Choice
-                </div>
-              )}
-              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', marginBottom: '4px', color: 'var(--text-primary)', paddingRight: route.isRecommended ? '90px' : 0 }}>
-                {route.label}
-              </h3>
-              {route.viaStation && (
-                <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--info-bg)', color: 'var(--info)', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 600, marginBottom: '16px' }}>
-                  via {route.viaStation}
-                </span>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: route.viaStation ? '0' : '16px', marginBottom: '20px' }}>
-                {[
-                  { label: '💰 Fare',     value: formatCurrency(route.fare),          bold: true, color: 'var(--accent-primary)' },
-                  { label: '⏱️ Time',     value: `${route.estimatedMinutes} min` },
-                  { label: '📏 Distance', value: `${route.distance} km` },
-                  { label: '👥 Crowd',    value: <CrowdBadge level={route.crowdBucket} /> },
-                  { label: '🌿 CO₂ Saved', value: `${route.co2Saved} kg`, color: 'var(--success)' },
-                  { label: '🕐 Status',   value: <span className={`badge ${route.isPeak ? 'badge-warning' : 'badge-success'}`}>{route.isPeak ? '⚡ Peak' : '✨ Off-Peak'}</span> },
-                ].map(({ label, value, bold, color }) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{label}</span>
-                    <span style={{ fontWeight: bold ? 700 : 600, fontSize: bold ? '1.1rem' : undefined, color: color || 'inherit' }}>{value}</span>
-                  </div>
-                ))}
-              </div>
-              <button className={`btn ${route.isRecommended ? 'btn-primary' : 'btn-secondary'} btn-lg`} style={{ width: '100%' }} onClick={() => handleSelectRoute(route)} id={`select-route-${idx}`}>
-                {route.isRecommended ? '🎯 Select Best Route' : 'Select This Route'}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!loading && routes.length === 0 && canCompare && !error && (
-        <GlassCard style={{ padding: '40px', textAlign: 'center', maxWidth: '500px', margin: '0 auto var(--space-xl)' }}>
-          <p style={{ fontSize: '2rem', marginBottom: '12px' }}>📊</p>
-          <p style={{ color: 'var(--text-secondary)' }}>Select stations above and click <strong>Compare Routes</strong> to see your options</p>
-        </GlassCard>
-      )}
-
-      {/* Night safety banner — shown when routes are visible and it's dark outside */}
-      {routes.length > 0 && weather?.isDark && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          padding: '10px 16px', marginBottom: 'var(--space-xl)', borderRadius: '14px',
-          background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(139,92,246,0.3)',
-          animation: 'fadeInUp 0.3s ease',
-        }}>
-          <span style={{ fontSize: '18px', flexShrink: 0 }}>🌙</span>
+      {/* ══ SECTION 1: Route Comparison ══ */}
+      <div style={{ borderRadius: '24px', padding: '28px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', marginBottom: '28px' }}>
+        {/* Section header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '22px' }}>
+          <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg,#6366f1,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>📊</div>
           <div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: '2px' }}>Travelling after dark — stay safe</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-              <strong>Old High Court</strong> &amp; <strong>Kalupur</strong> stations have well-lit exits and 24 h CCTV security.
-            </div>
+            <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>Route Comparison</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Compare direct, scenic, and off-peak options</div>
           </div>
         </div>
+
+        {/* Station selectors */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '12px', alignItems: 'end', marginBottom: '18px' }}>
+          <StationSelector label="From" value={source} onChange={(v) => { setSource(v); setRoutes([]); }} excludeStation={destination} />
+
+          {/* Swap button */}
+          <button
+            onClick={() => { const t = source; setSource(destination); setDestination(t); setRoutes([]); }}
+            disabled={!source || !destination}
+            style={{
+              width: '40px', height: '40px', borderRadius: '50%', border: '1.5px solid var(--border-color)',
+              background: 'var(--bg-tertiary)', cursor: source && destination ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem',
+              transition: 'all 0.2s ease', flexShrink: 0, opacity: source && destination ? 1 : 0.4,
+            }}
+            onMouseEnter={e => { if (source && destination) e.target.style.transform = 'rotate(180deg)'; }}
+            onMouseLeave={e => e.target.style.transform = 'rotate(0deg)'}
+          >🔄</button>
+
+          <StationSelector label="To" value={destination} onChange={(v) => { setDestination(v); setRoutes([]); }} excludeStation={source} />
+        </div>
+
+        {/* Compare button */}
+        <button
+          onClick={handleCompare}
+          disabled={!canCompare || loading}
+          id="compare-routes-btn"
+          style={{
+            width: '100%', padding: '14px', borderRadius: '16px', border: 'none',
+            background: canCompare ? 'linear-gradient(135deg,#6366f1,#a855f7)' : 'var(--bg-tertiary)',
+            color: canCompare ? 'white' : 'var(--text-muted)',
+            fontWeight: 800, fontSize: '1rem', cursor: canCompare ? 'pointer' : 'not-allowed',
+            boxShadow: canCompare ? '0 8px 24px rgba(99,102,241,0.35)' : 'none',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => { if (canCompare && !loading) e.target.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={e => e.target.style.transform = 'translateY(0)'}
+        >
+          {loading ? '⏳ Comparing routes…' : '📊 Compare Routes'}
+        </button>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div style={{ padding: '12px 18px', borderRadius: '14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#dc2626', fontSize: '0.88rem', marginBottom: '20px' }}>
+          ⚠️ {error}
+        </div>
       )}
 
-      {/* ── SECTION 2: Nearest Station Finder ────────────────────────── */}
-      <GlassCard style={{ padding: '28px', maxWidth: '700px', marginBottom: 'var(--space-xl)' }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          📍 Find Nearest Station
-        </h2>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '18px' }}>
-          Enter any Ahmedabad location — area, landmark, or road name
-        </p>
+      {/* Skeletons */}
+      {loading && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ borderRadius: '24px', padding: '24px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+              <div className="route-skeleton" style={{ width: '55%', height: '18px', marginBottom: '14px' }} />
+              <div className="route-skeleton" style={{ width: '40%', height: '36px', marginBottom: '18px' }} />
+              {[85, 70, 60, 50, 75].map((w, j) => (
+                <div key={j} className="route-skeleton" style={{ width: `${w}%`, height: '12px', marginBottom: '10px' }} />
+              ))}
+              <div className="route-skeleton" style={{ width: '100%', height: '40px', marginTop: '8px' }} />
+            </div>
+          ))}
+        </div>
+      )}
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
+      {/* Route cards */}
+      {routes.length > 0 && (
+        <>
+          {/* Night safety banner */}
+          {weather?.isDark && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '12px',
+              padding: '12px 18px', marginBottom: '16px', borderRadius: '14px',
+              background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(139,92,246,0.25)',
+            }}>
+              <span style={{ fontSize: '1.2rem' }}>🌙</span>
+              <div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#6366f1' }}>Travelling after dark — stay safe</div>
+                <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '1px' }}>Old High Court & Kalupur stations have well-lit exits and 24h CCTV.</div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(routes.length, 3)}, 1fr)`, gap: '16px', marginBottom: '32px', animation: 'fadeInUp 0.4s ease' }}>
+            {routes.map((route, idx) => (
+              <RouteCard key={idx} route={route} idx={idx} onSelect={handleSelectRoute} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Empty state */}
+      {!loading && routes.length === 0 && canCompare && !error && (
+        <div style={{ textAlign: 'center', padding: '40px', borderRadius: '20px', background: 'var(--bg-secondary)', border: '1px dashed var(--border-color)', marginBottom: '28px' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>📊</div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Click <strong>Compare Routes</strong> to see your options</p>
+        </div>
+      )}
+
+      {/* ══ SECTION 2: Nearest Station Finder ══ */}
+      <div style={{ borderRadius: '24px', padding: '28px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+
+        {/* Section header + Metro status */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg,#22c55e,#16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>📍</div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>Find Nearest Station</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Walking distance · Direction · Will I make it?</div>
+            </div>
+          </div>
+          {/* Live metro operational status */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '10px',
+            background: metroStat.isOpen ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.07)',
+            border: '1px solid ' + (metroStat.isOpen ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'),
+          }}>
+            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: metroStat.isOpen ? '#22c55e' : '#ef4444' }} />
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: metroStat.isOpen ? '#16a34a' : '#dc2626' }}>
+              {metroStat.isOpen ? 'Metro Open · Closes 23:00' : 'Metro Closed · Opens 06:00'}
+            </span>
+          </div>
+        </div>
+
+        {/* Quick picks */}
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Quick Pick</div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {QUICK_PICKS.map(label => (
+              <button key={label} onClick={() => handleQuickPick(label)} style={{
+                padding: '5px 12px', borderRadius: '8px', border: '1px solid var(--border-color)',
+                background: 'var(--bg-tertiary)', color: 'var(--text-secondary)',
+                fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+              }}
+                onMouseEnter={e => { e.target.style.borderColor = '#22c55e'; e.target.style.color = '#16a34a'; }}
+                onMouseLeave={e => { e.target.style.borderColor = 'var(--border-color)'; e.target.style.color = 'var(--text-secondary)'; }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent searches */}
+        {recentSearches.length > 0 && (
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Recent</div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {recentSearches.map(q => (
+                <button key={q} onClick={() => handleQuickPick(q)} style={{
+                  padding: '5px 12px', borderRadius: '8px', border: '1px solid var(--border-color)',
+                  background: 'rgba(99,102,241,0.06)', color: '#6366f1',
+                  fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                }}>
+                  🕐 {q}
+                </button>
+              ))}
+              <button onClick={() => { localStorage.removeItem(RECENT_KEY); setRecentSearches([]); }} style={{
+                padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--border-color)',
+                background: 'transparent', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer',
+              }}>✕ Clear</button>
+            </div>
+          </div>
+        )}
+
+        {/* Search bar */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
           <div style={{ flex: 1, position: 'relative' }}>
+            <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none' }}>🔍</span>
             <input
               id="location-query-input"
               type="text"
               value={locationQuery}
-              onChange={e => { setLocationQuery(e.target.value); setGeoError(''); setResolvedAddr(null); setNearestResults([]); setMakeItResults([]); }}
+              onChange={e => { setLocationQuery(e.target.value); setGeoError(''); setResolvedAddr(null); setNearestResults([]); }}
               onKeyDown={e => e.key === 'Enter' && handleFindNearest()}
-              placeholder="e.g. Bopal, SG Highway, Shela, Science City…"
+              placeholder="e.g. Bopal, SG Highway, Science City, Shela…"
               style={{
-                width: '100%', padding: '12px 16px', borderRadius: 'var(--radius-md)',
-                border: geoError ? '1.5px solid var(--danger)' : '1.5px solid var(--border-color)',
-                background: 'var(--bg-card)', color: 'var(--text-primary)',
+                width: '100%', padding: '12px 14px 12px 40px',
+                borderRadius: '14px',
+                border: `1.5px solid ${geoError ? 'rgba(239,68,68,0.5)' : 'var(--border-color)'}`,
+                background: 'var(--bg-tertiary)', color: 'var(--text-primary)',
                 fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box',
                 transition: 'border-color 0.2s',
               }}
+              onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.5)'}
+              onBlur={e => e.target.style.borderColor = geoError ? 'rgba(239,68,68,0.5)' : 'var(--border-color)'}
             />
           </div>
           <button
-            className="btn btn-primary"
             onClick={handleFindNearest}
             disabled={!locationQuery.trim() || geoLoading}
             id="find-nearest-btn"
-            style={{ whiteSpace: 'nowrap', minWidth: '120px' }}
+            style={{
+              padding: '12px 20px', borderRadius: '14px', border: 'none',
+              background: locationQuery.trim() ? 'linear-gradient(135deg,#22c55e,#16a34a)' : 'var(--bg-tertiary)',
+              color: locationQuery.trim() ? 'white' : 'var(--text-muted)',
+              fontWeight: 700, fontSize: '0.9rem', cursor: locationQuery.trim() ? 'pointer' : 'not-allowed',
+              whiteSpace: 'nowrap', transition: 'all 0.15s ease',
+              boxShadow: locationQuery.trim() ? '0 4px 14px rgba(34,197,94,0.3)' : 'none',
+            }}
           >
-            {geoLoading ? '⏳ Searching…' : '🔍 Find'}
+            {geoLoading ? '⏳' : '🔍 Find'}
+          </button>
+          <button
+            onClick={handleUseGPS}
+            disabled={geoLoading}
+            title="Use my current GPS location"
+            style={{
+              padding: '12px 16px', borderRadius: '14px', border: '1.5px solid var(--border-color)',
+              background: 'var(--bg-tertiary)', color: 'var(--text-secondary)',
+              fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
+              whiteSpace: 'nowrap', transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={e => { e.target.style.borderColor = '#22c55e'; e.target.style.color = '#22c55e'; }}
+            onMouseLeave={e => { e.target.style.borderColor = 'var(--border-color)'; e.target.style.color = 'var(--text-secondary)'; }}
+          >
+            📡 GPS
           </button>
         </div>
 
-        {/* Error state */}
+        {/* Error */}
         {geoError && (
-          <div style={{
-            marginTop: '12px', padding: '12px 16px', borderRadius: 'var(--radius-md)',
-            background: 'var(--danger-bg)', color: 'var(--danger)',
-            fontSize: '0.875rem', lineHeight: 1.5, display: 'flex', gap: '10px', alignItems: 'flex-start',
-          }}>
-            <span style={{ flexShrink: 0, fontSize: '1rem' }}>⚠️</span>
-            <span>{geoError}</span>
+          <div style={{ padding: '10px 14px', borderRadius: '12px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: '#dc2626', fontSize: '0.83rem', marginBottom: '12px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+            <span>⚠️</span><span>{geoError}</span>
           </div>
         )}
 
-        {/* Resolved address confirmation */}
+        {/* Resolved address */}
         {resolvedAddr && (
-          <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            📌 <strong>Resolved:</strong> {resolvedAddr.displayName?.split(',').slice(0, 3).join(',')}
+          <div style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>📌</span>
+            <span><strong>Found:</strong> {resolvedAddr.displayName?.split(',').slice(0, 3).join(',') || 'Current Location'}</span>
           </div>
         )}
 
-        {/* Nearest stations results */}
+        {/* Nearest stations */}
         {nearestResults.length > 0 && (
-          <div style={{ marginTop: '20px' }}>
-            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ animation: 'fadeInUp 0.35s ease' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>
               Nearest Metro Stations
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
               {nearestResults.map((s, i) => (
-                <div key={s.id} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '14px 16px', borderRadius: 'var(--radius-md)',
-                  background: i === 0 ? 'rgba(79,70,229,0.06)' : 'var(--bg-secondary)',
-                  border: i === 0 ? '1.5px solid rgba(79,70,229,0.2)' : '1px solid var(--border-color)',
-                  gap: '12px', flexWrap: 'wrap',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
-                      background: LINE_COLORS[s.line] || '#888',
-                      boxShadow: `0 0 6px ${LINE_COLORS[s.line] || '#888'}`,
-                    }} />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                        {i === 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#4F46E5', marginRight: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closest</span>}
-                        {s.name}
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'capitalize' }}>
-                        {s.line} line
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexShrink: 0 }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{(s.distanceKm * 1000).toFixed(0)} m</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>~{walkMinutes(s.distanceKm)} min walk</div>
-                    </div>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 14px', fontSize: '0.8rem' }}
-                      onClick={() => { setSource(s.name); }}
-                      id={`use-station-${s.id}`}
-                    >
-                      Use
-                    </button>
-                  </div>
-                </div>
+                <NearestCard
+                  key={s.id}
+                  s={s}
+                  i={i}
+                  onUse={(name) => setSource(name)}
+                  minsUntilTrain={minsUntilTrain}
+                />
               ))}
             </div>
 
-            {/* ── Will I Make It? sub-section ──────────────────────── */}
-            <div style={{ marginTop: '20px', padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
-                ⏱️ Will I Make It?
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-                How many minutes until your train departs?
+            {/* Will I Make It — now inline in cards above, but keep the time input */}
+            <div style={{ padding: '18px 20px', borderRadius: '16px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '1.1rem' }}>⏱️</span>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Will I Make It?</div>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                Enter minutes until your train departs — results update instantly on each station card above.
               </p>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <input
@@ -374,61 +768,38 @@ export default function JourneyPlanner() {
                   min="1"
                   max="120"
                   value={minsUntilTrain}
-                  onChange={e => { setMinsUntilTrain(e.target.value); setMakeItResults([]); }}
-                  onKeyDown={e => e.key === 'Enter' && handleWillIMakeIt()}
+                  onChange={e => setMinsUntilTrain(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && e.target.blur()}
                   placeholder="e.g. 12"
                   style={{
-                    width: '100px', padding: '10px 14px', borderRadius: 'var(--radius-md)',
+                    width: '110px', padding: '10px 14px', borderRadius: '12px',
                     border: '1.5px solid var(--border-color)', background: 'var(--bg-card)',
                     color: 'var(--text-primary)', fontSize: '0.95rem', outline: 'none',
                   }}
+                  onFocus={e => e.target.style.borderColor = '#f59e0b'}
+                  onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
                 />
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>minutes</span>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleWillIMakeIt}
-                  disabled={!minsUntilTrain || parseInt(minsUntilTrain, 10) <= 0}
-                  id="will-i-make-it-btn"
-                  style={{ marginLeft: 'auto' }}
-                >
-                  Check
-                </button>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500 }}>minutes until train</span>
+                {minsUntilTrain && (
+                  <div style={{ marginLeft: 'auto', fontSize: '0.78rem', color: '#f59e0b', fontWeight: 700 }}>
+                    ↑ Results shown on cards above
+                  </div>
+                )}
               </div>
-
-              {makeItResults.length > 0 && (
-                <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {makeItResults.map(s => (
-                    <div key={s.id} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '12px 14px', borderRadius: 'var(--radius-md)', flexWrap: 'wrap', gap: '8px',
-                      background: s.canMakeIt ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
-                      border: `1px solid ${s.canMakeIt ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                    }}>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{s.name}</div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          {(s.distanceKm * 1000).toFixed(0)} m · {s.walkMins} min walk
-                          {s.canMakeIt
-                            ? ` · ${s.buffer} min to spare`
-                            : ` · ${Math.abs(s.buffer)} min too slow`}
-                        </div>
-                      </div>
-                      <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        padding: '5px 12px', borderRadius: 'var(--radius-full)', fontWeight: 700, fontSize: '0.82rem',
-                        background: s.canMakeIt ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                        color: s.canMakeIt ? '#16a34a' : '#dc2626',
-                      }}>
-                        {s.canMakeIt ? '✅ Yes, you can!' : '❌ Too far'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         )}
-      </GlassCard>
+
+        {/* Initial state hint */}
+        {!nearestResults.length && !geoError && !geoLoading && (
+          <div style={{ textAlign: 'center', padding: '24px 16px' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '8px' }}>📍</div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Type your location above or use 📡 GPS to find the nearest metro stations
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

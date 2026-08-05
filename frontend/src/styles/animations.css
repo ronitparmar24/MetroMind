@@ -7,105 +7,122 @@
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Spring bounce entry (premium card entrance) */
+@keyframes springIn {
+  0%   { opacity: 0; transform: scale(0.88) translateY(24px); }
+  60%  { opacity: 1; transform: scale(1.03) translateY(-4px); }
+  80%  { transform: scale(0.98) translateY(2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50%       { opacity: 0.5; }
 }
 
+/* Enhanced skeleton — moving gradient sweep */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes shimmerSweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 @keyframes spin {
   from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to   { transform: rotate(360deg); }
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50%       { transform: translateY(-10px); }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.1); }
-  50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.25); }
+  0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.1); }
+  50%       { box-shadow: 0 0 40px rgba(99,102,241,0.25); }
+}
+
+/* Aurora background shift (Profile banner, hero sections) */
+@keyframes auroraShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Number count-up entrance */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Achievement holographic shimmer */
+@keyframes holographicShimmer {
+  0%   { background-position: -200% 0; opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { background-position: 200% 0; opacity: 0; }
+}
+
+/* XP ring fill animation */
+@keyframes ringFill {
+  from { stroke-dashoffset: 339; }
 }
 
 /* Animation utility classes */
-.animate-fade-in { animation: fadeIn 0.3s ease; }
-.animate-fade-in-up { animation: fadeInUp 0.4s ease; }
+.animate-fade-in      { animation: fadeIn     0.3s ease; }
+.animate-fade-in-up   { animation: fadeInUp   0.4s ease; }
 .animate-fade-in-down { animation: fadeInDown 0.4s ease; }
-.animate-slide-left { animation: slideInLeft 0.3s ease; }
-.animate-slide-right { animation: slideInRight 0.3s ease; }
-.animate-scale-in { animation: scaleIn 0.3s ease; }
-.animate-pulse { animation: pulse 2s infinite; }
-.animate-spin { animation: spin 1s linear infinite; }
-.animate-float { animation: float 3s ease-in-out infinite; }
-.animate-glow { animation: glow-pulse 3s ease-in-out infinite; }
+.animate-slide-left   { animation: slideInLeft  0.3s ease; }
+.animate-slide-right  { animation: slideInRight 0.3s ease; }
+.animate-scale-in     { animation: scaleIn   0.3s ease; }
+.animate-spring-in    { animation: springIn  0.5s cubic-bezier(0.2,0.8,0.2,1); }
+.animate-pulse        { animation: pulse     2s infinite; }
+.animate-spin         { animation: spin      1s linear infinite; }
+.animate-float        { animation: float     3s ease-in-out infinite; }
+.animate-glow         { animation: glow-pulse 3s ease-in-out infinite; }
 
-/* Staggered animation for lists */
+/* ── Button tactile press ── */
+button:active:not(:disabled),
+a.btn:active {
+  transform: scale(0.96) !important;
+  transition: transform 80ms ease !important;
+}
+
+/* ── Staggered animation for lists ── */
 .stagger-item {
   opacity: 0;
   animation: fadeInUp 0.4s ease forwards;
 }
-
-.stagger-item:nth-child(1) { animation-delay: 0ms; }
-.stagger-item:nth-child(2) { animation-delay: 60ms; }
+.stagger-item:nth-child(1) { animation-delay:   0ms; }
+.stagger-item:nth-child(2) { animation-delay:  60ms; }
 .stagger-item:nth-child(3) { animation-delay: 120ms; }
 .stagger-item:nth-child(4) { animation-delay: 180ms; }
 .stagger-item:nth-child(5) { animation-delay: 240ms; }
@@ -113,70 +130,62 @@
 .stagger-item:nth-child(7) { animation-delay: 360ms; }
 .stagger-item:nth-child(8) { animation-delay: 420ms; }
 
-/* Skeleton loading shimmer */
+/* ── Skeleton — enhanced with moving sweep ── */
 .skeleton {
-  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-card-hover) 50%, var(--bg-tertiary) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-tertiary);
   border-radius: var(--radius-md);
 }
-
-/* Smooth page transitions */
-.page-transition-enter {
-  opacity: 0;
-  transform: translateY(10px);
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0.06) 50%,
+    transparent 60%
+  );
+  animation: shimmerSweep 1.4s ease-in-out infinite;
+}
+[data-theme="dark"] .skeleton::after {
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0.04) 50%,
+    transparent 60%
+  );
 }
 
-.page-transition-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: all 0.3s ease;
+/* ── Smooth page transitions ── */
+.page-transition-enter        { opacity: 0; transform: translateY(10px); }
+.page-transition-enter-active { opacity: 1; transform: translateY(0); transition: all 0.3s ease; }
+
+/* ── Hover lift effect ── */
+.hover-lift { transition: transform var(--transition-base), box-shadow var(--transition-base); }
+.hover-lift:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+
+/* ── Toast animations ── */
+@keyframes toast-slide-in  { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes toast-slide-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+
+/* ── Dashboard live-data keyframes (shared) ── */
+@keyframes dashPulse    { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(1.4); } }
+@keyframes dashSkeleton { 0%,100% { opacity:0.4; } 50% { opacity:0.8; } }
+@keyframes dashArcIn    { from { stroke-dashoffset: 163; } }
+
+/* ── Sidebar entrance ── */
+@keyframes sidebarFadeIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+
+/* ── SOS pulse ── */
+@keyframes sosPulse {
+  0%,100% { box-shadow: 0 0 0 20px rgba(239,68,68,0.1), 0 0 0 40px rgba(239,68,68,0.05); }
+  50%     { box-shadow: 0 0 0 28px rgba(239,68,68,0.15), 0 0 0 56px rgba(239,68,68,0.06); }
 }
 
-/* Hover lift effect */
-.hover-lift {
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
-}
+/* ── Metro train slide (hero) ── */
+@keyframes metroSlide { from { transform: translateX(-60px); } to { transform: translateX(110vw); } }
 
-.hover-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* Toast animation */
-@keyframes toast-slide-in {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes toast-slide-out {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-/* Dashboard live-data keyframes (shared — used by Dashboard, Sidebar) */
-@keyframes dashPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.4); }
-}
-
-@keyframes dashSkeleton {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
-}
-
-@keyframes dashArcIn {
-  from { stroke-dashoffset: 163; }
-}
+/* ── Bento grid card entrance ── */
+@keyframes bentoFadeIn { 0% { opacity:0; transform:translateY(20px); } 100% { opacity:1; transform:translateY(0); } }

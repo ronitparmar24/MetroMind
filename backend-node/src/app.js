@@ -91,9 +91,26 @@ app.use('/api/geocode',    geocodeRoutes);
 app.use('/api/voice',      voiceRoutes);
 app.use('/api/admin',      adminRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'metromind-product-api' });
+// Health check — returns DB + ML status for admin dashboard
+app.get('/api/health', async (req, res) => {
+  const mongoose = require('mongoose');
+  const axios = require('axios');
+
+  const dbState = mongoose.connection.readyState; // 1 = connected
+  let mlStatus = 'offline';
+  try {
+    const r = await axios.get('http://127.0.0.1:8000/api/health/', { timeout: 2000 });
+    if (r.status === 200) mlStatus = 'online';
+  } catch (_) { /* ml offline */ }
+
+  res.json({
+    status: 'ok',
+    service: 'metromind-product-api',
+    db: dbState === 1 ? 'connected' : 'disconnected',
+    ml: mlStatus,
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // 7. Global error handler — MUST be last middleware

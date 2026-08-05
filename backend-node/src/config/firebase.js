@@ -1,22 +1,29 @@
 // backend-node/src/config/firebase.js
-// Firebase Admin SDK — server-side only.
+// Firebase Admin SDK — server-side only (used for push notifications).
 // firebase-admin v14 uses named exports (no admin.credential.cert namespace).
 
-const {
-  initializeApp,
-  getApps,
-  getApp,
-  cert,
-} = require('firebase-admin/app');
+let admin = null;
 
-const serviceAccount = require('../../config/firebase-service-account.json');
+try {
+  const {
+    initializeApp,
+    getApps,
+    cert,
+  } = require('firebase-admin/app');
 
-// Singleton guard — safe under nodemon hot-reload
-if (!getApps().length) {
-  initializeApp({ credential: cert(serviceAccount) });
-  console.log('✅ Firebase Admin initialised — project:', serviceAccount.project_id);
+  const serviceAccount = require('../../config/firebase-service-account.json');
+
+  // Singleton guard — safe under nodemon hot-reload
+  if (!getApps().length) {
+    initializeApp({ credential: cert(serviceAccount) });
+    console.log('✅ Firebase Admin initialised — project:', serviceAccount.project_id);
+  }
+
+  admin = require('firebase-admin');
+} catch (err) {
+  // Firebase is optional (only needed for push notifications).
+  // A missing or invalid service account key should NOT crash the server.
+  console.warn('⚠️  Firebase Admin skipped — push notifications disabled:', err.message);
 }
 
-// Export the admin namespace so pushNotifier.js can call admin.messaging()
-const admin = require('firebase-admin');
 module.exports = admin;

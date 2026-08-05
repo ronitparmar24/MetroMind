@@ -176,11 +176,61 @@ export default function Login() {
   const [isGoogleSdkReady, setIsGoogleSdkReady] = useState(false);
   const [googleSdkFailed, setGoogleSdkFailed] = useState(false);
 
+  // Keep a stable ref to the callback so Google GIS always calls the latest version
+  const googleCallbackRef = useRef(null);
+
+  const handleGoogleCallback = async (response) => {
+    if (!response?.credential) {
+      setError('Google sign-in was cancelled or failed. Please try again.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      // Decode picture directly from Google JWT — available before API call
+      let googlePicture = '';
+      try {
+        const parts = response.credential.split('.');
+        if (parts.length === 3) {
+          const pad = (4 - (parts[1].length % 4)) % 4;
+          const b64 = parts[1] + '='.repeat(pad);
+          const decoded = JSON.parse(atob(b64.replace(/-/g, '+').replace(/_/g, '/')));
+          googlePicture = decoded.picture || '';
+        }
+      } catch (_) { /* ignore JWT decode errors */ }
+
+      // Cache picture in localStorage — survives page refreshes without re-login
+      if (googlePicture) localStorage.setItem('mm_g_pic', googlePicture);
+
+      const res = await googleLoginApi(response.credential);
+      // Prefer backend avatar, fallback to JWT picture for old accounts without avatar saved
+      const userData = { ...res.data.user, avatar: res.data.user.avatar || googlePicture };
+
+      login(res.data.token, userData);
+      toast.success(
+        res.data.isNewUser
+          ? `Welcome to MetroMind, ${userData.name}! 🎉`
+          : `Welcome back, ${userData.name}!`
+      );
+      setShowSuccess(true);
+      setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // Keep the ref up-to-date on every render
+  googleCallbackRef.current = handleGoogleCallback;
+
   // Initialize Google Identity Services
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1077224737562-8cjsrpmplh7i84ch09ai3s2j6uqlk26d.apps.googleusercontent.com';
     let initAttempts = 0;
     let initInterval;
+
+    // Stable wrapper — always delegates to the latest handler via ref
+    const stableCallback = (response) => googleCallbackRef.current(response);
 
     const initGoogle = () => {
       if (window.google?.accounts?.id) {
@@ -188,7 +238,7 @@ export default function Login() {
         try {
           window.google.accounts.id.initialize({
             client_id: clientId,
-            callback: handleGoogleCallback,
+            callback: stableCallback,
             auto_select: false,
             cancel_on_tap_outside: true,
           });
@@ -230,29 +280,6 @@ export default function Login() {
     return () => clearInterval(initInterval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleGoogleCallback = async (response) => {
-    if (!response?.credential) {
-      setError('Google sign-in was cancelled or failed. Please try again.');
-      return;
-    }
-    setError('');
-    setLoading(true);
-    try {
-      const res = await googleLoginApi(response.credential);
-      login(res.data.token, res.data.user);
-      toast.success(
-        res.data.isNewUser
-          ? `Welcome to MetroMind, ${res.data.user.name}! 🎉`
-          : `Welcome back, ${res.data.user.name}!`
-      );
-      setShowSuccess(true);
-      setTimeout(() => navigate(res.data.user.role === 'admin' ? '/admin' : '/dashboard'), 1800);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -582,8 +609,10 @@ export default function Login() {
                       placeholder="Min 6 characters" minLength={6} autoComplete="new-password"
                       autoFocus
                     />
-                    <button type="button" className="auth-pw-toggle" onClick={() => setShowPw(!showPw)}>
-                      <span className="material-symbols-outlined">{showPw ? 'visibility_off' : 'visibility'}</span>
+                    <button type="button" className="auth-pw-toggle" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPw(prev => !prev); }}>
+                      <span className="material-symbols-outlined">
+                        {showPw ? 'visibility_off' : 'visibility'}
+                      </span>
                     </button>
                   </div>
                   {newPassword.length > 0 && newPassword.length < 6 && (
@@ -719,9 +748,9 @@ export default function Login() {
                       placeholder="••••••••" required minLength={6}
                       autoComplete="current-password" style={{ paddingRight: '42px' }}
                     />
-                    <button type="button" className="auth-pw-toggle" onClick={() => setShowPw(!showPw)}>
+                    <button type="button" className="auth-pw-toggle" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPw(prev => !prev); }}>
                       <span className="material-symbols-outlined">
-                        {showPw ? 'visibility' : 'visibility_off'}
+                        {showPw ? 'visibility_off' : 'visibility'}
                       </span>
                     </button>
                   </div>

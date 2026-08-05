@@ -41,29 +41,30 @@ function Particles() {
 function TermsModal({ open, onClose, onAccept }) {
   if (!open) return null;
   const SECTIONS = [
-    { icon: '🤝', title: '1. Acceptance of Terms', color: '#4F46E5',
-      content: 'By registering for a MetroMind account, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.' },
-    { icon: '🛡️', title: '2. Account & Security', color: '#22c55e', list: [
-      'Username must be unique across the platform.',
-      'Password must be at least 6 characters.',
-      'You are responsible for maintaining credential confidentiality.',
-      'Each account gets one digital wallet with ₹500 welcome bonus.',
+    { icon: '📜', title: '1. Acceptance & Wallet Terms', color: '#4F46E5', list: [
+      'By registering, you agree to be bound by MetroMind’s Terms of Service.',
+      'The ₹500 welcome bonus is promotional, non-transferable, and cannot be withdrawn as cash.',
+      'You are solely responsible for maintaining the confidentiality of your account credentials.'
     ]},
-    { icon: '🎫', title: '3. Ticketing & Booking', color: '#f59e0b', list: [
-      'Each ticket is valid for the selected date, route, and passengers.',
-      'Maximum 6 passengers per ticket.',
-      'QR codes are generated upon booking.',
+    { icon: '🎫', title: '2. Ticketing & Journey Validity', color: '#f59e0b', list: [
+      'QR tickets are strictly non-transferable and valid only for the selected source and destination.',
+      'Generated QR tickets must be scanned at the entry turnstile within 2 hours of booking.',
+      'Maximum of 6 passengers permitted per single booking transaction.'
     ]},
-    { icon: '💰', title: '4. Fare Calculation', color: '#7c3aed',
-      content: 'Fares are dynamically calculated. Base: ₹10, per km: ₹5. Peak hours (8–11 AM, 5–7 PM): +25% surge.' },
-    { icon: '🌿', title: '5. Carbon Tracking', color: '#16a34a', list: [
-      'MetroMind calculates CO₂ savings for every metro trip.',
-      'Eco leaderboard ranks users by total CO₂ saved.',
+    { icon: '⚖️', title: '3. User Conduct & Penalties', color: '#ef4444', list: [
+      'Passengers must strictly adhere to all local Metro safety and security guidelines.',
+      'Tailgating, fare evasion, or traveling without a valid scanned ticket will incur a minimum fine of ₹1000.',
+      'Carrying flammable, hazardous, or prohibited items is strictly forbidden.'
     ]},
-    { icon: '🔒', title: '6. Privacy & Data Protection', color: '#4F46E5', list: [
-      'Passwords are hashed with bcrypt.',
-      'JWT-based authentication protects sessions.',
-      'Personal data is never shared with third parties.',
+    { icon: '🤖', title: '4. AI Predictions & Liability', color: '#8b5cf6', list: [
+      'Train delays and crowd density metrics are AI-generated estimates and are not guaranteed.',
+      'MetroMind is not legally liable for missed connections, scheduling changes, or predictive inaccuracies.',
+      'Fares may dynamically adjust (+25% surge) during predicted peak hours.'
+    ]},
+    { icon: '🔒', title: '5. Data Privacy & Tracking', color: '#10b981', list: [
+      'Your anonymized journey and location data are utilized to train our crowd prediction models.',
+      'We do not sell your personal identifying data to third-party advertisers.',
+      'All payment and biometric data are encrypted in transit and at rest.'
     ]},
   ];
 
@@ -350,11 +351,40 @@ export default function Register() {
   const [isGoogleSdkReady, setIsGoogleSdkReady] = useState(false);
   const [googleSdkFailed, setGoogleSdkFailed] = useState(false);
 
+  // Keep a stable ref to the callback so Google GIS always calls the latest version
+  const googleCallbackRef = useRef(null);
+
+  const handleGoogleCallback = async (response) => {
+    if (!response?.credential) {
+      setError('Google sign-up was cancelled or failed. Please try again.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const res = await googleLoginApi(response.credential);
+      login(res.data.token, res.data.user);
+      toast.success(`Welcome to MetroMind, ${res.data.user.name}! 🎉`);
+      setStep(3);
+      setShowSuccess(true);
+      setTimeout(() => navigate('/dashboard'), 1800);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Google sign-up failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // Keep the ref up-to-date on every render
+  googleCallbackRef.current = handleGoogleCallback;
+
   // Initialize Google Identity Services
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1077224737562-8cjsrpmplh7i84ch09ai3s2j6uqlk26d.apps.googleusercontent.com';
     let initAttempts = 0;
     let initInterval;
+
+    // Stable wrapper — always delegates to the latest handler via ref
+    const stableCallback = (response) => googleCallbackRef.current(response);
 
     const initGoogle = () => {
       if (window.google?.accounts?.id) {
@@ -362,7 +392,7 @@ export default function Register() {
         try {
           window.google.accounts.id.initialize({
             client_id: clientId,
-            callback: handleGoogleCallback,
+            callback: stableCallback,
             auto_select: false,
             cancel_on_tap_outside: true,
           });
@@ -402,26 +432,6 @@ export default function Register() {
     return () => clearInterval(initInterval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleGoogleCallback = async (response) => {
-    if (!response?.credential) {
-      setError('Google sign-up was cancelled or failed. Please try again.');
-      return;
-    }
-    setError('');
-    setLoading(true);
-    try {
-      const res = await googleLoginApi(response.credential);
-      login(res.data.token, res.data.user);
-      toast.success(`Welcome to MetroMind, ${res.data.user.name}! 🎉`);
-      setStep(3);
-      setShowSuccess(true);
-      setTimeout(() => navigate('/dashboard'), 1800);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Google sign-up failed. Please try again.');
-      setLoading(false);
-    }
-  };
 
   // Step 1 → register + send OTP
   const handleCreateAccount = async () => {
@@ -658,9 +668,9 @@ export default function Register() {
                       onChange={(e) => update('password', e.target.value)}
                       placeholder="••••••••" required minLength={6} maxLength={15}
                       autoComplete="new-password" id="reg-password" style={{ paddingRight: '42px' }} />
-                    <button type="button" className="auth-pw-toggle" onClick={() => setShowPw(!showPw)}>
+                    <button type="button" className="auth-pw-toggle" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPw(prev => !prev); }}>
                       <span className="material-symbols-outlined">
-                        {showPw ? 'visibility' : 'visibility_off'}
+                        {showPw ? 'visibility_off' : 'visibility'}
                       </span>
                     </button>
                   </div>
@@ -694,9 +704,9 @@ export default function Register() {
                       onChange={(e) => update('confirmPw', e.target.value)}
                       placeholder="••••••••" required maxLength={15}
                       autoComplete="new-password" id="reg-confirm" style={{ paddingRight: '42px' }} />
-                    <button type="button" className="auth-pw-toggle" onClick={() => setShowCpw(!showCpw)}>
+                    <button type="button" className="auth-pw-toggle" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowCpw(prev => !prev); }}>
                       <span className="material-symbols-outlined">
-                        {showCpw ? 'visibility' : 'visibility_off'}
+                        {showCpw ? 'visibility_off' : 'visibility'}
                       </span>
                     </button>
                   </div>

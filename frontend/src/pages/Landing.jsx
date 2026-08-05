@@ -119,11 +119,17 @@ function FaqItem({ q, a, open, onClick }) {
     <div className={`mm-faq-item ${open ? 'mm-faq-item--open' : ''}`} onClick={onClick}>
       <div className="mm-faq-item__q">
         <span>{q}</span>
-        <span className="mm-faq-item__icon">{open ? '−' : '+'}</span>
+        <span className="mm-faq-item__icon">
+          <i className="fas fa-chevron-down" />
+        </span>
       </div>
       <div className="mm-faq-item__a" style={{
-        maxHeight: open ? '200px' : '0', opacity: open ? 1 : 0,
-        padding: open ? '0 0 16px' : '0',
+        maxHeight: open ? '200px' : '0',
+        opacity: open ? 1 : 0,
+        paddingTop: 0,
+        paddingBottom: open ? '20px' : 0,
+        paddingLeft: '24px',
+        paddingRight: '24px',
       }}>
         {a}
       </div>

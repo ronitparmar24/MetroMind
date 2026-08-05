@@ -1,26 +1,23 @@
 // frontend/src/pages/Profile.jsx
-// MetroMind — Full profile view with ML personality breakdown + station explorer
-// Layout: same S-object / CSS-variable pattern as Dashboard.jsx
-import { useState, useEffect, useMemo } from 'react';
+// MetroMind — Cinematic Profile with Google Avatar, Aurora Banner, Spotify-Wrapped Stats
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useTickets } from '../hooks/useTickets';
 import { getPersonalityProfile, getCommuterCluster } from '../api/predict.api';
 import { getStationProfile } from '../api/analytics.api';
 import { STATIONS } from '../constants/stations';
+import StationSelector from '../components/booking/StationSelector';
 import { formatDate } from '../utils/formatters';
 
-/* ═══════════════════════════════════════════════════════════
-   CONSTANTS
-   ═══════════════════════════════════════════════════════════ */
+/* ═══ Constants ═══ */
 const TYPE_META = {
-  'Early Bird':        { icon: '🌅', color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' },
-  'Rush Hour Warrior': { icon: '⚡', color: '#ef4444', gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' },
-  'Weekend Explorer':  { icon: '🧭', color: '#6366f1', gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' },
-  'Smart Commuter':    { icon: '🧠', color: '#22c55e', gradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' },
-  'Balanced Traveler': { icon: '⚖️', color: '#0B7DC3', gradient: 'linear-gradient(135deg, #0B7DC3 0%, #0369a1 100%)' },
+  'Early Bird':        { icon: '🌅', color: '#f59e0b', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', aura: 'rgba(245,158,11,0.15)' },
+  'Rush Hour Warrior': { icon: '⚡', color: '#ef4444', gradient: 'linear-gradient(135deg,#ef4444,#dc2626)', aura: 'rgba(239,68,68,0.15)'  },
+  'Weekend Explorer':  { icon: '🧭', color: '#6366f1', gradient: 'linear-gradient(135deg,#6366f1,#4f46e5)', aura: 'rgba(99,102,241,0.15)' },
+  'Smart Commuter':    { icon: '🧠', color: '#22c55e', gradient: 'linear-gradient(135deg,#22c55e,#16a34a)', aura: 'rgba(34,197,94,0.15)'  },
+  'Balanced Traveler': { icon: '⚖️', color: '#0B7DC3', gradient: 'linear-gradient(135deg,#0B7DC3,#0369a1)', aura: 'rgba(11,125,195,0.15)' },
 };
 
-// Four ratios that drive the classification decision
-// Maps Django keys → user-friendly labels
 const RATIO_METERS = [
   { key: 'earlyMorningRatio', fallbackKey: 'earlyBirdRatio', label: 'Early Bird', color: '#f59e0b', icon: '🌅' },
   { key: 'peakHourRatio',     fallbackKey: 'rushHourRatio',  label: 'Rush Hour',  color: '#ef4444', icon: '⚡' },
@@ -28,394 +25,177 @@ const RATIO_METERS = [
   { key: 'lowCrowdRatio',     fallbackKey: 'smartRatio',     label: 'Smart Pick', color: '#22c55e', icon: '🧠' },
 ];
 
-const STATION_NAMES = STATIONS.map(s => s.name).sort();
+const ML_STATIONS = [
+  'Motera Stadium','Sabarmati','Ranip','Kankaria East','Kalupur Railway Station',
+  'Gheekanta','Old High Court','Shahpur','Vadaj','Thaltej','Doordarshan Kendra',
+  'Gujarat University','Commerce Six Roads','SSG Hospital','AEC','Paldi','Shreyas',
+  'Amraiwadi','Rabari Colony','Apparel Park','APMC','Vastral Gam','Nirant Cross Road',
+  'Vastral','Odhav','CTM Cross Road','Jivraj Mehta Hospital','Kankaria','Kalupur',
+  'Usmanpura','Chandkheda','GNLU',
+].sort();
 
-/* ─── Inline styles (scoped to profile, same S-object pattern as Dashboard) ─── */
-const S = {
-  // Page wrapper
-  page: {
-    padding: 'var(--space-xl)',
-    maxWidth: '960px',
-    animation: 'fadeInUp 0.4s ease',
-  },
-
-  // Compact header
-  header: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-    marginBottom: '24px', flexWrap: 'wrap', gap: '8px',
-  },
-  greeting: {
-    fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)',
-    fontFamily: 'var(--font-display)',
-  },
-  headerMeta: {
-    fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500,
-    display: 'flex', gap: '12px', alignItems: 'center',
-  },
-
-  // Card shell (identical to Dashboard.jsx)
-  card: {
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--radius-lg)',
-    overflow: 'hidden',
-  },
-  cardPad: {
-    padding: '20px 24px',
-  },
-
-  // Bar track — same as Dashboard.jsx S.barTrack
-  barTrack: {
-    height: '6px', background: 'var(--bg-tertiary)', borderRadius: '3px',
-    overflow: 'hidden',
-  },
-
-  // Section label (reusable muted uppercase label — same as Dashboard)
-  label: {
-    fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
-    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
-  },
-
-  // Ghost button
-  ghostBtn: {
-    display: 'inline-flex', alignItems: 'center', gap: '6px',
-    padding: '6px 14px', borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--border-color)', background: 'transparent',
-    color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 600,
-    cursor: 'pointer', transition: 'all 150ms ease',
-  },
-
-  // Stats row
-  statItem: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    textDecoration: 'none', color: 'inherit',
-    transition: 'color 150ms ease',
-  },
-  statValue: {
-    fontWeight: 600, color: 'var(--text-secondary)',
-  },
-  separator: {
-    width: '3px', height: '3px', borderRadius: '50%',
-    background: 'var(--text-muted)', opacity: 0.5,
-  },
-
-  // Skeleton
-  skeleton: {
-    background: 'var(--bg-tertiary)',
-    borderRadius: '4px',
-    animation: 'profileSkeleton 1.2s ease-in-out infinite',
-  },
-
-  // Profile-specific
-  avatarRing: {
-    width: '72px', height: '72px', borderRadius: 'var(--radius-full)',
-    background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center',
-    justifyContent: 'center', fontSize: '1.8rem', color: 'white', fontWeight: 700,
-    flexShrink: 0,
-  },
-  fieldRow: {
-    display: 'flex', justifyContent: 'space-between', padding: '14px',
-    borderBottom: '1px solid var(--border-color)',
-  },
-  fieldLabel: {
-    color: 'var(--text-secondary)', fontSize: '0.9rem',
-  },
-  fieldValue: {
-    fontWeight: 500, fontSize: '0.9rem',
-  },
-
-  // Personality card
-  personalityHeader: {
-    display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px',
-  },
-  personalityIcon: {
-    width: '64px', height: '64px', borderRadius: 'var(--radius-lg)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '1.8rem', flexShrink: 0,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-  },
-  personalityTitle: {
-    fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 700,
-    marginBottom: '4px', background: 'var(--gradient-primary)',
-    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-  },
-
-  // Station Explorer
-  select: {
-    width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)',
-    color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: 500,
-    outline: 'none', cursor: 'pointer',
-    transition: 'border-color 150ms ease',
-  },
-  statGrid: {
-    display: 'grid', gridTemplateColumns: '1fr 1fr',
-    gap: '16px', marginTop: '20px',
-  },
-  statCard: {
-    padding: '16px',
-    borderRadius: 'var(--radius-md)',
-    background: 'var(--bg-tertiary)',
-  },
-  bigNumber: {
-    fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)',
-    fontFamily: 'var(--font-display)', lineHeight: 1.2,
-  },
-  smallLabel: {
-    fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
-    textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '4px',
-  },
-  personalBadge: {
-    display: 'inline-flex', alignItems: 'center', gap: '4px',
-    fontSize: '0.625rem', fontWeight: 600, color: '#0B7DC3',
-    background: 'rgba(11,125,195,0.08)', padding: '2px 8px',
-    borderRadius: '4px', letterSpacing: '0.04em',
-    textTransform: 'uppercase',
-  },
-};
-
-/* ═══════════════════════════════════════════════════════════
-   HELPERS
-   ═══════════════════════════════════════════════════════════ */
+/* ═══ Helpers ═══ */
 function buildExplanation(personality, ratios) {
   const type = personality || 'Balanced Traveler';
-  if (type === 'Early Bird') {
-    const pct = Math.round((ratios.earlyMorningRatio || ratios.earlyBirdRatio || 0) * 100);
-    return `You travel before 9 AM ${pct}% of the time — that's what makes you an Early Bird.`;
-  }
-  if (type === 'Rush Hour Warrior') {
-    const pct = Math.round((ratios.peakHourRatio || ratios.rushHourRatio || 0) * 100);
-    return `You travel during peak hours ${pct}% of the time — that's what makes you a Rush Hour Warrior.`;
-  }
-  if (type === 'Weekend Explorer') {
-    const pct = Math.round((ratios.weekendRatio || 0) * 100);
-    return `You ride on weekends ${pct}% of the time — that's what makes you a Weekend Explorer.`;
-  }
-  if (type === 'Smart Commuter') {
-    const pct = Math.round((ratios.lowCrowdRatio || ratios.smartRatio || 0) * 100);
-    return `You dodge crowded trains ${pct}% of the time — that's what makes you a Smart Commuter.`;
-  }
+  if (type === 'Early Bird') { const p = Math.round((ratios.earlyMorningRatio || ratios.earlyBirdRatio || 0)*100); return `You travel before 9 AM ${p}% of the time — that's what makes you an Early Bird.`; }
+  if (type === 'Rush Hour Warrior') { const p = Math.round((ratios.peakHourRatio || ratios.rushHourRatio || 0)*100); return `You travel during peak hours ${p}% of the time — that's what makes you a Rush Hour Warrior.`; }
+  if (type === 'Weekend Explorer') { const p = Math.round((ratios.weekendRatio || 0)*100); return `You ride on weekends ${p}% of the time — that's what makes you a Weekend Explorer.`; }
+  if (type === 'Smart Commuter') { const p = Math.round((ratios.lowCrowdRatio || ratios.smartRatio || 0)*100); return `You dodge crowded trains ${p}% of the time — that's what makes you a Smart Commuter.`; }
   return 'You have a balanced travel pattern — mixing peak and off-peak, weekdays and weekends.';
 }
 
-/* ═══════════════════════════════════════════════════════════
-   PERSONALITY BREAKDOWN CARD
-   Full version of the badge shown on Dashboard
-   ═══════════════════════════════════════════════════════════ */
+/* ═══ CountUp Hook ═══ */
+function useCountUp(target, duration = 1200) {
+  const [value, setValue] = useState(0);
+  const raf = useRef(null);
+  useEffect(() => {
+    const start = performance.now();
+    const step = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(ease * target));
+      if (progress < 1) raf.current = requestAnimationFrame(step);
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, duration]);
+  return value;
+}
+
+/* ═══ Animated Stat Card ═══ */
+function StatBig({ value, label, icon, color = '#6366f1' }) {
+  const num = typeof value === 'number' ? value : 0;
+  const animated = useCountUp(num);
+  return (
+    <div style={{ textAlign: 'center', padding: '20px 16px', flex: 1 }}>
+      <div style={{ fontSize: '1.6rem', marginBottom: '6px' }}>{icon}</div>
+      <div style={{ fontSize: '2rem', fontWeight: 900, color, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+        {typeof value === 'number' ? animated : value}
+      </div>
+      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: '4px' }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+/* ═══ Personality Breakdown Card ═══ */
 function PersonalityBreakdown() {
+  const { tickets } = useTickets();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isFallback, setIsFallback] = useState(false);
 
   useEffect(() => {
     getPersonalityProfile()
       .then(res => {
-        const p = res.data.personality;
-        if (p && p.totalTrips >= 5) setData(p);
-        else setData(null);
+        setIsFallback(!!res.data.fallback);
+        setData(res.data.personality);
       })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <div style={{ ...S.card, marginBottom: '16px' }}>
-        <div className="profile-card-pad" style={S.cardPad}>
-          <div style={S.personalityHeader}>
-            <div style={{ ...S.skeleton, width: '64px', height: '64px', borderRadius: 'var(--radius-lg)' }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ ...S.skeleton, width: '180px', height: '18px', marginBottom: '8px' }} />
-              <div style={{ ...S.skeleton, width: '260px', height: '14px' }} />
-            </div>
-          </div>
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-              <div style={{ ...S.skeleton, width: '80px', height: '12px' }} />
-              <div style={{ ...S.skeleton, flex: 1, height: '6px' }} />
-              <div style={{ ...S.skeleton, width: '36px', height: '12px' }} />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '24px', marginBottom: '16px' }}>
+      {[1,2,3,4].map(i => <div key={i} style={{ height: '14px', background: 'var(--bg-tertiary)', borderRadius: '4px', marginBottom: '12px', animation: 'profileSkeleton 1.2s ease-in-out infinite' }} />)}
+    </div>
+  );
 
-  if (!data) {
-    return (
-      <div style={{ ...S.card, marginBottom: '16px' }}>
-        <div className="profile-card-pad" style={S.cardPad}>
-          <div style={S.label}>Commute Personality</div>
-          <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <span style={{ fontSize: '2rem', display: 'block', marginBottom: '8px' }}>🔒</span>
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '4px', color: 'var(--text-primary)' }}>
-              Not enough data yet
-            </div>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Complete at least 5 trips to unlock your personality breakdown
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (tickets.length < 5) return (
+    <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '24px', textAlign: 'center', marginBottom: '16px' }}>
+      <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🔒</div>
+      <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '4px', color: 'var(--text-primary)' }}>Commute Personality Locked</div>
+      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Complete at least 5 trips to unlock your personality breakdown</div>
+    </div>
+  );
 
-  const meta = TYPE_META[data.personality] || TYPE_META['Balanced Traveler'];
-  const ratios = data.ratios || {};
+  const meta = TYPE_META[data?.personality] || TYPE_META['Balanced Traveler'];
+  const ratios = data?.ratios || { weekendRatio: 0.2, smartRatio: 0.3, peakHourRatio: 0.5 }; // Realistic fallback ratios
 
   return (
-    <div style={{ ...S.card, marginBottom: '16px', position: 'relative' }}>
-      {/* Accent stripe */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: '3px',
-        background: meta.gradient,
-      }} />
+    <div style={{ borderRadius: '20px', border: `1px solid ${meta.aura.replace('0.15)', '0.3)')}`, background: 'var(--bg-secondary)', overflow: 'hidden', marginBottom: '16px', position: 'relative' }}>
+      <div style={{ height: '3px', background: meta.gradient }} />
+      <div style={{ padding: '24px' }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Commute Personality</div>
+          {isFallback && (
+            <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#92400e', background: 'rgba(245,158,11,0.15)', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)' }}>
+              ⚡ ML Offline (Estimate)
+            </div>
+          )}
+        </div>
 
-      <div className="profile-card-pad" style={{ ...S.cardPad, paddingTop: '24px' }}>
-        <div style={S.label}>Commute Personality</div>
-
-        {/* Header: icon + type + description */}
-        <div style={S.personalityHeader}>
-          <div style={{ ...S.personalityIcon, background: meta.gradient }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: meta.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', flexShrink: 0, boxShadow: `0 6px 20px ${meta.aura}` }}>
             {meta.icon}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={S.personalityTitle}>{data.personality}</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.4 }}>
-              {data.description}
-            </p>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, background: meta.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '4px' }}>{data?.personality || 'Balanced Traveler'}</h3>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{data?.description || 'You have a balanced travel pattern — mixing peak and off-peak, weekdays and weekends.'}</p>
           </div>
         </div>
 
-        {/* Four horizontal bar meters */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
           {RATIO_METERS.map(({ key, fallbackKey, label, color, icon }) => {
-            const value = ratios[key] ?? ratios[fallbackKey] ?? 0;
-            const pct = Math.round(value * 100);
+            const val = ratios[key] ?? ratios[fallbackKey] ?? 0;
+            const pct = Math.round(val * 100);
             return (
               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{
-                  fontSize: '0.75rem', color: 'var(--text-muted)',
-                  width: '88px', flexShrink: 0, textAlign: 'right',
-                  display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px',
-                }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', width: '88px', flexShrink: 0, textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                   <span style={{ fontSize: '0.8rem' }}>{icon}</span> {label}
                 </span>
-                <div style={S.barTrack}>
-                  <div style={{
-                    height: '100%', borderRadius: '3px',
-                    background: color,
-                    width: `${pct}%`,
-                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-                  }} />
+                <div style={{ flex: 1, height: '6px', background: 'var(--bg-tertiary)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: color, width: `${pct}%`, borderRadius: '3px', transition: 'width 0.8s cubic-bezier(0.16,1,0.3,1)' }} />
                 </div>
-                <span style={{
-                  fontSize: '0.75rem', fontWeight: 600,
-                  color: 'var(--text-secondary)', width: '36px',
-                }}>
-                  {pct}%
-                </span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', width: '36px' }}>{pct}%</span>
               </div>
             );
           })}
         </div>
 
-        {/* Plain-language explanation */}
-        <div style={{
-          padding: '12px 16px',
-          background: 'var(--bg-tertiary)',
-          borderRadius: 'var(--radius-md)',
-          fontSize: '0.8125rem',
-          color: 'var(--text-secondary)',
-          lineHeight: 1.5,
-          display: 'flex', gap: '8px', alignItems: 'flex-start',
-        }}>
-          <i className="fas fa-info-circle" style={{ color: meta.color, marginTop: '2px', flexShrink: 0 }} />
-          <span>{buildExplanation(data.personality, ratios)}</span>
+        <div style={{ padding: '12px 16px', background: meta.aura, borderRadius: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+          <span style={{ color: meta.color, flexShrink: 0, marginTop: '1px' }}>ℹ</span>
+          <span>{buildExplanation(data?.personality, ratios)}</span>
         </div>
-
-        {/* Trip count + unique stations footer */}
-        {(data.totalTrips || ratios.uniqueStations) && (
-          <div style={{
-            display: 'flex', gap: '16px', marginTop: '14px',
-            fontSize: '0.75rem', color: 'var(--text-muted)',
-            justifyContent: 'flex-end', flexWrap: 'wrap',
-          }}>
-            {data.totalTrips && <span>{data.totalTrips} total trips analyzed</span>}
-            {ratios.uniqueStations && (
-              <>
-                <span style={S.separator} />
-                <span>{ratios.uniqueStations} unique stations</span>
-              </>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   STATION EXPLORER
-   Django station-profile → global ML stats + personal trips
-   ═══════════════════════════════════════════════════════════ */
+/* ═══ Commuter Cluster Card ═══ */
 function CommuterClusterCard() {
+  const { tickets } = useTickets();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useEffect(() => { 
     getCommuterCluster()
-      .then(res => {
-        if (res.data.cluster && res.data.cluster.clusterLabel) {
-          setData(res.data.cluster);
-        } else {
-          setData(null);
-        }
-      })
+      .then(r => setData(r.data.cluster?.clusterLabel ? r.data.cluster : null))
       .catch(() => setData(null))
-      .finally(() => setLoading(false));
+      .finally(() => setLoading(false)); 
   }, []);
 
-  if (loading) {
-    return (
-      <div style={{ ...S.card, marginBottom: '16px' }}>
-        <div className="profile-card-pad" style={S.cardPad}>
-          <div style={{ ...S.skeleton, width: '150px', height: '14px', marginBottom: '16px' }} />
-          <div style={{ ...S.skeleton, width: '100%', height: '60px' }} />
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) return null;
+  // Hide cluster if user hasn't unlocked personality, or if ML service is offline (fallback data)
+  if (loading || !data || tickets.length < 5 || data.fallback) return null;
 
   return (
-    <div style={{ ...S.card, marginBottom: '16px', background: 'var(--bg-tertiary)' }}>
-      <div className="profile-card-pad" style={S.cardPad}>
-        <div style={S.label}>Similar Commuters (Unsupervised ML)</div>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginTop: '12px' }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: 'var(--radius-md)',
-            background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.4rem', flexShrink: 0,
-          }}>
-            👥
-          </div>
-          <div>
-            <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
-              You're in the <span style={{ color: '#0B7DC3' }}>{data.clusterLabel}</span> group
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>
-              {data.similarCommuterCount} other commuters share your exact travel pattern. 
-              Unlike your rule-based Commute Personality, this insight is powered by a 
-              K-Means Clustering algorithm that groups users based on their multi-dimensional travel behavior.
-            </p>
-          </div>
+    <div style={{ borderRadius: '20px', border: '1px solid rgba(11,125,195,0.2)', background: 'rgba(11,125,195,0.05)', padding: '20px', marginBottom: '16px' }}>
+      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>Similar Commuters (ML Cluster)</div>
+      <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+        <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg,#0B7DC3,#0369a1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0 }}>👥</div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: '4px' }}>You're in the <span style={{ color: '#0B7DC3' }}>{data.clusterLabel}</span> group</div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>{data.similarCommuterCount} other commuters share your pattern · K-Means clustering</p>
         </div>
       </div>
     </div>
   );
 }
 
+/* ═══ Station Explorer ═══ */
 function StationExplorer() {
   const [station, setStation] = useState('');
   const [profile, setProfile] = useState(null);
@@ -424,277 +204,220 @@ function StationExplorer() {
 
   useEffect(() => {
     if (!station) { setProfile(null); setError(null); return; }
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     getStationProfile(station)
-      .then(res => {
-        if (res.data.fallback) {
-          setError('ML analytics service is offline — try again later.');
-          setProfile(null);
-        } else {
-          setProfile(res.data.profile);
-        }
-      })
-      .catch(err => {
-        setError(err.response?.data?.error || 'Failed to load station profile');
-        setProfile(null);
-      })
+      .then(r => r.data.fallback ? setError('ML analytics service offline') : setProfile(r.data.profile))
+      .catch(e => setError(e.response?.data?.error || 'Failed to load'))
       .finally(() => setLoading(false));
   }, [station]);
 
-  // Derive busiest hour from hourly avg crowd
   const busiestHour = useMemo(() => {
     if (!profile?.hourlyAvgCrowd) return null;
-    let maxHour = null;
-    let maxVal = -1;
-    Object.entries(profile.hourlyAvgCrowd).forEach(([h, v]) => {
-      if (v !== null && v > maxVal) { maxVal = v; maxHour = parseInt(h, 10); }
-    });
-    if (maxHour === null) return null;
-    const ampm = maxHour >= 12
-      ? `${maxHour === 12 ? 12 : maxHour - 12} PM`
-      : `${maxHour === 0 ? 12 : maxHour} AM`;
-    return { hour: maxHour, display: ampm, crowd: maxVal };
+    let maxH = null, maxV = -1;
+    Object.entries(profile.hourlyAvgCrowd).forEach(([h, v]) => { if (v !== null && v > maxV) { maxV = v; maxH = parseInt(h, 10); } });
+    if (maxH === null) return null;
+    const ampm = maxH >= 12 ? `${maxH === 12 ? 12 : maxH - 12} PM` : `${maxH === 0 ? 12 : maxH} AM`;
+    return { display: ampm, crowd: maxV };
   }, [profile]);
 
   return (
-    <div style={{ ...S.card, marginBottom: '16px' }}>
-      <div className="profile-card-pad" style={S.cardPad}>
-        <div style={S.label}>Station Explorer</div>
-        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
-          Pick a station to see global ML crowd analysis alongside your personal trip data.
-        </p>
+    <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '24px', marginBottom: '16px' }}>
+      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Station Explorer</div>
+      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '14px' }}>ML crowd analysis for any station + your personal trip data</p>
+      <StationSelector
+        label=""
+        value={station}
+        onChange={setStation}
+        color="#a855f7"
+        icon="🚇"
+      />
 
-        {/* Station picker */}
-        <select
-          style={S.select}
-          value={station}
-          onChange={e => setStation(e.target.value)}
-        >
-          <option value="">Select a station…</option>
-          {STATION_NAMES.map(name => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
+      {loading && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>{[1,2,3,4].map(i => <div key={i} style={{ height: '70px', background: 'var(--bg-tertiary)', borderRadius: '12px', animation: 'profileSkeleton 1.2s ease-in-out infinite' }} />)}</div>}
+      {error && !loading && <div style={{ marginTop: '14px', padding: '12px 16px', borderRadius: '12px', background: 'rgba(232,40,59,0.06)', color: '#E8283B', fontSize: '0.82rem' }}>⚠ {error}</div>}
 
-        {/* Loading state */}
-        {loading && (
-          <div style={S.statGrid}>
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} style={S.statCard}>
-                <div style={{ ...S.skeleton, width: '60px', height: '28px', marginBottom: '6px' }} />
-                <div style={{ ...S.skeleton, width: '80px', height: '12px' }} />
+      {profile && !loading && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>
+            {[
+              { label: 'Busiest Hour', value: busiestHour?.display || '—' },
+              { label: 'Busiest Day',  value: profile.busiestDay?.day || '—' },
+              { label: 'Station Rank', value: `#${profile.stationRank?.rank || '—'}` },
+              { label: 'Your Trips',   value: profile.personalTripCount ?? 0, accent: true },
+            ].map(({ label, value, accent }) => (
+              <div key={label} style={{ padding: '16px', borderRadius: '12px', background: accent ? 'rgba(11,125,195,0.06)' : 'var(--bg-tertiary)', border: accent ? '1px solid rgba(11,125,195,0.2)' : '1px solid transparent', position: 'relative' }}>
+                {accent && <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.55rem', fontWeight: 700, color: '#0B7DC3', background: 'rgba(11,125,195,0.1)', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>YOU</span>}
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: accent ? '#0B7DC3' : 'var(--text-primary)', lineHeight: 1.2 }}>{value}</div>
+                <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>{label}</div>
               </div>
             ))}
           </div>
-        )}
-
-        {/* Error state */}
-        {error && !loading && (
-          <div style={{
-            marginTop: '16px', padding: '12px 16px',
-            borderRadius: 'var(--radius-md)',
-            background: 'rgba(232,40,59,0.06)',
-            border: '1px solid rgba(232,40,59,0.12)',
-            color: '#E8283B', fontSize: '0.8125rem',
-          }}>
-            <i className="fas fa-exclamation-triangle" style={{ marginRight: '6px' }} />
-            {error}
-          </div>
-        )}
-
-        {/* Results */}
-        {profile && !loading && (
-          <>
-            <div style={S.statGrid}>
-              {/* Busiest Hour */}
-              <div style={S.statCard}>
-                <div style={S.bigNumber}>{busiestHour?.display || '—'}</div>
-                <div style={S.smallLabel}>Busiest Hour</div>
+          {profile.weekdayWeekend && (
+            <div style={{ marginTop: '14px', padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Weekday vs Weekend</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Busier on {profile.weekdayWeekend.busierOn}</span>
               </div>
-
-              {/* Busiest Day */}
-              <div style={S.statCard}>
-                <div style={S.bigNumber}>{profile.busiestDay?.day || '—'}</div>
-                <div style={S.smallLabel}>Busiest Day</div>
-              </div>
-
-              {/* Station Rank */}
-              <div style={S.statCard}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                  <span style={{ ...S.bigNumber, fontSize: '1.5rem' }}>
-                    #{profile.stationRank?.rank || '—'}
-                  </span>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                    of {profile.stationRank?.totalStations || '—'}
-                  </span>
-                </div>
-                <div style={S.smallLabel}>Busiest Station Rank</div>
-              </div>
-
-              {/* Personal trip count — the Node-merged personal data */}
-              <div style={{ ...S.statCard, position: 'relative' }}>
-                <span style={{ ...S.personalBadge, position: 'absolute', top: '8px', right: '8px' }}>
-                  YOUR DATA
-                </span>
-                <div style={{ ...S.bigNumber, color: '#0B7DC3' }}>
-                  {profile.personalTripCount ?? 0}
-                </div>
-                <div style={S.smallLabel}>Your Trips Here</div>
-              </div>
-            </div>
-
-            {/* Weekday vs Weekend comparison bar */}
-            {profile.weekdayWeekend && (
-              <div style={{
-                marginTop: '16px', padding: '14px 16px',
-                background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)',
-              }}>
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  marginBottom: '8px',
-                }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    Weekday vs Weekend
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Busier on {profile.weekdayWeekend.busierOn}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', width: '60px', fontWeight: 500 }}>
-                    Weekday
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <div style={S.barTrack}>
-                      <div style={{
-                        height: '100%', borderRadius: '3px',
-                        background: '#0B7DC3',
-                        width: `${Math.min(100, profile.weekdayWeekend.weekdayAvg)}%`,
-                        transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-                      }} />
-                    </div>
+              {[['Weekday','#0B7DC3', profile.weekdayWeekend.weekdayAvg],['Weekend','#6366f1', profile.weekdayWeekend.weekendAvg]].map(([label, color, val]) => (
+                <div key={label} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', width: '60px', fontWeight: 500 }}>{label}</span>
+                  <div style={{ flex: 1, height: '5px', background: 'var(--bg-secondary)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min(100, val)}%`, background: color, borderRadius: '3px', transition: 'width 0.8s cubic-bezier(0.16,1,0.3,1)' }} />
                   </div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', width: '36px', textAlign: 'right' }}>
-                    {profile.weekdayWeekend.weekdayAvg}
-                  </span>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', width: '28px', textAlign: 'right' }}>{val}</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', width: '60px', fontWeight: 500 }}>
-                    Weekend
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <div style={S.barTrack}>
-                      <div style={{
-                        height: '100%', borderRadius: '3px',
-                        background: '#6366f1',
-                        width: `${Math.min(100, profile.weekdayWeekend.weekendAvg)}%`,
-                        transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-                      }} />
-                    </div>
-                  </div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', width: '36px', textAlign: 'right' }}>
-                    {profile.weekdayWeekend.weekendAvg}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Global vs Personal juxtaposition note */}
-            <div style={{
-              marginTop: '12px', padding: '10px 14px',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(11,125,195,0.04)',
-              border: '1px solid rgba(11,125,195,0.10)',
-              fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5,
-              display: 'flex', gap: '6px', alignItems: 'flex-start',
-            }}>
-              <i className="fas fa-flask" style={{ color: '#0B7DC3', marginTop: '1px', flexShrink: 0 }} />
-              <span>
-                Global stats are computed by Django ML from {profile.totalDataPoints?.toLocaleString() || '—'} data points.
-                Your personal count is pulled from your Node ticket history.
-              </span>
+              ))}
             </div>
-          </>
-        )}
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   MAIN PROFILE COMPONENT
-   ═══════════════════════════════════════════════════════════ */
+/* ═══ Main Profile Component ═══ */
 export default function Profile() {
   const { user } = useAuth();
+  const { tickets } = useTickets();
+  const [avatarError, setAvatarError] = useState(false);
+
+  // Reset error state whenever the avatar URL itself changes
+  useEffect(() => { setAvatarError(false); }, [user?.avatar]);
+
   if (!user) return null;
 
-  const fields = [
-    { label: 'Full Name', value: user.name },
-    { label: 'Email', value: user.email },
-    { label: 'Phone', value: user.phone || 'Not set' },
-    { label: 'Loyalty Points', value: user.loyaltyPoints || 0 },
-    { label: 'Travel Streak', value: `${user.streakDays || 0} days` },
-    { label: 'Member Since', value: user.createdAt ? formatDate(user.createdAt) : 'N/A' },
-  ];
+  // Upgrade Google photo URL to higher resolution (s400 instead of s96)
+  const avatarUrl = user.avatar?.includes('googleusercontent.com')
+    ? user.avatar.replace(/=s\d+-c/, '=s400-c').replace(/\?sz=\d+/, '?sz=200')
+    : user.avatar;
+
+  const hasAvatar = avatarUrl && !avatarError;
+
+  const totalCO2 = tickets.reduce((sum, t) => sum + (t.co2Saved || 0), 0);
+  const uniqueStations = new Set(tickets.flatMap(t => [t.source, t.destination])).size;
 
   return (
-    <div style={S.page}>
-      {/* Inline keyframes */}
+    <div className="page" style={{ maxWidth: '960px', margin: '0 auto', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
+
       <style>{`
-        @keyframes profileSkeleton {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
-        }
-        @media (max-width: 768px) {
-          .profile-card-pad { padding: 16px !important; }
-          .profile-stat-grid { grid-template-columns: 1fr !important; }
-        }
+        @keyframes profileSkeleton { 0%,100%{opacity:0.4;} 50%{opacity:0.8;} }
+        @keyframes auroraShift { 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
+        @media(max-width:768px){ .profile-stats-row{flex-direction:column!important;} }
       `}</style>
 
-      {/* ═══ COMPACT HEADER ═══ */}
-      <div style={S.header}>
-        <h1 style={S.greeting}>Profile 👤</h1>
-        <div style={S.headerMeta}>
-          <span>Your MetroMind account</span>
-        </div>
-      </div>
+      {/* ═══ HERO BANNER + PROFILE CARD — single stacked container ═══ */}
+      <div style={{ position: 'relative', marginBottom: '16px' }}>
 
-      {/* ═══ ACCOUNT DETAILS ═══ */}
-      <div style={{ ...S.card, marginBottom: '16px' }}>
-        <div className="profile-card-pad" style={S.cardPad}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
-            <div style={S.avatarRing}>
-              {user.name?.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h2 style={{
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.3rem',
-              }}>
-                {user.name}
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{user.email}</p>
+        {/* Aurora Banner */}
+        <div style={{
+          borderRadius: '24px 24px 0 0',
+          background: 'linear-gradient(270deg, #312e81, #4c1d95, #1e3a5f, #064e3b, #312e81)',
+          backgroundSize: '300% 300%',
+          animation: 'auroraShift 12s ease infinite',
+          height: '130px',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: '-20px', right: '80px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(168,85,247,0.3)', filter: 'blur(50px)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: '-30px', left: '60px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(34,197,94,0.2)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+        </div>
+
+        {/* Profile Card */}
+        <div style={{
+          borderRadius: '0 0 24px 24px',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-color)',
+          borderTop: 'none',
+          padding: '60px 28px 28px 28px',
+        }}>
+          {/* Avatar — absolutely positioned straddling banner / card boundary */}
+          <div style={{
+            position: 'absolute',
+            top: '90px',   /* banner height (130) - half avatar (80/2=40) = 90 */
+            left: '28px',
+            width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden',
+            border: '4px solid var(--bg-secondary)',
+            background: 'linear-gradient(135deg,#6366f1,#a855f7)',
+            boxShadow: '0 8px 24px rgba(99,102,241,0.35)',
+            zIndex: 2,
+          }}>
+            {hasAvatar ? (
+              <img
+                src={avatarUrl}
+                alt={user.name}
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
+                onError={() => setAvatarError(true)}
+                fetchPriority="high"
+                loading="eager"
+                decoding="async"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1.8rem' }}>
+                {user.name?.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+
+          {/* Name + badges — offset to the right of the avatar */}
+          <div style={{ paddingLeft: '100px', minHeight: '48px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, margin: 0 }}>{user.name}</h2>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '5px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.email}</span>
+              {user.authProvider === 'google' && (
+                <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(66,133,244,0.1)', color: '#4285F4', border: '1px solid rgba(66,133,244,0.25)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Google
+                </span>
+              )}
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
+                ✓ Verified
+              </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {fields.map(f => (
-              <div key={f.label} style={S.fieldRow}>
-                <span style={S.fieldLabel}>{f.label}</span>
-                <span style={S.fieldValue}>{f.value}</span>
+          {/* ═══ STATS ROW — Spotify Wrapped style ═══ */}
+          <div className="profile-stats-row" style={{ display: 'flex', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', marginTop: '20px' }}>
+            <StatBig value={tickets.length} label="Total Rides" icon="🎫" color="#6366f1" />
+            <div style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
+            <StatBig value={Math.round(totalCO2)} label="CO₂ Saved (g)" icon="🌿" color="#22c55e" />
+            <div style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
+            <StatBig value={user.streakDays || 0} label="Day Streak" icon="🔥" color="#f59e0b" />
+            <div style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
+            <StatBig value={uniqueStations} label="Stations" icon="📍" color="#a855f7" />
+          </div>
+
+          {/* ═══ ACCOUNT DETAILS ═══ */}
+          <div style={{ marginTop: '20px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+            {[
+              { label: 'Full Name', value: user.name },
+              { label: 'Email', value: user.email },
+              { label: 'Phone', value: user.phone || 'Not set' },
+              { label: 'Loyalty Points', value: `${user.loyaltyPoints || 0} pts` },
+              { label: 'Travel Streak', value: `${user.streakDays || 0} days` },
+              { label: 'Member Since', value: user.createdAt ? formatDate(user.createdAt) : 'N/A' },
+            ].map((f, i, arr) => (
+              <div key={f.label} style={{
+                display: 'flex', justifyContent: 'space-between', padding: '13px 18px',
+                borderBottom: i < arr.length - 1 ? '1px solid var(--border-color)' : 'none',
+                background: i % 2 === 0 ? 'var(--bg-tertiary)' : 'transparent',
+              }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{f.label}</span>
+                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{f.value}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ═══ PERSONALITY BREAKDOWN (Django ML) ═══ */}
+      {/* ═══ PERSONALITY BREAKDOWN ═══ */}
       <PersonalityBreakdown />
 
-      {/* ═══ SIMILAR COMMUTERS (Unsupervised ML) ═══ */}
+      {/* ═══ ML CLUSTER ═══ */}
       <CommuterClusterCard />
 
-      {/* ═══ STATION EXPLORER (Django station-profile + Node personal data) ═══ */}
+      {/* ═══ STATION EXPLORER ═══ */}
       <StationExplorer />
     </div>
   );

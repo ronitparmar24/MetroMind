@@ -94,41 +94,93 @@ router.get('/tickets', async (req, res) => {
   }
 });
 
-// 4. Revenue Summary
+// 4. Revenue Summary — supports ?range=week|month|year (default: month)
 router.get('/revenue-summary', async (req, res) => {
   try {
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    
+    const range = req.query.range || 'month';
+    const now = new Date();
+
+    let startDate;
+    if (range === 'week') {
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - 6); // last 7 days
+      startDate.setHours(0, 0, 0, 0);
+    } else if (range === 'year') {
+      startDate = new Date(now.getFullYear(), 0, 1); // Jan 1st
+    } else {
+      // month (default)
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    // Revenue stats (non-cancelled only)
     const revenueStats = await Ticket.aggregate([
-      { $match: { createdAt: { $gte: startOfMonth }, status: { $ne: 'cancelled' } } },
+      { $match: { createdAt: { $gte: startDate }, status: { $ne: 'cancelled' } } },
       { $group: { _id: null, totalRevenue: { $sum: '$fare' }, avgFare: { $avg: '$fare' }, count: { $sum: 1 } } }
     ]);
-    
-    const revenueByDay = await Ticket.aggregate([
-      { $match: { createdAt: { $gte: startOfMonth }, status: { $ne: 'cancelled' } } },
-      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, dailyRevenue: { $sum: '$fare' } } },
-      { $sort: { _id: 1 } }
-    ]);
 
+    // Cancellation stats (all tickets in range)
+    const cancellationStats = await Ticket.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      { $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+      }}
+    ]);
+    const statusMap = {};
+    cancellationStats.forEach(s => { statusMap[s._id] = s.count; });
+    const totalInRange = Object.values(statusMap).reduce((a, b) => a + b, 0);
+    const cancelledInRange = statusMap['cancelled'] || 0;
+
+    // Revenue grouped by day (for week/month) or by month (for year)
+    let revenueByDay;
+    if (range === 'year') {
+      revenueByDay = await Ticket.aggregate([
+        { $match: { createdAt: { $gte: startDate }, status: { $ne: 'cancelled' } } },
+        { $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+            dailyRevenue: { $sum: '$fare' },
+            count: { $sum: 1 }
+        }},
+        { $sort: { _id: 1 } }
+      ]);
+    } else {
+      revenueByDay = await Ticket.aggregate([
+        { $match: { createdAt: { $gte: startDate }, status: { $ne: 'cancelled' } } },
+        { $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            dailyRevenue: { $sum: '$fare' },
+            count: { $sum: 1 }
+        }},
+        { $sort: { _id: 1 } }
+      ]);
+    }
+
+    // Top routes (all time)
     const topRoutes = await Ticket.aggregate([
       { $match: { status: { $ne: 'cancelled' } } },
       { $group: { _id: { source: '$source', dest: '$destination' }, count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 5 },
-      { $project: { _id: 0, route: { $concat: ['$_id.source', ' to ', '$_id.dest'] }, count: 1 } }
+      { $project: { _id: 0, route: { $concat: ['$_id.source', ' → ', '$_id.dest'] }, count: 1 } }
     ]);
 
     res.json({
       success: true,
       data: {
+        range,
         totalRevenue: revenueStats[0]?.totalRevenue || 0,
         averageFare: revenueStats[0]?.avgFare || 0,
         totalBookings: revenueStats[0]?.count || 0,
+        totalInRange,
+        cancelledInRange,
+        cancelRate: totalInRange > 0 ? Math.round((cancelledInRange / totalInRange) * 100) : 0,
+        successRate: totalInRange > 0 ? Math.round(((totalInRange - cancelledInRange) / totalInRange) * 100) : 100,
         revenueByDay,
         topRoutes
       }
     });
   } catch (error) {
+    console.error('revenue-summary error:', error);
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 });

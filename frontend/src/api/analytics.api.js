@@ -14,6 +14,7 @@ export const getSavedRoutes = () => api.get('/api/savedroutes');
 export const saveRoute = (data) => api.post('/api/savedroutes', data);
 export const getMetroCard = () => api.get('/api/metrocard');
 export const createMetroCard = () => api.post('/api/metrocard');
+export const topUpMetroCard = (amount) => api.post('/api/metrocard/topup', { amount });
 export const reportLostItem = (data) => api.post('/api/lostfound', data);
 export const getLostItems = () => api.get('/api/lostfound');
 export const submitFeedback = (data) => api.post('/api/feedback', data);

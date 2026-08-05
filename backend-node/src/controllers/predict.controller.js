@@ -106,13 +106,14 @@ const getPersonalityProfile = async (req, res, next) => {
       }
     }
 
-    // Fetch completed tickets from last 90 days
+    // Fetch tickets (both active and completed) from last 90 days to determine pattern
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const tickets = await Ticket.find({
       userId: req.user._id,
-      status: 'completed',
+      status: { $in: ['completed', 'active'] },
       createdAt: { $gte: ninetyDaysAgo },
     });
+
 
     // Map to Django's expected shape
     const ticketHistory = tickets.map((t) => {

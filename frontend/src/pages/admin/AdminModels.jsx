@@ -23,7 +23,16 @@ export default function AdminModels() {
     .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div>Loading Model Analytics...</div>;
+  if (loading) return (
+    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      {Array.from({length:3}).map((_,i)=>(
+        <div key={i} className="glass-card" style={{ padding:24, height:120 }}>
+          <div className="admin-skeleton" style={{ height:14, width:'40%', marginBottom:12 }} />
+          <div className="admin-skeleton" style={{ height:40, width:'70%' }} />
+        </div>
+      ))}
+    </div>
+  );
 
   const { perf, volume, drift } = data;
 
@@ -37,14 +46,11 @@ export default function AdminModels() {
   })) : [];
 
   const cardStyle = {
-    background: 'rgba(255,255,255,0.03)',
-    borderRadius: '16px',
-    padding: '24px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
-    marginBottom: '24px'
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
   };
+
 
   const pillStyle = (isLive) => ({
     padding: '4px 10px',
@@ -60,33 +66,38 @@ export default function AdminModels() {
   });
 
   return (
-    <div style={{ color: 'var(--text-primary)', maxWidth: '1400px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
-      <h1 style={{ marginBottom: '24px', fontSize: '2.2rem', fontWeight: 800, textShadow: '0 2px 10px rgba(255,255,255,0.1)' }}>
-        ML Model Performance <span style={{ fontSize: '1rem', padding: '4px 10px', background: 'rgba(99,102,241,0.2)', color: '#818cf8', borderRadius: '20px', verticalAlign: 'middle', marginLeft: '12px' }}>MLOps Center</span>
-      </h1>
+    <div style={{ display:'flex', flexDirection:'column', gap:20 }} className="admin-fade-in">
+      <div className="glass-card" style={{ padding:'20px 24px' }}>
+        <div style={{ fontSize:'1.1rem', fontWeight:800, color:'#0f172a', display:'flex', alignItems:'center', gap:8 }}>
+          ML Model Performance
+          <span className="admin-badge admin-badge-purple">MLOps Center</span>
+        </div>
+        <div style={{ fontSize:'0.75rem', color:'#94a3b8', marginTop:2 }}>Trained model comparison and prediction analytics</div>
+      </div>
 
-      <div style={cardStyle}>
+      <div className="glass-card" style={{...cardStyle}}>
+
         <h3 style={{ marginBottom: '16px', fontSize: '1.2rem', fontWeight: 700 }}>Trained Model Comparison</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              <th style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Model Architecture</th>
-              <th style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Accuracy</th>
-              <th style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>F1-Score</th>
-              <th style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Status</th>
+            <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+              <th style={{ padding: '16px 12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Model Architecture</th>
+              <th style={{ padding: '16px 12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Accuracy</th>
+              <th style={{ padding: '16px 12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>F1-Score</th>
+              <th style={{ padding: '16px 12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Status</th>
             </tr>
           </thead>
           <tbody>
-            {perf && perf.models && Object.entries(perf.models).map(([modelId, metrics]) => {
-              const isLive = perf.deployed_model === modelId;
+            {perf && Object.entries(perf).filter(([k]) => k !== 'hyperparameters' && k !== 'deployed_model' && k !== 'winner').map(([modelId, metrics]) => {
+              const isLive = perf.winner ? modelId === perf.winner : modelId === 'gradient_boosting';
               return (
-                <tr key={modelId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: isLive ? 'rgba(16,185,129,0.03)' : 'transparent', transition: 'background 0.2s' }} className="hover-lift">
-                  <td style={{ padding: '16px 12px', fontWeight: isLive ? 700 : 500, color: isLive ? '#fff' : 'var(--text-primary)' }}>{modelId}</td>
-                  <td style={{ padding: '16px 12px', fontVariantNumeric: 'tabular-nums', color: '#fff', fontSize: '1.1rem' }}>
+                <tr key={modelId} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)', background: isLive ? 'rgba(16,185,129,0.04)' : 'transparent', transition: 'background 0.2s' }} className="hover-lift">
+                  <td style={{ padding: '16px 12px', fontWeight: isLive ? 700 : 500, color: isLive ? '#0f172a' : '#334155' }}>{modelId}</td>
+                  <td style={{ padding: '16px 12px', fontVariantNumeric: 'tabular-nums', color: '#0f172a', fontSize: '1.1rem', fontWeight: 600 }}>
                     {(metrics.accuracy * 100).toFixed(2)}%
                   </td>
-                  <td style={{ padding: '16px 12px', fontVariantNumeric: 'tabular-nums', color: '#fff', fontSize: '1.1rem' }}>
-                    {(metrics.f1 * 100).toFixed(2)}%
+                  <td style={{ padding: '16px 12px', fontVariantNumeric: 'tabular-nums', color: '#0f172a', fontSize: '1.1rem', fontWeight: 600 }}>
+                    {(metrics.weighted_f1 ? metrics.weighted_f1 * 100 : metrics.f1 * 100).toFixed(2)}%
                   </td>
                   <td style={{ padding: '16px 12px' }}>
                     <span style={{...pillStyle(isLive), animation: isLive ? 'dashPulse 3s infinite' : 'none'}}>{isLive ? 'LIVE' : 'STANDBY'}</span>
@@ -103,12 +114,12 @@ export default function AdminModels() {
           <h3 style={{ marginBottom: '16px', fontSize: '1.2rem', fontWeight: 700 }}>Prediction Volume (Last 30 Days)</h3>
           <div style={{ height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={volumeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                <XAxis dataKey="date" stroke="var(--text-muted)" tick={{fill: 'var(--text-secondary)'}} />
-                <YAxis stroke="var(--text-muted)" tick={{fill: 'var(--text-secondary)'}} />
-                <Tooltip contentStyle={{ background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', backdropFilter: 'blur(10px)', color: '#fff' }} itemStyle={{ color: '#fff' }} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px' }} />
+              <AreaChart data={volumeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" vertical={false} />
+                <XAxis dataKey="date" stroke="#cbd5e1" tick={{fill: '#64748b', fontSize: 11}} tickFormatter={d => d?.slice(5) || d} axisLine={false} tickLine={false} />
+                <YAxis stroke="#cbd5e1" tick={{fill: '#64748b', fontSize: 11}} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ background: '#fff', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '12px', color: '#1e293b' }} itemStyle={{ color: '#1e293b', fontWeight: 600 }} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '0.85rem', color: '#64748b' }} />
                 <Area type="monotone" dataKey="crowd" stackId="1" stroke="#818cf8" fill="url(#colorCrowd)" strokeWidth={2} />
                 <Area type="monotone" dataKey="anomaly" stackId="1" stroke="#fb7185" fill="url(#colorAnomaly)" strokeWidth={2} />
                 <Area type="monotone" dataKey="personality" stackId="1" stroke="#34d399" fill="url(#colorPersonality)" strokeWidth={2} />
@@ -144,39 +155,39 @@ export default function AdminModels() {
 
           {drift && (
             <div>
-              <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '16px' }} className="hover-lift">
-                <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Average Hour of Booking</p>
+              <div style={{ padding: '20px', background: 'rgba(99,102,241,0.04)', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.1)', marginBottom: '16px' }} className="hover-lift">
+                <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#475569', fontWeight: 600 }}>Average Hour of Booking</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <span style={{ fontSize: '1.8rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: '#fff', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>{drift.average_hour.live_last_7d}</span>
-                    <span style={{ marginLeft: '12px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>vs {drift.average_hour.training} (Train)</span>
+                    <span style={{ fontSize: '1.8rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: '#0f172a' }}>{drift.average_hour.live_last_7d}</span>
+                    <span style={{ marginLeft: '12px', color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>vs {drift.average_hour.training} (Train)</span>
                   </div>
                   {Math.abs(drift.average_hour.delta) > 1.5 && (
-                    <span style={{ ...pillStyle(false), background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', borderColor: 'rgba(245, 158, 11, 0.4)', animation: 'dashPulse 1.5s infinite', boxShadow: '0 0 15px rgba(245, 158, 11, 0.3)' }}>DRIFT DETECTED</span>
+                    <span style={{ ...pillStyle(false), background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', borderColor: 'rgba(245, 158, 11, 0.3)', animation: 'dashPulse 1.5s infinite' }}>DRIFT DETECTED</span>
                   )}
                 </div>
-                <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', fontWeight: 600, color: drift.average_hour.delta > 0 ? '#34d399' : '#fb7185' }}>
+                <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', fontWeight: 600, color: drift.average_hour.delta > 0 ? '#10b981' : '#ef4444' }}>
                   Δ {drift.average_hour.delta > 0 ? '+' : ''}{drift.average_hour.delta} hours
                 </p>
               </div>
 
-              <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }} className="hover-lift">
-                <p style={{ margin: '0 0 16px 0', fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Top Frequency Stations Shift</p>
+              <div style={{ padding: '20px', background: 'rgba(99,102,241,0.04)', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.1)' }} className="hover-lift">
+                <p style={{ margin: '0 0 16px 0', fontSize: '0.95rem', color: '#475569', fontWeight: 600 }}>Top Frequency Stations Shift</p>
                 <div style={{ display: 'flex', gap: '24px' }}>
-                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                    <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>TRAINING DATA</p>
+                  <div style={{ flex: 1, background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                    <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px' }}>TRAINING DATA</p>
                     {drift.top_stations.training.slice(0,3).map((st, i) => (
-                      <div key={i} style={{ fontSize: '0.9rem', marginBottom: '8px', color: 'var(--text-primary)' }}>{i+1}. {st.station}</div>
+                      <div key={i} style={{ fontSize: '0.9rem', marginBottom: '8px', color: '#334155', fontWeight: 500 }}>{i+1}. {st.station}</div>
                     ))}
                   </div>
-                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                    <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>LIVE (LAST 7D)</p>
+                  <div style={{ flex: 1, background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                    <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px' }}>LIVE (LAST 7D)</p>
                     {drift.top_stations.live_last_7d.slice(0,3).map((st, i) => {
                       const changed = drift.top_stations.training[i]?.station !== st.station;
                       return (
-                        <div key={i} style={{ fontSize: '0.9rem', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', color: changed ? '#fff' : 'var(--text-primary)' }}>
+                        <div key={i} style={{ fontSize: '0.9rem', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', color: changed ? '#6366f1' : '#334155', fontWeight: changed ? 700 : 500 }}>
                           {i+1}. {st.station}
-                          {changed && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fbbf24', display: 'inline-block', boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)' }}></span>}
+                          {changed && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}></span>}
                         </div>
                       );
                     })}

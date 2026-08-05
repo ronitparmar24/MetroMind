@@ -334,6 +334,8 @@ const getMe = async (req, res, next) => {
         phone: user.phone,
         avatar: user.avatar,
         role: user.role,
+        authProvider: user.authProvider || 'local',
+        isVerified: user.isVerified,
         loyaltyPoints: user.loyaltyPoints,
         streakDays: user.streakDays,
         lastTravelDate: user.lastTravelDate,
@@ -434,8 +436,9 @@ const googleLogin = async (req, res, next) => {
       if (!user.googleId) {
         user.googleId = googleId;
       }
-      user.isVerified = true; // Google verifies their email
-      if (picture && !user.avatar) user.avatar = picture;
+      user.isVerified = true;
+      // Always refresh avatar from Google (gets latest photo)
+      if (picture) user.avatar = picture;
       user.otpHash = null;
       user.otpExpiresAt = null;
       await user.save();

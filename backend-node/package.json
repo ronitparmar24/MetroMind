@@ -5,7 +5,11 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "seed": "node src/scripts/seed.js",
+    "seed:boost": "node src/scripts/seedBoost.js",
+    "seed:clear": "node src/scripts/seed.js --clear",
+    "make:admin": "node src/scripts/makeAdmin.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
