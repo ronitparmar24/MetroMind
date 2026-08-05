@@ -17,6 +17,7 @@ import AdminUsers    from './AdminUsers';
 import AdminModels   from './AdminModels';
 import AdminSupport  from './AdminSupport';
 import AdminTicketsPage from './AdminTicketsPage';
+import AdminAnnouncements from './AdminAnnouncements';
 
 // ════════════════════════════════════════════════════════════════════
 // PARTICLES
@@ -77,6 +78,7 @@ const NAV_GROUPS = [
   {
     label: 'Control',
     items: [
+      { path: '/admin/announcements', label: 'Announcements', icon: <Bell size={16} />, exact: false },
       { path: '/admin/models',   label: 'ML Models',  icon: <Cpu size={16} />,      exact: false },
       { path: '/admin/settings', label: 'Settings',   icon: <Settings size={16} />, exact: false },
     ],
@@ -275,6 +277,7 @@ export default function AdminDashboard() {
             <Route path="/tickets"  element={<AdminTicketsPage />} />
             <Route path="/models"   element={<AdminModels />} />
             <Route path="/support"  element={<AdminSupport />} />
+            <Route path="/announcements" element={<AdminAnnouncements />} />
             <Route path="/settings" element={<AdminSettingsPage />} />
           </Routes>
         </div>

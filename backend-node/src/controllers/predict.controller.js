@@ -97,15 +97,6 @@ const getAnomalyCheck = async (req, res, next) => {
 // GET /api/predict/personality
 const getPersonalityProfile = async (req, res, next) => {
   try {
-    // Check cache on User document — skip recomputation if fresh
-    const user = await User.findById(req.user._id);
-    if (user.personalityCache && user.personalityCache.computedAt) {
-      const ageMs = Date.now() - new Date(user.personalityCache.computedAt).getTime();
-      if (ageMs < 24 * 60 * 60 * 1000) {
-        return res.json({ success: true, personality: user.personalityCache.result, cached: true });
-      }
-    }
-
     // Fetch tickets (both active and completed) from last 90 days to determine pattern
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const tickets = await Ticket.find({
@@ -114,10 +105,15 @@ const getPersonalityProfile = async (req, res, next) => {
       createdAt: { $gte: ninetyDaysAgo },
     });
 
-
     // Map to Django's expected shape
     const ticketHistory = tickets.map((t) => {
-      const hour = parseInt(t.travelTime.split(':')[0], 10);
+      let hour = parseInt(t.travelTime.split(':')[0], 10);
+      // Convert 12-hour AM/PM format to 24-hour
+      if (t.travelTime.toUpperCase().includes('PM') && hour !== 12) {
+        hour += 12;
+      } else if (t.travelTime.toUpperCase().includes('AM') && hour === 12) {
+        hour = 0;
+      }
       const travelDay = new Date(t.travelDate).getDay();
       // Convert JS day (0=Sun) to Python day (0=Mon)
       const pyDay = travelDay === 0 ? 6 : travelDay - 1;

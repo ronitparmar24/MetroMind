@@ -199,7 +199,13 @@ const getPersonality = async (req, res, next) => {
     let smartCount = 0;
 
     completedTickets.forEach((ticket) => {
-      const hour = parseInt(ticket.travelTime.split(':')[0], 10);
+      let hour = parseInt(ticket.travelTime.split(':')[0], 10);
+      if (ticket.travelTime.includes('PM') && hour !== 12) {
+        hour += 12;
+      } else if (ticket.travelTime.includes('AM') && hour === 12) {
+        hour = 0;
+      }
+      
       const travelDay = new Date(ticket.travelDate).getDay(); // 0=Sun, 6=Sat
 
       // Early bird: trips before 9am

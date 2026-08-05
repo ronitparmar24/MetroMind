@@ -1,8 +1,10 @@
-# MetroMind Docker Compose
-# One-command startup for all three services + MongoDB
+# MetroMind Docker Compose — Production-ready multi-service setup
+# Services: MongoDB, Mongo Express, Django ML API, Node API, React Frontend
+# Usage: docker compose up --build
 
 services:
-  # MongoDB Database
+
+  # ─── MongoDB Database ───────────────────────────────────────────────────────
   mongo:
     image: mongo:7
     container_name: metromind-mongo
@@ -10,9 +12,14 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  # MongoDB Web UI (port 8081)
+  # ─── MongoDB Web UI (port 8081) ─────────────────────────────────────────────
   mongo-express:
     image: mongo-express:1
     container_name: metromind-mongo-express
@@ -22,10 +29,11 @@ services:
       - ME_CONFIG_MONGODB_URL=mongodb://mongo:27017/
       - ME_CONFIG_BASICAUTH=false
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     restart: unless-stopped
 
-  # Django Intelligence API (port 8000)
+  # ─── Django Intelligence / ML API (port 8000) ────────────────────────────
   intelligence-api:
     build:
       context: ./backend-python
@@ -37,14 +45,21 @@ services:
       - DJANGO_SETTINGS_MODULE=metromind.settings.dev
       - NODE_SERVICE_URL=http://product-api:5000
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/api/health/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     restart: unless-stopped
     command: >
       sh -c "python manage.py migrate &&
              python apps/predict/ml/train.py &&
              python manage.py runserver 0.0.0.0:8000"
 
-  # Node/Express Product API (port 5000)
+  # ─── Node/Express Product API (port 5000) ───────────────────────────────────
   product-api:
     build:
       context: ./backend-node
@@ -55,33 +70,46 @@ services:
     environment:
       - PORT=5000
       - MONGO_URI=mongodb://mongo:27017/metromind
-      - JWT_SECRET=supersecretkey_change_in_prod
-      - JWT_EXPIRES_IN=7d
+      - JWT_SECRET=${JWT_SECRET:-metromind_super_secret_change_in_prod}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - DJANGO_API_URL=http://intelligence-api:8000
       - CLIENT_URL=http://localhost:3000
-      - NODE_ENV=development
+      - NODE_ENV=production
+      - NODE_OPTIONS=--openssl-legacy-provider
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD}
     depends_on:
-      - mongo
-      - intelligence-api
+      mongo:
+        condition: service_healthy
+      intelligence-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/api/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
-  # React Frontend (port 3000)
+  # ─── React Frontend (port 3000) ─────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
         VITE_NODE_API_URL: http://localhost:5000
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
     container_name: metromind-frontend
     ports:
       - "3000:3000"
     depends_on:
-      - product-api
+      product-api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   mongo_data:
+    driver: local

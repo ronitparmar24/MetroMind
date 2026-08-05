@@ -31,6 +31,7 @@ const weatherRoutes    = require('./routes/weather.routes');
 const geocodeRoutes    = require('./routes/geocode.routes');
 const voiceRoutes      = require('./routes/voice.routes');
 const adminRoutes      = require('./routes/admin.routes');
+const announcementRoutes = require('./routes/announcements.routes');
 
 const app = express();
 
@@ -90,6 +91,7 @@ app.use('/api/weather',    weatherRoutes);
 app.use('/api/geocode',    geocodeRoutes);
 app.use('/api/voice',      voiceRoutes);
 app.use('/api/admin',      adminRoutes);
+app.use('/api/announcements', announcementRoutes);
 
 // Health check — returns DB + ML status for admin dashboard
 app.get('/api/health', async (req, res) => {
@@ -99,7 +101,9 @@ app.get('/api/health', async (req, res) => {
   const dbState = mongoose.connection.readyState; // 1 = connected
   let mlStatus = 'offline';
   try {
-    const r = await axios.get('http://127.0.0.1:8000/api/health/', { timeout: 2000 });
+    const { DJANGO_API_URL } = require('./config/env');
+    const mlUrl = (DJANGO_API_URL || 'http://127.0.0.1:8000') + '/api/health/';
+    const r = await axios.get(mlUrl, { timeout: 3000 });
     if (r.status === 200) mlStatus = 'online';
   } catch (_) { /* ml offline */ }
 

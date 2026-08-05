@@ -243,19 +243,33 @@ const bookTicket = async (req, res, next) => {
 // GET /api/tickets
 const getTickets = async (req, res, next) => {
   try {
-    // Automatically transition past tickets from 'upcoming' to 'completed'
-    // We use the start of today to ensure any date before today gets completed.
-    const todayStr = new Date().toISOString().split('T')[0];
-    const startOfToday = new Date(todayStr);
+    const now = new Date();
+    const upcomingTickets = await Ticket.find({ userId: req.user._id, status: 'upcoming' });
 
-    await Ticket.updateMany(
-      {
-        userId: req.user._id,
-        status: 'upcoming',
-        travelDate: { $lt: startOfToday },
-      },
-      { $set: { status: 'completed' } }
-    );
+    for (const ticket of upcomingTickets) {
+      if (!ticket.travelDate || !ticket.travelTime) continue;
+
+      let timeParts = ticket.travelTime.split(' ');
+      let time = timeParts[0];
+      let modifier = timeParts[1];
+      
+      let [hours, minutes] = time.split(':');
+      hours = parseInt(hours, 10);
+      
+      if (modifier && modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
+      if (modifier && modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+      
+      const ticketDateTime = new Date(ticket.travelDate);
+      ticketDateTime.setHours(hours, parseInt(minutes || 0, 10), 0, 0);
+      
+      // Add 6 hours
+      const expiryTime = new Date(ticketDateTime.getTime() + 6 * 60 * 60 * 1000);
+      
+      if (now >= expiryTime) {
+        ticket.status = 'completed';
+        await ticket.save();
+      }
+    }
 
     const { status } = req.query;
     const filter = { userId: req.user._id };
