@@ -19,7 +19,6 @@ import SOSButton from '../components/common/SOSButton';
 import SmartRoutesWidget from '../components/metro/SmartRoutesWidget';
 import CarbonTreeWidget from '../components/metro/CarbonTreeWidget';
 import PersonalityBadge from '../components/analytics/PersonalityBadge';
-import AccessibilityToggle from '../components/common/AccessibilityToggle';
 import LiveTrainRadar from '../components/metro/LiveTrainRadar';
 
 /* ═══════════════════════════════════════════════════════════
@@ -1049,6 +1048,8 @@ export default function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '10px' }}>
             <LiveTrainRadar homeStation={corridor.stations[0] || 'Thaltej'} />
             <CoachHeatmap stationName={userDestination} />
+            {/* Commuter Personality — placed under Train Coach Density */}
+            <PersonalityBadge />
           </div>
         </div>
 
@@ -1115,10 +1116,73 @@ export default function Dashboard() {
           {/* Best Departure */}
           <BestDepartureCard usualRoute={usualRoute} />
 
-          {/* Personality Badge */}
-          <PersonalityBadge />
+          {/* Metro Stats Card */}
+          <div style={{
+            borderRadius: '20px',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border)',
+            padding: '20px',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.07)',
+            backdropFilter: 'blur(12px)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '18px' }}>📊</span>
+              <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Your Metro Stats</span>
+            </div>
 
-          {/* Carbon Tree Widget */}
+            {/* Stat Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+              {[
+                { label: 'Total Trips', value: totalTrips, icon: '🚇', color: '#6366f1', bg: 'rgba(99,102,241,0.08)' },
+                { label: 'Day Streak', value: `${streakDays}🔥`, icon: '⚡', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+                { label: 'CO₂ Saved', value: `${totalCO2.toFixed(1)}kg`, icon: '🌿', color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
+                { label: 'Wallet', value: formatCurrency(wallet.balance), icon: '💳', color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
+              ].map(stat => (
+                <div key={stat.label} style={{
+                  background: stat.bg,
+                  borderRadius: '12px',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}>
+                  <span style={{ fontSize: '18px' }}>{stat.icon}</span>
+                  <span style={{ fontWeight: 800, fontSize: '1.1rem', color: stat.color, lineHeight: 1 }}>{stat.value}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>{stat.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick Actions */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {[
+                { label: 'Book Ticket', to: '/book', bg: 'linear-gradient(135deg,#6366f1,#4f46e5)', color: '#fff' },
+                { label: 'Top Up', to: '/wallet', bg: 'linear-gradient(135deg,#22c55e,#16a34a)', color: '#fff' },
+              ].map(btn => (
+                <Link key={btn.label} to={btn.to} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: btn.bg,
+                  color: btn.color,
+                  borderRadius: '10px',
+                  padding: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  textDecoration: 'none',
+                  letterSpacing: '0.02em',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                  transition: 'opacity 0.2s',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  {btn.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+
           <CarbonTreeWidget />
         </div>
       </div>
@@ -1154,9 +1218,6 @@ export default function Dashboard() {
       
       {/* Emergency SOS Button */}
       <SOSButton />
-      
-      {/* Universal Accessibility Toggle */}
-      <AccessibilityToggle />
     </div>
   );
 }

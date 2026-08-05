@@ -7,6 +7,7 @@ const Ticket = require('../models/Ticket.model');
 const Wallet = require('../models/Wallet.model');
 const Feedback = require('../models/Feedback.model');
 const LostFound = require('../models/LostFound.model');
+const Announcement = require('../models/Announcement.model');
 
 // Apply both auth and admin check to ALL routes in this file
 router.use(protect, requireAdmin);
@@ -256,5 +257,57 @@ createProxyRoute('/model-performance/');
 createProxyRoute('/prediction-volume/');
 createProxyRoute('/feature-drift/');
 createProxyRoute('/network-summary/');
+
+// ==========================================
+// Announcements Management
+// ==========================================
+
+// Get all announcements
+router.get('/announcements', async (req, res) => {
+  try {
+    const announcements = await Announcement.find().sort({ createdAt: -1 }).lean();
+    res.json({ success: true, data: announcements });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+});
+
+// Create announcement
+router.post('/announcements', async (req, res) => {
+  try {
+    const { title, message, priority, isActive } = req.body;
+    const announcement = await Announcement.create({ title, message, priority, isActive });
+    res.status(201).json({ success: true, data: announcement });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Update announcement
+router.put('/announcements/:id', async (req, res) => {
+  try {
+    const { title, message, priority, isActive } = req.body;
+    const announcement = await Announcement.findByIdAndUpdate(
+      req.params.id,
+      { title, message, priority, isActive },
+      { new: true, runValidators: true }
+    );
+    if (!announcement) return res.status(404).json({ success: false, error: 'Announcement not found' });
+    res.json({ success: true, data: announcement });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Delete announcement
+router.delete('/announcements/:id', async (req, res) => {
+  try {
+    const announcement = await Announcement.findByIdAndDelete(req.params.id);
+    if (!announcement) return res.status(404).json({ success: false, error: 'Announcement not found' });
+    res.json({ success: true, data: {} });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+});
 
 module.exports = router;

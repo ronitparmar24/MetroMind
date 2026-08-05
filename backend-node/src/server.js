@@ -9,12 +9,17 @@ const startServer = async () => {
   await connectDB();
 
   // ── Firebase Admin + push scheduler ──────────────────────────────────
+  // Firebase is OPTIONAL — push notifications only. Never crash on failure.
   try {
     require('./config/firebase'); // initialises Firebase Admin singleton
-    const { startDepartureScheduler } = require('./utils/departureScheduler');
-    startDepartureScheduler();
+    try {
+      const { startDepartureScheduler } = require('./utils/departureScheduler');
+      startDepartureScheduler();
+    } catch (schedErr) {
+      console.warn('⚠️  Departure scheduler skipped:', schedErr.message);
+    }
   } catch (err) {
-    console.warn('⚠️  Firebase Admin failed to init (push notifications disabled):', err.message);
+    console.warn('⚠️  Firebase Admin skipped (push notifications disabled):', err.message);
   }
 
   app.listen(PORT, () => {
@@ -26,3 +31,4 @@ startServer().catch((err) => {
   console.error('❌ Failed to start server:', err);
   process.exit(1);
 });
+

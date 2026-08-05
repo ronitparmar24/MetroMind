@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import AnnouncementBar from './AnnouncementBar';
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -39,7 +40,10 @@ export default function DashboardLayout() {
         minHeight: 'calc(100vh - var(--navbar-height))',
         position: 'relative',
         zIndex: 1,
+        display: 'flex',
+        flexDirection: 'column'
       }}>
+        <AnnouncementBar />
         <Outlet />
       </main>
     </div>

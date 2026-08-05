@@ -40,8 +40,8 @@ async function _withRetry(fn, retries = 2, delayMs = 2000) {
     try {
       return await fn();
     } catch (err) {
-      const is429 = err.message?.includes('429') || err.message?.includes('quota');
-      if (is429 && attempt < retries) {
+      const isTransient = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('fetch failed') || err.message?.includes('Error fetching');
+      if (isTransient && attempt < retries) {
         await new Promise(r => setTimeout(r, delayMs * (attempt + 1)));
         continue;
       }
@@ -143,17 +143,21 @@ async function generatePersonalityDescription(userId, personalityType, ratios) {
  * @returns {Promise<{isValid: boolean, category: string, moodRating: number, aiReply: string}>}
  */
 async function analyzeFeedback(text, userName = 'Passenger') {
-  const prompt = `You are a warm, empathetic customer support AI for the MetroMind app (Ahmedabad Metro).
+  const prompt = `You are a strict but warm customer support AI for the MetroMind app (Ahmedabad Metro).
 Analyze this user feedback: "${text}"
 
-First, determine if the feedback is valid. If it is gibberish (e.g. keyboard smashes like "dshadygfyadhfdfbjh"), completely nonsensical, or too short to have meaning, it is invalid.
+CRITICAL INSTRUCTION: First, determine if the feedback is valid. 
+- If it is gibberish (e.g. keyboard smashes like "dshadygfyadhfdfbjh", "hksahsagdjhagsdhjagsd").
+- If it is completely nonsensical or just random characters.
+- If it is too short to have any meaning.
+In these cases, set "isValid" to false.
 
 Return ONLY a valid JSON object matching this schema exactly (no markdown, no backticks, no other text):
 {
   "isValid": <boolean, true if meaningful feedback, false if gibberish or nonsensical>,
   "category": "service" | "cleanliness" | "safety" | "app" | "other",
   "moodRating": <number from 1 (terrible) to 5 (amazing) based on sentiment>,
-  "aiReply": "<If isValid is true: A 1-2 sentence empathetic, personalized reply directly addressing their feedback, starting with 'Hi ${userName}'. If isValid is false: A short warning explaining that the feedback appears to be invalid and cannot be processed.>"
+  "aiReply": "<If isValid is true: A 1-2 sentence empathetic, personalized reply directly addressing their feedback, starting with 'Hi ${userName}'. If isValid is false: 'Please provide meaningful feedback. Random text cannot be processed.'>"
 }`;
 
   try {
@@ -169,6 +173,7 @@ Return ONLY a valid JSON object matching this schema exactly (no markdown, no ba
       if (match) cleanJson = match[1].trim();
     }
     
+    const parsed = JSON.parse(cleanJson);
     console.log(`✅ [Gemini] Analyzed feedback. Valid: ${parsed.isValid !== false}, Mood: ${parsed.moodRating}`);
     return {
       isValid: parsed.isValid !== false,
@@ -178,11 +183,15 @@ Return ONLY a valid JSON object matching this schema exactly (no markdown, no ba
     };
   } catch (err) {
     console.error('⚠️  [Gemini] Feedback analysis failed:', err.message?.slice(0, 80));
+    
+    // Fallback gibberish check if AI is down
+    const isGibberish = text.trim().length < 4 || (text.length > 15 && !text.includes(' '));
+    
     return {
-      isValid: true, // Fail-open so user isn't blocked if Gemini goes down
+      isValid: !isGibberish,
       category: 'other',
       moodRating: 3,
-      aiReply: 'Thank you for your feedback! Our team will look into this.'
+      aiReply: isGibberish ? 'Please provide meaningful feedback. Random text cannot be processed.' : 'Thank you for your feedback! Our team will look into this.'
     };
   }
 }
