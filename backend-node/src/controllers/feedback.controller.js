@@ -1,13 +1,23 @@
 // backend-node/src/controllers/feedback.controller.js
 const Feedback = require('../models/Feedback.model');
+const { analyzeFeedback } = require('../services/gemini.service');
 
 // POST /api/feedback
 const submitFeedback = async (req, res, next) => {
   try {
-    const { text, moodRating, category } = req.body;
+    const { text } = req.body;
 
-    if (!text || !moodRating) {
-      const err = new Error('Feedback text and mood rating are required');
+    if (!text) {
+      const err = new Error('Feedback text is required');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    // Call Gemini API for analysis
+    const aiResult = await analyzeFeedback(text, req.user.name);
+
+    if (!aiResult.isValid) {
+      const err = new Error(aiResult.aiReply || 'Please provide meaningful feedback. Random text cannot be processed.');
       err.statusCode = 400;
       return next(err);
     }
@@ -15,11 +25,12 @@ const submitFeedback = async (req, res, next) => {
     const feedback = await Feedback.create({
       userId: req.user._id,
       text,
-      moodRating,
-      category: category || 'other',
+      moodRating: aiResult.moodRating,
+      category: aiResult.category,
+      aiReply: aiResult.aiReply,
     });
 
-    res.status(201).json({ success: true, feedback });
+    res.status(201).json({ success: true, feedback, aiReply: aiResult.aiReply });
   } catch (error) {
     next(error);
   }

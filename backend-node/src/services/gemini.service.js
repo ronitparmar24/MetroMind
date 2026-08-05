@@ -79,9 +79,14 @@ Write exactly 2-3 sentences, second person ("you"), warm and specific to these n
 
   try {
     const model = getModel();
-    const text = await _withRetry(() =>
-      model.generateContent(prompt).then(r => r.response.text().trim())
+    // Hard 4-second timeout — never let Gemini block the API response
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Gemini timeout')), 4000)
     );
+    const text = await Promise.race([
+      _withRetry(() => model.generateContent(prompt).then(r => r.response.text().trim()), 1, 800),
+      timeoutPromise,
+    ]);
     _cache.set(key, text);
     console.log(`✅ [Gemini] Digest generated for user ${userId.slice(0,8)}…`);
     return text;
@@ -94,6 +99,7 @@ Write exactly 2-3 sentences, second person ("you"), warm and specific to these n
     return fallback;
   }
 }
+
 
 // ── Commuter Personality Description ─────────────────────────────────────
 /**
@@ -129,4 +135,56 @@ async function generatePersonalityDescription(userId, personalityType, ratios) {
   }
 }
 
-module.exports = { generateWeeklyDigestText, generatePersonalityDescription };
+// ── Feedback Analysis ─────────────────────────────────────────────────────
+/**
+ * Analyze user feedback to deduce category, mood, and generate a reply.
+ * @param {string} text - The user's raw feedback text
+ * @param {string} userName - The user's name for personalized greeting
+ * @returns {Promise<{isValid: boolean, category: string, moodRating: number, aiReply: string}>}
+ */
+async function analyzeFeedback(text, userName = 'Passenger') {
+  const prompt = `You are a warm, empathetic customer support AI for the MetroMind app (Ahmedabad Metro).
+Analyze this user feedback: "${text}"
+
+First, determine if the feedback is valid. If it is gibberish (e.g. keyboard smashes like "dshadygfyadhfdfbjh"), completely nonsensical, or too short to have meaning, it is invalid.
+
+Return ONLY a valid JSON object matching this schema exactly (no markdown, no backticks, no other text):
+{
+  "isValid": <boolean, true if meaningful feedback, false if gibberish or nonsensical>,
+  "category": "service" | "cleanliness" | "safety" | "app" | "other",
+  "moodRating": <number from 1 (terrible) to 5 (amazing) based on sentiment>,
+  "aiReply": "<If isValid is true: A 1-2 sentence empathetic, personalized reply directly addressing their feedback, starting with 'Hi ${userName}'. If isValid is false: A short warning explaining that the feedback appears to be invalid and cannot be processed.>"
+}`;
+
+  try {
+    const model = getModel();
+    const result = await _withRetry(() =>
+      model.generateContent(prompt).then(r => r.response.text().trim())
+    );
+    
+    // Clean up potential markdown formatting from Gemini response
+    let cleanJson = result;
+    if (cleanJson.startsWith('\`\`\`')) {
+      const match = cleanJson.match(/\`\`\`(?:json)?\n([\s\S]*?)\`\`\`/);
+      if (match) cleanJson = match[1].trim();
+    }
+    
+    console.log(`✅ [Gemini] Analyzed feedback. Valid: ${parsed.isValid !== false}, Mood: ${parsed.moodRating}`);
+    return {
+      isValid: parsed.isValid !== false,
+      category: parsed.category || 'other',
+      moodRating: parsed.moodRating || 3,
+      aiReply: parsed.aiReply || 'Thank you for your feedback! We appreciate you taking the time to share your thoughts.'
+    };
+  } catch (err) {
+    console.error('⚠️  [Gemini] Feedback analysis failed:', err.message?.slice(0, 80));
+    return {
+      isValid: true, // Fail-open so user isn't blocked if Gemini goes down
+      category: 'other',
+      moodRating: 3,
+      aiReply: 'Thank you for your feedback! Our team will look into this.'
+    };
+  }
+}
+
+module.exports = { generateWeeklyDigestText, generatePersonalityDescription, analyzeFeedback };

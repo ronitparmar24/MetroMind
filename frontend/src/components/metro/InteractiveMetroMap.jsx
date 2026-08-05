@@ -268,20 +268,24 @@ function RouteSummaryCard({ fromStation, toStation, route, onContinue, onClear, 
       <div style={{ display: 'flex', gap: '8px' }}>
         {toStation && (
           <button
+            type="button"
             className="btn btn-primary btn-lg"
             style={{ flex: 1 }}
             onClick={handleContinue}
           >
             🎫 Continue
           </button>
+
         )}
         <button
+          type="button"
           className="btn btn-secondary"
           onClick={onClear}
           title="Clear selection"
         >
           ✕
         </button>
+
       </div>
     </div>
   );

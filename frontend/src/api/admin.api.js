@@ -11,7 +11,7 @@ export const adminApi = {
   getUsers: (params) => api.get('/api/admin/users', { params }),
   toggleUserStatus: (id, isActive) => api.patch(`/api/admin/users/${id}/status`, { isActive }),
   getTickets: (params) => api.get('/api/admin/tickets', { params }),
-  getRevenueSummary: () => api.get('/api/admin/revenue-summary'),
+  getRevenueSummary: (range = 'month') => api.get('/api/admin/revenue-summary', { params: { range } }),
   getSupportQueue: () => api.get('/api/admin/support-queue'),
   resolveSupportItem: (id) => api.patch(`/api/admin/lostfound/${id}/resolve`),
 };

@@ -24,6 +24,9 @@ const FeedbackSchema = new mongoose.Schema(
       enum: ['service', 'cleanliness', 'safety', 'app', 'other'],
       default: 'other',
     },
+    aiReply: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

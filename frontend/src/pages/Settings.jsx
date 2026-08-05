@@ -173,6 +173,34 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Keyboard Shortcuts */}
+        <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#0ea5e9', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)' }}>
+              ⌨️
+            </div>
+            <div>
+              <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontSize: '1.2rem' }}>Keyboard Shortcuts</h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>Quick navigation keys</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[
+              { label: 'Go to Dashboard', key: 'H' },
+              { label: 'Book Ticket', key: 'B' },
+              { label: 'My Tickets', key: 'T' },
+              { label: 'Wallet', key: 'W' },
+              { label: 'Close Sidebar / Escape', key: 'Esc' },
+              { label: 'Skip to Content', key: 'Tab' },
+            ].map((shortcut) => (
+              <div key={shortcut.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>{shortcut.label}</span>
+                <kbd style={{ background: '#1e293b', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 700, boxShadow: '0 2px 0 #0f172a, inset 0 1px 0 rgba(255,255,255,0.1)' }}>{shortcut.key}</kbd>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* App Version */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0' }}>
           <div>

@@ -16,6 +16,7 @@ from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from functools import wraps
 import os
+from decouple import config
 import datetime
 from django.utils import timezone
 from django.db import models
@@ -403,7 +404,7 @@ def admin_proxy_required(view_func):
     def _wrapped_view(request, *args, **kwargs):
         # HTTP_X_INTERNAL_SECRET is how Django sees the X-Internal-Secret header
         secret = request.META.get('HTTP_X_INTERNAL_SECRET')
-        expected = os.environ.get('ADMIN_PROXY_SECRET')
+        expected = config('ADMIN_PROXY_SECRET', default=None)
         if not expected or secret != expected:
             return JsonResponse({'error': 'Unauthorized admin proxy request'}, status=403)
         return view_func(request, *args, **kwargs)
@@ -412,8 +413,8 @@ def admin_proxy_required(view_func):
 @method_decorator(admin_proxy_required, name='dispatch')
 class AdminModelPerformanceView(APIView):
     def get(self, request):
-        report_path = Path(__file__).resolve().parent.parent.parent / 'predict' / 'ml' / 'saved' / 'comparison_report.json'
-        hyper_path = Path(__file__).resolve().parent.parent.parent / 'predict' / 'ml' / 'saved' / 'hyperparameter_search.json'
+        report_path = Path(__file__).resolve().parent.parent / 'predict' / 'ml' / 'saved' / 'comparison_report.json'
+        hyper_path = Path(__file__).resolve().parent.parent / 'predict' / 'ml' / 'saved' / 'hyperparameter_search.json'
         
         try:
             with open(report_path, 'r') as f:
@@ -460,12 +461,23 @@ class AdminPredictionVolumeView(APIView):
 class AdminFeatureDriftView(APIView):
     def get(self, request):
         seven_days_ago = timezone.now() - datetime.timedelta(days=7)
-        recent_logs = PredictionLog.objects.filter(created_at__gte=seven_days_ago)
+        # Exclude empty or N/A stations
+        recent_logs = PredictionLog.objects.filter(created_at__gte=seven_days_ago).exclude(station__in=['', 'N/A'])
         
         orig_hour_avg = BookingSample.objects.aggregate(models.Avg('hour'))['hour__avg'] or 0
-        recent_hour_avg = recent_logs.aggregate(models.Avg('hour'))['hour__avg'] or 0
-        
         orig_stations = list(BookingSample.objects.values('station').annotate(count=models.Count('id')).order_by('-count')[:5])
+        
+        # Fallback to dataset if BookingSample is empty (e.g. database not seeded)
+        if orig_hour_avg == 0:
+            try:
+                df = pd.read_csv(DATA_PATH)
+                orig_hour_avg = df['hour'].mean()
+                top_st = df['station'].value_counts().head(5)
+                orig_stations = [{'station': st, 'count': ct} for st, ct in top_st.items()]
+            except Exception:
+                pass
+
+        recent_hour_avg = recent_logs.aggregate(models.Avg('hour'))['hour__avg'] or 0
         recent_stations = list(recent_logs.values('station').annotate(count=models.Count('id')).order_by('-count')[:5])
         
         return Response({

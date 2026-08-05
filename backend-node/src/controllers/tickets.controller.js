@@ -3,6 +3,7 @@ const Ticket = require('../models/Ticket.model');
 const Wallet = require('../models/Wallet.model');
 const Transaction = require('../models/Transaction.model');
 const User = require('../models/User.model');
+const MetroCard = require('../models/MetroCard.model');
 const { generateQR } = require('../utils/qrGenerator');
 const { calculateFare } = require('../utils/fareEngine');
 const { calculateCO2Saved } = require('../utils/carbonCalc');
@@ -10,6 +11,7 @@ const { generatePDFTicket } = require('../utils/pdfTicket');
 const { bookingBus } = require('../events/bookingEvents');
 const axios = require('axios');
 const { DJANGO_API_URL } = require('../config/env');
+const { METRO_CARD_DISCOUNT } = require('./metrocard.controller');
 
 // Hardcoded GMRC station coordinates — used for fare calculation
 // These are imported from a shared constants file
@@ -35,7 +37,10 @@ const bookTicket = async (req, res, next) => {
       travelDate,
       travelTime,
       coachPref,
+      paymentMethod = 'wallet', // 'wallet' | 'metrocard'
     } = req.body;
+
+
 
     if (!source || !destination || !passengers || !travelDate || !travelTime) {
       const err = new Error('Missing required booking fields');
@@ -89,17 +94,39 @@ const bookTicket = async (req, res, next) => {
       console.warn('⚠️ ML prediction service unavailable, defaulting to Medium');
     }
 
-    // Check wallet balance
+    // ── Metro Card lookup ──
+    const metroCard = await MetroCard.findOne({ userId: req.user._id, isActive: true });
+    // Discount ONLY applies when user explicitly pays with Metro Card
+    const useMetroCard = !!metroCard && paymentMethod === 'metrocard';
+    const discountAmount = useMetroCard ? Math.round(fareResult.fare * METRO_CARD_DISCOUNT) : 0;
+    const finalFare = fareResult.fare - discountAmount;
+
+
+    // ── Payment source check ──
     const wallet = await Wallet.findOne({ userId: req.user._id });
-    if (!wallet || wallet.balance < fareResult.fare) {
-      const err = new Error(`Insufficient wallet balance. Required: ₹${fareResult.fare}, Available: ₹${wallet ? wallet.balance : 0}`);
-      err.statusCode = 402;
-      return next(err);
+
+    if (paymentMethod === 'metrocard') {
+      // Pay from Metro Card balance
+      if (!metroCard) {
+        const err = new Error('No active Metro Card found. Please get a Metro Card first.');
+        err.statusCode = 402; return next(err);
+      }
+      if (metroCard.balance < finalFare) {
+        const err = new Error(`Insufficient Metro Card balance. Required: \u20b9${finalFare}, Available: \u20b9${metroCard.balance}`);
+        err.statusCode = 402; return next(err);
+      }
+    } else {
+      // Pay from Wallet
+      if (!wallet || wallet.balance < finalFare) {
+        const err = new Error(`Insufficient wallet balance. Required: \u20b9${finalFare}, Available: \u20b9${wallet ? wallet.balance : 0}`);
+        err.statusCode = 402; return next(err);
+      }
     }
+
 
     // Generate QR codes for each passenger with split fare
     const ticketId = generateTicketId();
-    const farePerPerson = Math.round(fareResult.fare / passengers.length);
+    const farePerPerson = Math.round(finalFare / passengers.length);
     const passengersWithQR = await Promise.all(
       passengers.map(async (p, i) => {
         const qrData = JSON.stringify({
@@ -126,7 +153,7 @@ const bookTicket = async (req, res, next) => {
       ticketId,
       source,
       destination,
-      fare: fareResult.fare,
+      fare: finalFare,
       isPeak: fareResult.isPeak,
       passengers: passengersWithQR,
       travelDate,
@@ -137,19 +164,42 @@ const bookTicket = async (req, res, next) => {
       coachPref: coachPref || 'general',
     });
 
-    // Deduct from wallet (single payer books for the group)
-    wallet.balance -= fareResult.fare;
-    await wallet.save();
+    // ── Deduct payment ──
+    if (paymentMethod === 'metrocard') {
+      // Deduct fare from Metro Card balance
+      metroCard.balance -= finalFare;
+      metroCard.lastUsed = new Date();
+      metroCard.totalSaved = (metroCard.totalSaved || 0) + discountAmount;
+      metroCard.totalTrips = (metroCard.totalTrips || 0) + 1;
+      await metroCard.save();
+    } else {
+      // Deduct from wallet
+      wallet.balance -= finalFare;
+      await wallet.save();
+      // Update Metro Card stats if discount was applied via active card
+      if (useMetroCard && metroCard) {
+        metroCard.lastUsed = new Date();
+        metroCard.totalSaved = (metroCard.totalSaved || 0) + discountAmount;
+        metroCard.totalTrips = (metroCard.totalTrips || 0) + 1;
+        await metroCard.save();
+      }
+    }
 
     // Record transaction
+    const payLabel = paymentMethod === 'metrocard' ? 'Metro Card' : 'Wallet';
+    const newBalance = paymentMethod === 'metrocard'
+      ? (wallet ? wallet.balance : 0)  // wallet unchanged
+      : wallet.balance;                 // wallet was deducted
     await Transaction.create({
       userId: req.user._id,
       type: 'debit',
-      amount: fareResult.fare,
-      balance: wallet.balance,
+      amount: finalFare,
+      balance: newBalance,
       ref: ticketId,
-      note: `Ticket: ${source} → ${destination} (${passengers.length} pax)`,
+      note: `Ticket: ${source} \u2192 ${destination} (${passengers.length} pax) | ${payLabel}${discountAmount > 0 ? ` | Metro Card \u221210% \u2212\u20b9${discountAmount}` : ''}`,
     });
+
+
 
     // Update user loyalty points and streak
     const user = await User.findById(req.user._id);
@@ -181,6 +231,9 @@ const bookTicket = async (req, res, next) => {
       farePerPerson,
       crowdBucket,
       co2Saved,
+      metroCardDiscount: discountAmount,
+      originalFare: fareResult.fare,
+      finalFare,
     });
   } catch (error) {
     next(error);
