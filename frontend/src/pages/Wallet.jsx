@@ -157,20 +157,20 @@ export default function Wallet() {
   const walletWarning = wallet.balance < 20 ? 'critical' : wallet.balance < 50 ? 'low' : null;
 
   return (
-    <div style={{ padding: 'var(--space-lg)', maxWidth: '900px', margin: '0 auto', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ padding: '12px 16px', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
       <style>{`
         @keyframes fadeInUp { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
         @keyframes cardEntrance { from{opacity:0;transform:translateY(30px) scale(0.95);} to{opacity:1;transform:translateY(0) scale(1);} }
-        .wallet-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 28px; align-items: start; }
+        .wallet-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px; align-items: start; }
         @media(max-width:700px){ .wallet-grid{grid-template-columns:1fr!important;} }
       `}</style>
 
-      <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '4px' }}>Wallet 💳</h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '28px' }}>Your MetroMind digital wallet</p>
+      <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '2px' }}>Wallet 💳</h1>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '14px' }}>Your MetroMind digital wallet</p>
 
       {/* Low balance warning */}
       {walletWarning && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 18px', borderRadius: '16px', background: walletWarning === 'critical' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${walletWarning === 'critical' ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)'}`, marginBottom: '20px', animation: 'fadeInUp 0.3s ease' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '12px', background: walletWarning === 'critical' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${walletWarning === 'critical' ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)'}`, marginBottom: '12px', animation: 'fadeInUp 0.3s ease' }}>
           <span style={{ fontSize: '1.3rem' }}>{walletWarning === 'critical' ? '🚨' : '⚠️'}</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: '0.875rem', color: walletWarning === 'critical' ? '#ef4444' : '#f59e0b', marginBottom: '2px' }}>
@@ -188,7 +188,7 @@ export default function Wallet() {
 
       <div className="wallet-grid">
         {/* LEFT: Card + Top Up */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {/* 3D Card */}
           <div style={{ animation: 'cardEntrance 0.6s cubic-bezier(0.2,0.8,0.2,1)' }}>
             <CreditCard
@@ -202,18 +202,18 @@ export default function Wallet() {
           </div>
 
           {/* Quick Top-Up */}
-          <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '20px' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '14px' }}>Add Money</div>
+          <div style={{ borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '14px' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Add Money</div>
 
             {/* Tap chips */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
               {quickAmounts.map(a => (
                 <button
                   key={a}
                   onClick={() => { setAmount(String(a)); handleTopup(String(a)); }}
                   disabled={topupLoading}
                   style={{
-                    padding: '10px 18px', borderRadius: '24px', fontWeight: 700, fontSize: '0.85rem',
+                    padding: '7px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.82rem',
                     cursor: 'pointer', border: 'none',
                     background: parseInt(amount) === a ? 'linear-gradient(135deg,#6366f1,#a855f7)' : 'var(--bg-tertiary)',
                     color: parseInt(amount) === a ? '#fff' : 'var(--text-secondary)',
@@ -246,8 +246,8 @@ export default function Wallet() {
         </div>
 
         {/* RIGHT: Transactions */}
-        <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
-          <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Recent Transactions</span>
             {wallet.prediction?.avgWeeklySpend > 0 && (
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>avg {formatCurrency(wallet.prediction.avgWeeklySpend)}/wk</span>
@@ -258,7 +258,7 @@ export default function Wallet() {
               wallet.recentTransactions.map((t, i) => (
                 <div key={t._id || i} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '12px 20px',
+                  padding: '9px 16px',
                   borderBottom: '1px solid var(--border-color)',
                   animation: `fadeInUp 0.3s ease ${i * 0.05}s both`,
                 }}>
@@ -295,7 +295,7 @@ export default function Wallet() {
 
       {/* NCMC notice */}
       {NCMC_INFO.enabled && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 18px', marginTop: '20px', borderRadius: '16px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', marginTop: '12px', borderRadius: '12px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
           <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>🪪</span>
           <p style={{ margin: 0 }}>{NCMC_INFO.description}</p>
         </div>

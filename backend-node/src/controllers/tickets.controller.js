@@ -74,7 +74,8 @@ const bookTicket = async (req, res, next) => {
       { lat: destStation.lat, lng: destStation.lng },
       hour,
       dayOfWeek,
-      passengers.length
+      passengers.length,
+      travelDate
     );
 
     // Try to get crowd prediction from Django ML service

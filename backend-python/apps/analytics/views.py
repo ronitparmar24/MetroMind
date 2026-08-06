@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+from apps.predict.ml.features import normalize_station
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import JsonResponse
@@ -164,7 +165,8 @@ class StationProfileView(APIView):
             return Response({'error': 'Dataset not found'}, status=404)
 
         # URL-decode station name (spaces come through as %20 or +)
-        station = station_name.replace('-', ' ')
+        # Also normalise frontend names → ML dataset canonical names
+        station = normalize_station(station_name.replace('-', ' '))
 
         # Check the station exists in the data
         station_df = df[df['station'] == station]
