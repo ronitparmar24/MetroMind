@@ -19,8 +19,52 @@ STATIONS = [
     'Kankaria', 'Kalupur', 'Usmanpura', 'Chandkheda', 'GNLU',
 ]
 
+# Mapping from frontend/user-facing station names → ML dataset canonical names
+# Add entries here whenever a station name changes in the UI or dataset
+STATION_ALIASES = {
+    # Thaltej Gam is a separate station in the frontend but the ML dataset
+    # only contains the simplified 'Thaltej' entry — map it to the nearest match
+    'Thaltej Gam': 'Thaltej',
+    # Frontend uses singular 'Road'; dataset uses plural 'Roads'
+    'Commerce Six Road': 'Commerce Six Roads',
+    # Frontend uses full name; dataset uses short name
+    'Kalupur Metro Station': 'Kalupur',
+    'Sabarmati Railway Station': 'Sabarmati',
+    # Common abbreviation variants
+    'Jivraj Park': 'Jivraj Mehta Hospital',
+    'Kankaria East': 'Kankaria East',  # already correct, kept for explicitness
+}
+
 BUCKET_MAP = {0: 'Low', 1: 'Medium', 2: 'High'}
 REVERSE_BUCKET_MAP = {'Low': 0, 'Medium': 1, 'High': 2}
+
+
+def normalize_station(name: str) -> str:
+    """
+    Normalise a user-supplied station name to its canonical ML dataset name.
+    Handles:
+      - Direct alias lookups (e.g. 'Thaltej Gam' → 'Thaltej')
+      - Case-insensitive fallback matching against the STATIONS list
+    Returns the original name unchanged if no match is found (so the caller
+    can surface a meaningful error rather than crashing silently).
+    """
+    # 1. Exact alias match
+    if name in STATION_ALIASES:
+        return STATION_ALIASES[name]
+    # 2. Already a known canonical name
+    if name in STATIONS:
+        return name
+    # 3. Case-insensitive alias lookup
+    lower = name.lower()
+    for alias, canonical in STATION_ALIASES.items():
+        if alias.lower() == lower:
+            return canonical
+    # 4. Case-insensitive canonical lookup
+    for s in STATIONS:
+        if s.lower() == lower:
+            return s
+    # 5. Not found — return as-is and let the caller handle the error
+    return name
 
 
 def is_peak_hour(hour):
@@ -69,7 +113,7 @@ def build_feature_vector(data: dict) -> pd.DataFrame:
         data: {station, hour, day, passengers}
     """
     row = pd.DataFrame([{
-        'station': data['station'],
+        'station': normalize_station(data['station']),
         'hour': int(data['hour']),
         'day_of_week': int(data['day']),
         'passengers': int(data.get('passengers', 1)),

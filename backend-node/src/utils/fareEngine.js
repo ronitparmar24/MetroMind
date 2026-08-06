@@ -63,6 +63,27 @@ const isPeakHour = (hour, dayOfWeek) => {
 };
 
 /**
+ * Check if date is a public holiday in Gujarat/India.
+ * Expects date string in YYYY-MM-DD format.
+ */
+const isHoliday = (dateStr) => {
+  if (!dateStr) return false;
+  // Match standard holidays (MM-DD)
+  const holidays = [
+    '01-14', // Uttarayan
+    '01-26', // Republic Day
+    '05-01', // Gujarat Day
+    '08-15', // Independence Day
+    '09-04', // User specified holiday
+    '10-02', // Gandhi Jayanti
+    '12-25', // Christmas
+  ];
+  // Extract MM-DD from date string (works for YYYY-MM-DD or ISO strings)
+  const mmdd = dateStr.substring(5, 10);
+  return holidays.includes(mmdd);
+};
+
+/**
  * Calculate fare for a journey between two stations.
  *
  * @param {Object} source   - {lat, lng} of source station
@@ -70,14 +91,21 @@ const isPeakHour = (hour, dayOfWeek) => {
  * @param {number} hour     - Hour of travel (0–23)
  * @param {number} dayOfWeek - 0 = Sunday … 6 = Saturday
  * @param {number} passengerCount - Number of passengers (default 1)
- * @returns {{ fare, perPassenger, baseFare, distance, trackDistance, isPeak }}
+ * @param {string} dateStr        - Travel date (YYYY-MM-DD)
+ * @returns {{ fare, perPassenger, baseFare, distance, trackDistance, isPeak, isHoliday }}
  */
-const calculateFare = (source, dest, hour, dayOfWeek, passengerCount = 1) => {
+const calculateFare = (source, dest, hour, dayOfWeek, passengerCount = 1, dateStr = null) => {
   const straightKm   = haversine(source.lat, source.lng, dest.lat, dest.lng);
   const trackKm      = Math.round(straightKm * TRACK_CORRECTION * 100) / 100;
   const baseFare     = slabFare(trackKm);
-  const peak         = isPeakHour(hour, dayOfWeek);
-  const perPassenger = peak ? Math.round(baseFare * 1.2) : baseFare;
+  const holiday      = isHoliday(dateStr);
+  const peak         = !holiday && isPeakHour(hour, dayOfWeek);
+  
+  let perPassenger = peak ? Math.round(baseFare * 1.2) : baseFare;
+  if (holiday) {
+    perPassenger = Math.round(perPassenger * 0.5); // 50% discount on holidays
+  }
+  
   const totalFare    = perPassenger * passengerCount;
 
   return {
@@ -87,7 +115,8 @@ const calculateFare = (source, dest, hour, dayOfWeek, passengerCount = 1) => {
     distance:      Math.round(straightKm * 100) / 100, // straight-line (shown in UI)
     trackDistance: trackKm,                             // actual track distance (used for slab)
     isPeak:        peak,
+    isHoliday:     holiday,
   };
 };
 
-module.exports = { haversine, isPeakHour, calculateFare };
+module.exports = { haversine, isPeakHour, isHoliday, calculateFare };

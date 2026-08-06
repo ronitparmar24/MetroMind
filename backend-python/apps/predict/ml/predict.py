@@ -12,7 +12,7 @@ import numpy as np
 import joblib
 from pathlib import Path
 
-from .features import build_feature_vector, BUCKET_MAP, STATIONS, is_peak_hour, is_weekend_day
+from .features import build_feature_vector, BUCKET_MAP, STATIONS, is_peak_hour, is_weekend_day, normalize_station
 from .explain import explain_prediction
 
 SAVED_DIR = Path(__file__).resolve().parent / 'saved'
@@ -161,6 +161,7 @@ def run_anomaly_check(station: str, hour: int, day_of_week: int, actual_or_predi
     Returns:
         {isAnomaly: bool, anomalyScore: float, message: str}
     """
+    station = normalize_station(station)
     if not _loaded_models['anomaly_model']:
         return {
             'isAnomaly': False,
@@ -313,6 +314,7 @@ def run_best_departure(station: str, target_hour: int, day_of_week: int) -> dict
             recommendation: str
         }
     """
+    station = normalize_station(station)
     # Check hours: target-1, target, target+1 (clamped to metro operating hours 6-22)
     candidate_hours = sorted(set(
         max(6, min(22, h))

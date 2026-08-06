@@ -72,6 +72,22 @@ export const isPeakHour = (hour, dayOfWeek) => {
   return isWeekday && ((hour >= 8 && hour < 11) || (hour >= 17 && hour < 20));
 };
 
+/** True if date is a public holiday in Gujarat/India */
+export const isHoliday = (dateStr) => {
+  if (!dateStr) return false;
+  const holidays = [
+    '01-14', // Uttarayan
+    '01-26', // Republic Day
+    '05-01', // Gujarat Day
+    '08-15', // Independence Day
+    '09-04', // User specified holiday
+    '10-02', // Gandhi Jayanti
+    '12-25', // Christmas
+  ];
+  const mmdd = dateStr.substring(5, 10);
+  return holidays.includes(mmdd);
+};
+
 /**
  * Calculate fare for a journey (UI preview).
  *
@@ -80,14 +96,20 @@ export const isPeakHour = (hour, dayOfWeek) => {
  * @param {number} hour         - Hour of travel (0–23)
  * @param {number} dayOfWeek    - 0 = Sunday … 6 = Saturday
  * @param {number} passengers   - Number of passengers (default 1)
- * @returns {{ fare, perPassenger, baseFare, distance, trackDistance, isPeak }}
+ * @param {string} dateStr      - Travel date (YYYY-MM-DD)
+ * @returns {{ fare, perPassenger, baseFare, distance, trackDistance, isPeak, isHoliday }}
  */
-export const calculateFare = (source, dest, hour, dayOfWeek, passengers = 1) => {
+export const calculateFare = (source, dest, hour, dayOfWeek, passengers = 1, dateStr = null) => {
   const straightKm   = estimateDistance(source, dest);
   const trackKm      = Math.round(straightKm * TRACK_CORRECTION * 100) / 100;
   const baseFare     = slabFare(trackKm);
-  const peak         = isPeakHour(hour, dayOfWeek);
-  const perPassenger = peak ? Math.round(baseFare * 1.2) : baseFare;
+  const holiday      = isHoliday(dateStr);
+  const peak         = !holiday && isPeakHour(hour, dayOfWeek);
+  
+  let perPassenger = peak ? Math.round(baseFare * 1.2) : baseFare;
+  if (holiday) {
+    perPassenger = Math.round(perPassenger * 0.5); // 50% discount on holidays
+  }
 
   return {
     baseFare,
@@ -96,5 +118,6 @@ export const calculateFare = (source, dest, hour, dayOfWeek, passengers = 1) => 
     distance:      Math.round(straightKm * 100) / 100,
     trackDistance: trackKm,
     isPeak:        peak,
+    isHoliday:     holiday,
   };
 };

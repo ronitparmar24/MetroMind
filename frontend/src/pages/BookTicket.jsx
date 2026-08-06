@@ -163,26 +163,27 @@ function FareBreakdown({ fareData, passengers }) {
     <div style={{
       background: fareData.isPeak ? 'linear-gradient(135deg,rgba(245,158,11,0.08),rgba(239,68,68,0.05))' : 'linear-gradient(135deg,rgba(34,197,94,0.08),rgba(99,102,241,0.05))',
       border: `1px solid ${fareData.isPeak ? 'rgba(245,158,11,0.2)' : 'rgba(34,197,94,0.2)'}`,
-      borderRadius: '20px', padding: '20px', marginBottom: '16px',
+      borderRadius: '14px', padding: '14px', marginBottom: '12px',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <div>
           <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Total Fare</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>
             ₹{fareData.fare}
           </div>
         </div>
-        <div style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: fareData.isPeak ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)', color: fareData.isPeak ? '#d97706' : '#16a34a' }}>
-          {fareData.isPeak ? '⚡ Peak' : '✨ Off-Peak'}
+        <div style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: fareData.isHoliday ? 'rgba(236,72,153,0.15)' : fareData.isPeak ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)', color: fareData.isHoliday ? '#ec4899' : fareData.isPeak ? '#d97706' : '#16a34a' }}>
+          {fareData.isHoliday ? '🎉 Holiday' : fareData.isPeak ? '⚡ Peak' : '✨ Off-Peak'}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.82rem' }}>
         {[
           ['📏 Distance', `${fareData.distance} km`],
           ['🎫 Base fare', `₹${fareData.baseFare}`],
-          chargeable > 0 ? ['👥 Passengers', `${chargeable} × ₹${fareData.perPassenger}`] : null,
+          chargeable > 0 ? ['👥 Passengers', `${chargeable} × ₹${fareData.baseFare}`] : null,
           free > 0 ? ['👶 Child (Free)', `${free} × ₹0`] : null,
           fareData.isPeak && chargeable > 0 ? ['⚡ Peak surcharge', '+20%'] : null,
+          fareData.isHoliday && chargeable > 0 ? ['🎉 Holiday Discount', '-50%'] : null,
         ].filter(Boolean).map(([label, val]) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
             <span>{label}</span><span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{val}</span>
@@ -204,7 +205,7 @@ function JourneySummary({ source, destination, travelDate, travelHour }) {
   const dateStr = new Date(travelDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
   const timeStr = travelHour !== null ? (travelHour < 12 ? `${travelHour}:00 AM` : travelHour === 12 ? '12:00 PM' : `${travelHour-12}:00 PM`) : '—';
   return (
-    <div style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.08),rgba(124,58,237,0.05))', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '20px', padding: '16px 18px', marginBottom: '16px' }}>
+    <div style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.08),rgba(124,58,237,0.05))', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '14px', padding: '12px 14px', marginBottom: '12px' }}>
       <div style={{ fontSize: '11px', fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>🗺️ Journey Summary</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
         <div style={{ textAlign: 'center', flex: 1 }}>
@@ -287,7 +288,7 @@ export default function BookTicket() {
     if (!srcStation || !destStation) return null;
     const dayOfWeek = new Date(travelDate).getDay();
     const chargeableCount = passengers.filter(p => !p.age || parseInt(p.age) > 4).length;
-    return calculateFare(srcStation, destStation, travelHour || new Date().getHours(), dayOfWeek, chargeableCount);
+    return calculateFare(srcStation, destStation, travelHour || new Date().getHours(), dayOfWeek, chargeableCount, travelDate);
   }, [source, destination, travelDate, travelHour, passengers]);
 
   const fromStationId = useMemo(() => STATIONS.find(s => s.name === source)?.id || null, [source]);
@@ -336,10 +337,10 @@ export default function BookTicket() {
   };
 
   return (
-    <div className="page" style={{ maxWidth: '1200px', margin: '0 auto', padding: 'var(--space-lg)', animation: 'fadeInUp 0.4s ease' }}>
+    <div className="page" style={{ padding: '12px 16px', animation: 'fadeInUp 0.4s ease' }}>
       {/* ── Hero Header ── */}
       <div style={{
-        borderRadius: '28px', padding: '28px 32px', marginBottom: '28px', overflow: 'hidden',
+        borderRadius: '16px', padding: '14px 20px', marginBottom: '14px', overflow: 'hidden',
         background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #DB2777 100%)',
         position: 'relative',
       }}>
@@ -367,14 +368,14 @@ export default function BookTicket() {
           <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>
             Ahmedabad Metro · GMRC
           </div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'white', margin: '0 0 6px', lineHeight: 1.1 }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: '0 0 4px', lineHeight: 1.1 }}>
             Book Your Ride 🎫
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', margin: 0 }}>
+          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.82rem', margin: 0 }}>
             Real-time crowd intelligence · Instant QR tickets · 5 metro lines
           </p>
           {balance != null && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '12px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', borderRadius: '20px', padding: '6px 14px', fontSize: '0.82rem', color: 'white', fontWeight: 600 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', borderRadius: '20px', padding: '4px 12px', fontSize: '0.78rem', color: 'white', fontWeight: 600 }}>
               💳 Wallet: ₹{balance}
             </div>
           )}
@@ -391,14 +392,14 @@ export default function BookTicket() {
       `}</style>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '24px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '12px', alignItems: 'start' }}>
 
           {/* ═══ LEFT COLUMN ═══ */}
           <div>
             {/* ── Route Card ── */}
-            <div style={{ position: 'relative', zIndex: 10, background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '24px', padding: '24px', marginBottom: '20px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
+            <div style={{ position: 'relative', zIndex: 10, background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '18px', padding: '16px', marginBottom: '14px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
               {/* Input mode toggle */}
-              <div style={{ display: 'flex', gap: '4px', marginBottom: '22px', padding: '4px', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '14px', padding: '4px', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
                 {[['search', '🔍', 'Search'], ['map', '🗺️', 'Metro Map']].map(([mode, icon, label]) => (
                   <button key={mode} type="button" onClick={() => setInputMode(mode)} style={{
                     flex: 1, padding: '9px', border: 'none', borderRadius: '10px', cursor: 'pointer',
@@ -452,7 +453,7 @@ export default function BookTicket() {
               )}
 
               {/* Date */}
-              <div style={{ marginTop: '20px' }}>
+              <div style={{ marginTop: '12px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Travel Date</div>
                 <input type="date" value={travelDate} onChange={e => setTravelDate(e.target.value)}
                   min={(() => {
@@ -468,12 +469,12 @@ export default function BookTicket() {
             </div>
 
             {/* ── Time & Crowd Card ── */}
-            <div style={{ background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '24px', padding: '24px', marginBottom: '20px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
+            <div style={{ background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '18px', padding: '16px', marginBottom: '14px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
               <CrowdHourBar source={source} selectedHour={travelHour} onSelect={setTravelHour} travelDate={travelDate} />
             </div>
 
             {/* ── Passengers Card ── */}
-            <div ref={passengersRef} style={{ background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '24px', padding: '24px', marginBottom: '20px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
+            <div ref={passengersRef} style={{ background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '18px', padding: '16px', marginBottom: '14px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Passengers</div>
@@ -526,7 +527,7 @@ export default function BookTicket() {
             {/* ── Submit ── */}
             <button type="submit" disabled={loading || !canBook}
               style={{
-                width: '100%', padding: '16px', borderRadius: '18px', border: 'none',
+                width: '100%', padding: '13px', borderRadius: '14px', border: 'none',
                 background: canBook ? 'linear-gradient(135deg, #4F46E5, #7C3AED)' : 'var(--bg-tertiary)',
                 color: canBook ? 'white' : 'var(--text-muted)',
                 fontSize: '1rem', fontWeight: 700, cursor: canBook ? 'pointer' : 'not-allowed',
@@ -555,7 +556,7 @@ export default function BookTicket() {
             {farePreview && <FareBreakdown fareData={farePreview} passengers={passengers} />}
 
             {/* Travel Tips */}
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '18px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '14px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>💡 Smart Tips</div>
               {[
                 { icon: '🕐', tip: 'Off-peak (11am–5pm) saves you 20% on fares' },
