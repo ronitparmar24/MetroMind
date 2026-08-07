@@ -6,7 +6,7 @@ import CrowdBadge from '../components/booking/CrowdBadge';
 import { STATIONS } from '../constants/stations';
 import { compareRoutes } from '../api/analytics.api';
 import { fetchWeather } from '../api/weather.api';
-import { geocodeLocation } from '../api/geocode.api';
+import { geocodeLocationRouting, getNearestStationsRouting } from '../api/routing.api';
 import { haversine } from '../utils/haversine';
 import { formatCurrency } from '../utils/formatters';
 
@@ -43,15 +43,9 @@ const LINE_BG = {
  * Returns straight-line AND urban-corrected walking distance.
  */
 function findNearestStations(userLat, userLng, count = 3) {
-  return STATIONS
-    .filter(s => s.lat && s.lng)
-    .map(s => {
-      const straightKm = haversine(userLat, userLng, s.lat, s.lng);
-      const walkKm     = straightKm * URBAN_DETOUR; // realistic road distance
-      return { ...s, distanceKm: walkKm, straightKm, bearing: getBearing(userLat, userLng, s.lat, s.lng) };
-    })
-    .sort((a, b) => a.distanceKm - b.distanceKm)
-    .slice(0, count);
+  // This is replaced by backend API getNearestStationsRouting
+  // Keeping it as a fallback if needed, but the main logic will use the API directly.
+  return [];
 }
 
 /** Compass bearing from user to station (0–360°) */
@@ -94,9 +88,8 @@ function rickshawFare(km) {
   return Math.round(20 + 15 * km);
 }
 
-/** Will I Make It? — uses corrected walking distance + 3-min platform buffer */
-function willMakeIt(distKm, minsUntilTrain) {
-  const walkMins = walkMinutes(distKm);
+/** Will I Make It? — updated to use ORS real duration in minutes */
+function willMakeIt(walkMins, minsUntilTrain) {
   const buffer   = minsUntilTrain - walkMins - PLATFORM_BUFFER_MINS;
   return { walkMins, buffer, canMakeIt: buffer >= 0 };
 }
@@ -229,10 +222,11 @@ function RouteCard({ route, idx, onSelect }) {
 
 /* ── Improved Station Distance Card ── */
 function NearestCard({ s, i, onUse, minsUntilTrain }) {
+  const [showSteps, setShowSteps] = useState(false);
   const makeIt = minsUntilTrain && !isNaN(parseInt(minsUntilTrain))
-    ? willMakeIt(s.distanceKm, parseInt(minsUntilTrain))
+    ? willMakeIt(s.durationMinutes, parseInt(minsUntilTrain))
     : null;
-  const fare = rickshawFare(s.distanceKm);
+  const fare = rickshawFare(s.distanceMeters / 1000);
   const direction = s.bearing != null ? bearingLabel(s.bearing) : null;
   const isInterchange = Array.isArray(s.interchange) && s.interchange.length > 0;
 
@@ -289,12 +283,12 @@ function NearestCard({ s, i, onUse, minsUntilTrain }) {
           {/* Distance block */}
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>
-              {s.distanceKm < 1
-                ? `${(s.distanceKm * 1000).toFixed(0)} m`
-                : `${s.distanceKm.toFixed(2)} km`}
+              {s.distanceMeters < 1000
+                ? `${s.distanceMeters} m`
+                : `${(s.distanceMeters / 1000).toFixed(2)} km`}
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '1px' }}>
-              🚶 {walkMinutes(s.distanceKm)} min walk
+              🚶 {s.durationMinutes} min walk
             </div>
             {direction && (
               <div style={{ fontSize: '0.65rem', fontWeight: 700, color: LINE_COLORS[s.line] || 'var(--text-muted)', marginTop: '1px' }}>
@@ -307,16 +301,32 @@ function NearestCard({ s, i, onUse, minsUntilTrain }) {
         {/* Info pills row */}
         <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
           {/* Straight-line note */}
-          {s.straightKm && (
+          {s.straightDistKm && (
             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', padding: '3px 8px', borderRadius: '6px', background: 'var(--bg-tertiary)', fontWeight: 600 }}>
-              {(s.straightKm * 1000).toFixed(0)} m as-the-crow-flies
+              {Math.round(s.straightDistKm * 1000)} m as-the-crow-flies
             </span>
           )}
           {/* Rickshaw fallback fare */}
           <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', padding: '3px 8px', borderRadius: '6px', background: 'var(--bg-tertiary)', fontWeight: 600 }}>
             🚨 Auto ₹{fare}
           </span>
+          {s.steps && s.steps.length > 0 && (
+            <button onClick={() => setShowSteps(!showSteps)} style={{ fontSize: '0.65rem', color: '#6366f1', padding: '3px 8px', borderRadius: '6px', background: 'rgba(99,102,241,0.1)', border: 'none', fontWeight: 600, cursor: 'pointer' }}>
+              {showSteps ? 'Hide Directions' : 'Show Directions'}
+            </button>
+          )}
         </div>
+
+        {showSteps && s.steps && s.steps.length > 0 && (
+          <div style={{ marginTop: '12px', padding: '10px', borderRadius: '10px', background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.1)' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Walking Directions</div>
+            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              {s.steps.map((step, idx) => (
+                <li key={idx} style={{ marginBottom: '4px' }}>{step}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Will I Make It — inline */}
         {makeIt && (
@@ -419,14 +429,16 @@ export default function JourneyPlanner() {
     if (!q) return;
     setGeoLoading(true); setGeoError(''); setResolvedAddr(null); setNearestResults([]);
     try {
-      const geo = await geocodeLocation(q);
-      setResolvedAddr(geo);
-      setNearestResults(findNearestStations(geo.lat, geo.lng, 3));
+      const geo = await geocodeLocationRouting(q);
+      setResolvedAddr({ ...geo, displayName: geo.label });
+      const stations = await getNearestStationsRouting(geo.lat, geo.lng);
+      setNearestResults(stations);
+      
       saveRecent(q);
       setRecentSearches(loadRecent());
     } catch (err) {
-      if (err.response?.status === 404) {
-        setGeoError(`"${q}" not found in Ahmedabad. Try a landmark, area, or road name.`);
+      if (err.response?.status === 404 || err.message === 'Location not found') {
+        setGeoError(`"${q}" not found. Try a landmark, area, or road name.`);
       } else {
         setGeoError('Location service unavailable. Please try again.');
       }
@@ -439,10 +451,15 @@ export default function JourneyPlanner() {
     if (!navigator.geolocation) { setGeoError('Geolocation not supported by your browser.'); return; }
     setGeoLoading(true); setGeoError(''); setResolvedAddr(null); setNearestResults([]);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
         setResolvedAddr({ lat, lng, displayName: 'Your current GPS location' });
-        setNearestResults(findNearestStations(lat, lng, 3));
+        try {
+          const stations = await getNearestStationsRouting(lat, lng);
+          setNearestResults(stations);
+        } catch (e) {
+          setGeoError('Failed to find nearest stations from GPS location.');
+        }
         setGeoLoading(false);
       },
       (e) => {
@@ -581,7 +598,7 @@ export default function JourneyPlanner() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(routes.length, 3)}, 1fr)`, gap: '16px', marginBottom: '32px', animation: 'fadeInUp 0.4s ease' }}>
+          <div className="card-grid-3" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(routes.length, 3)}, 1fr)`, gap: '16px', marginBottom: '32px', animation: 'fadeInUp 0.4s ease' }}>
             {routes.map((route, idx) => (
               <RouteCard key={idx} route={route} idx={idx} onSelect={handleSelectRoute} />
             ))}

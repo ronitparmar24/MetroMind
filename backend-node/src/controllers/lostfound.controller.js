@@ -1,5 +1,7 @@
 // backend-node/src/controllers/lostfound.controller.js
 const LostFound = require('../models/LostFound.model');
+const SystemSetting = require('../models/SystemSetting.model');
+const { sendEmail } = require('../utils/emailer');
 
 // POST /api/lostfound
 const reportLostItem = async (req, res, next) => {
@@ -20,6 +22,15 @@ const reportLostItem = async (req, res, next) => {
       contactPhone: contactPhone || '',
       category: category || 'other',
     });
+
+    const settings = await SystemSetting.findOne();
+    if (settings && settings.supportEmailAlerts) {
+      sendEmail({
+        to: 'admin@metromind.in',
+        subject: 'New Lost & Found Report',
+        html: `<p>New lost & found item reported by ${req.user.name}:</p><blockquote>${itemDescription}</blockquote><p>Location: ${lastSeenLocation}</p>`
+      }).catch(err => console.error('Failed to send admin email:', err));
+    }
 
     res.status(201).json({ success: true, report });
   } catch (error) {

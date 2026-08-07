@@ -62,6 +62,10 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    claimedCO2: {
+      type: Number,
+      default: 0,
+    },
     isVerified: {
       type: Boolean,
       default: false,

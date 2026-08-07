@@ -36,4 +36,5 @@ module.exports = {
   EMAIL_APP_PASSWORD: process.env.EMAIL_APP_PASSWORD || '',
   OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY || '',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  ORS_API_KEY: process.env.ORS_API_KEY || '',
 };

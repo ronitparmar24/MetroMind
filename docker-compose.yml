@@ -44,6 +44,7 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=metromind.settings.dev
       - NODE_SERVICE_URL=http://product-api:5000
+      - ADMIN_PROXY_SECRET=metromind_internal_proxy_secret
     depends_on:
       mongo:
         condition: service_healthy
@@ -73,6 +74,8 @@ services:
       - JWT_SECRET=${JWT_SECRET:-metromind_super_secret_change_in_prod}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - DJANGO_API_URL=http://intelligence-api:8000
+      - PYTHON_SERVICE_URL=http://intelligence-api:8000
+      - ADMIN_PROXY_SECRET=metromind_internal_proxy_secret
       - CLIENT_URL=http://localhost:3000
       - NODE_ENV=production
       - NODE_OPTIONS=--openssl-legacy-provider

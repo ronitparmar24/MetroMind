@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import GlassCard from '../components/common/GlassCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { getHeatmap } from '../api/analytics.api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 import { STATIONS } from '../constants/stations';
 
 
@@ -35,6 +36,7 @@ function buildSyntheticHeatmap() {
 }
 
 export default function Analytics() {
+  const width = useWindowWidth();
   const [heatmap, setHeatmap] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedStation, setSelectedStation] = useState('');
@@ -168,9 +170,14 @@ export default function Analytics() {
           <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: '16px' }}>
             📊 Hourly Crowd — {selectedStation}
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stationChartData}>
-              <XAxis dataKey="hour" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
+          <div style={{ width: '100%', height: 300, overflowX: 'auto', overflowY: 'hidden' }}>
+            <BarChart 
+              width={Math.max(width - (width < 768 ? 64 : 320), 400)} 
+              height={300} 
+              data={stationChartData}
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            >
+              <XAxis dataKey="hour" type="category" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
               <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
               <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8 }} />
               <Bar dataKey="crowd" radius={[4, 4, 0, 0]}>
@@ -179,7 +186,7 @@ export default function Analytics() {
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </div>
           <div style={{ display: 'flex', gap: '24px', marginTop: '12px', fontSize: '0.75rem' }}>
             {['Low (≤50)', 'Medium (51–150)', 'High (>150)'].map((label, i) => {
               const colors = ['#22c55e', '#eab308', '#ef4444'];

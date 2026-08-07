@@ -103,7 +103,7 @@ const calculateFare = (source, dest, hour, dayOfWeek, passengerCount = 1, dateSt
   
   let perPassenger = peak ? Math.round(baseFare * 1.2) : baseFare;
   if (holiday) {
-    perPassenger = Math.round(perPassenger * 0.5); // 50% discount on holidays
+    perPassenger = Math.round(perPassenger * 0.85); // 15% discount on holidays (aligned with holiday.service.js)
   }
   
   const totalFare    = perPassenger * passengerCount;

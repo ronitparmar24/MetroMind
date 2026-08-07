@@ -174,7 +174,8 @@ export default function LiveTrains() {
 
         {/* Departure rows */}
         {!loading && departures.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ overflowX: 'auto', paddingBottom: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '700px' }}>
             {/* Table header */}
             <div style={{
               display: 'grid',
@@ -315,6 +316,7 @@ export default function LiveTrains() {
                 )}
               </div>
             ))}
+            </div>
           </div>
         )}
 

@@ -22,9 +22,26 @@ const WEATHER_EMOJI = {
   Tornado:      '🌪️',
 };
 
+// Realistic mock data for when the API key is not configured
+const MOCK_WEATHER = {
+  tempC:       32,
+  feelsLike:   35,
+  condition:   'Partly Cloudy',
+  description: 'partly cloudy',
+  humidity:    60,
+  windKph:     14,
+  isRaining:   false,
+  emoji:       '⛅',
+  sunrise:     new Date().setHours(6, 10, 0, 0),
+  sunset:      new Date().setHours(19, 25, 0, 0),
+  isDark:      (() => { const h = new Date().getHours(); return h < 6 || h >= 20; })(),
+  isMock:      true,
+};
+
 exports.getAhmedabadWeather = async () => {
   if (!OPENWEATHER_API_KEY) {
-    throw new Error('OPENWEATHER_API_KEY not set in environment');
+    // Return mock data silently — no error, no warning spam
+    return MOCK_WEATHER;
   }
 
   const { data } = await axios.get(

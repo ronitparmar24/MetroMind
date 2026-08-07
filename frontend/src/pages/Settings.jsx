@@ -27,7 +27,7 @@ export default function Settings() {
         <p className="page-subtitle">{t('settings.subtitle')}</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', maxWidth: '1000px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', width: '100%', alignItems: 'start' }}>
         {/* LEFT COLUMN: Main Settings */}
         <GlassCard style={{ padding: '28px' }}>
           {/* Theme Selection */}

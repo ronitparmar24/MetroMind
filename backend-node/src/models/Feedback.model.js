@@ -27,6 +27,13 @@ const FeedbackSchema = new mongoose.Schema(
     aiReply: {
       type: String,
     },
+    resolved: {
+      type: Boolean,
+      default: false,
+    },
+    resolvedAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

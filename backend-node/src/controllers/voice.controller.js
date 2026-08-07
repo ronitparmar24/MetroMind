@@ -7,8 +7,8 @@ const Ticket = require('../models/Ticket.model');
 const Wallet = require('../models/Wallet.model');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-// Use v1 endpoint — lower quota pressure than v1beta used by the JS SDK
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+// Use v1beta endpoint with gemini-2.0-flash which is the current stable model
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 // ── Gemini REST call (direct fetch, no SDK) ───────────────────────────────
 async function callGemini(systemPrompt, userMessage, history = []) {
@@ -55,11 +55,13 @@ async function geminiWithRetry(systemPrompt, userMessage, history, maxRetries = 
     try {
       return await callGemini(systemPrompt, userMessage, history);
     } catch (err) {
-      const is429 = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('exceeded');
+      const isQuota = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('exceeded');
       const isTimeout = err.name === 'AbortError';
-      if ((is429 || isTimeout) && i < maxRetries) {
-        const wait = is429 ? 2000 * (i + 1) : 1000;
-        console.warn(`[VoiceAI] ${is429 ? '429 quota' : 'timeout'} — retry ${i + 1} in ${wait}ms`);
+      
+      // Do not retry on strict quota errors, fail fast to fallback!
+      if (isTimeout && i < maxRetries) {
+        const wait = 1000;
+        console.warn(`[VoiceAI] timeout — retry ${i + 1} in ${wait}ms`);
         await new Promise(r => setTimeout(r, wait));
       } else {
         throw err;
@@ -86,7 +88,7 @@ AHMEDABAD METRO:
 - Thaltej↔Kalupur: ~18 stops, ₹32, ~35 min. GNLU↔Kalupur: ~12 stops, ₹23, ~25 min.
 
 NAVIGATION — append exactly ONE of these when navigating:
-[ACTION:NAVIGATE:/book] [ACTION:NAVIGATE:/wallet] [ACTION:NAVIGATE:/my-tickets] [ACTION:NAVIGATE:/live-trains] [ACTION:NAVIGATE:/journey-planner] [ACTION:NAVIGATE:/analytics]
+[ACTION:NAVIGATE:/book] [ACTION:NAVIGATE:/wallet] [ACTION:NAVIGATE:/tickets] [ACTION:NAVIGATE:/live-trains] [ACTION:NAVIGATE:/journey-planner] [ACTION:NAVIGATE:/analytics]
 
 RULES: Be concise (≤40 words). Use live data above — never invent wallet/ticket figures. Only add [ACTION:...] when actually navigating.`;
 }
@@ -167,11 +169,11 @@ function localNLP(text, ctx) {
   }
 
   // My tickets / upcoming
-  if (t.includes('my ticket') || t.includes('upcoming') || t.includes('my booking') || t.includes('my trip')) {
+  if (t.includes('my ticket') || t.includes('ticket') || t.includes('upcoming') || t.includes('my booking') || t.includes('my trip') || t.includes('show ticket')) {
     if (ctx.activeTickets > 0) {
       return {
         reply: `You have ${ctx.activeTickets} upcoming trip${ctx.activeTickets > 1 ? 's' : ''}. ${ctx.nextTicket ? 'Next: ' + ctx.nextTicket + '.' : ''} Opening tickets now!`,
-        action: { type: 'NAVIGATE', target: '/my-tickets' },
+        action: { type: 'NAVIGATE', target: '/tickets' },
       };
     }
     return { reply: 'No upcoming trips yet. Want to book one?', action: { type: 'NAVIGATE', target: '/book' } };

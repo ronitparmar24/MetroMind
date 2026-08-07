@@ -3,7 +3,7 @@ const MetroCard = require('../models/MetroCard.model');
 const Wallet = require('../models/Wallet.model');
 const Transaction = require('../models/Transaction.model');
 
-const METRO_CARD_DISCOUNT = 0.10; // 10% off every ticket
+const METRO_CARD_DISCOUNT = 0.05; // 5% off every ticket
 
 // GET /api/metrocard
 const getMetroCard = async (req, res, next) => {

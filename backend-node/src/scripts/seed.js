@@ -102,6 +102,26 @@ const USER_POOL = [
   { name: 'Gaurav Thakur',    email: 'gaurav.thakur@gmail.com' },
   { name: 'Simran Chauhan',   email: 'simran.chauhan@gmail.com' },
   { name: 'Manish Srivastava',email: 'manish.srivastava@gmail.com' },
+  { name: 'Neha Sharma',      email: 'neha.sharma@gmail.com' },
+  { name: 'Kunal Kapoor',     email: 'kunal.kapoor@outlook.com' },
+  { name: 'Diya Agarwal',     email: 'diya.agarwal@gmail.com' },
+  { name: 'Ravi Teja',        email: 'ravi.teja@yahoo.com' },
+  { name: 'Sonal Desai',      email: 'sonal.desai@gmail.com' },
+  { name: 'Yash Patel',       email: 'yash.patel@gmail.com' },
+  { name: 'Megha Nair',       email: 'megha.nair@hotmail.com' },
+  { name: 'Abhishek Gupta',   email: 'abhishek.gupta@gmail.com' },
+  { name: 'Riya Singh',       email: 'riya.singh@gmail.com' },
+  { name: 'Vikram Chawla',    email: 'vikram.chawla@gmail.com' },
+  { name: 'Tarun Joshi',      email: 'tarun.joshi@gmail.com' },
+  { name: 'Akansha Verma',    email: 'akansha.verma@gmail.com' },
+  { name: 'Deepak Kumar',     email: 'deepak.kumar@gmail.com' },
+  { name: 'Smriti Iyer',      email: 'smriti.iyer@gmail.com' },
+  { name: 'Ritika Banerjee',  email: 'ritika.banerjee@gmail.com' },
+  { name: 'Karthik Menon',    email: 'karthik.menon@gmail.com' },
+  { name: 'Sanya Reddy',      email: 'sanya.reddy@gmail.com' },
+  { name: 'Pranav Das',       email: 'pranav.das@gmail.com' },
+  { name: 'Aditi Jain',       email: 'aditi.jain@gmail.com' },
+  { name: 'Manoj Tiwari',     email: 'manoj.tiwari@gmail.com' },
 ];
 
 const FEEDBACK_TEXTS = [
@@ -184,18 +204,23 @@ async function seed() {
 
   // ── 3. Seed Tickets (spread over 90 days) ─────────────────────────
   const existingCount = await Ticket.countDocuments({ userId: { $in: createdUsers.map(u => u._id) } });
-  if (existingCount < 50) {
-    console.log('🎫 Seeding tickets…');
-    const tickets = [];
-    let counter = 1000;
+  console.log('🎫 Seeding tickets (appending realistic seasonal curve data for 365 days)…');
+  const tickets = [];
+  let counter = 1000 + existingCount;
 
-    // Generate ~15 tickets per day for last 90 days, tapering off for older days
-    for (let daysBack = 89; daysBack >= 0; daysBack--) {
-      const date = daysAgo(daysBack);
-      const dateStr = formatDate(date);
+  // Generate tickets over a 365 day period
+  for (let daysBack = 364; daysBack >= 0; daysBack--) {
+    const date = daysAgo(daysBack);
 
-      // More tickets on recent days, fewer on older days
-      const countToday = daysBack < 7 ? rand(18, 28) : daysBack < 30 ? rand(10, 18) : rand(4, 10);
+    // Linear growth trend over the year (15 up to 45 base volume)
+    const growth = 15 + ((365 - daysBack) / 365) * 30; 
+    
+    // Seasonal sine wave (peaks around mid year, dips towards end)
+    const seasonality = Math.sin((daysBack / 365) * Math.PI * 2) * 20;
+
+    // Add some daily noise and cap minimum
+    const expectedCount = Math.max(5, growth + seasonality);
+    const countToday = Math.floor(expectedCount + rand(-4, 4));
 
       for (let i = 0; i < countToday; i++) {
         const user = pick(createdUsers);
@@ -243,15 +268,11 @@ async function seed() {
       }
     }
 
-    // Insert in batches
     const BATCH = 100;
     for (let i = 0; i < tickets.length; i += BATCH) {
       await Ticket.insertMany(tickets.slice(i, i + BATCH), { ordered: false }).catch(() => {});
     }
-    console.log(`   ✅ Inserted ${tickets.length} tickets`);
-  } else {
-    console.log(`   ⏭  Tickets already seeded (${existingCount} found), skipping`);
-  }
+    console.log(`   ✅ Inserted ${tickets.length} tickets appended successfully.`);
 
   // ── 4. Seed Feedback ──────────────────────────────────────────────
   const feedbackCount = await Feedback.countDocuments({ userId: { $in: createdUsers.map(u => u._id) } });
@@ -294,6 +315,22 @@ async function seed() {
     console.log(`   ✅ Inserted ${lfItems.length} lost & found items`);
   } else {
     console.log(`   ⏭  Lost & Found already seeded (${lfCount} found), skipping`);
+  }
+
+  // ── 5.5 Commuter Live Pulse ───────────────────────────────────────
+  const CommuterUpdate = require('../models/CommuterUpdate.model');
+  const pulseCount = await CommuterUpdate.countDocuments();
+  if (pulseCount < 3) {
+    console.log('📡 Seeding Commuter Live Pulse…');
+    const dummyUpdates = [
+      { user: pick(createdUsers)._id, station: 'Kalupur Ry.', tag: 'Amenity', text: 'Elevator #2 near Gate 3 is back operational!', upvotes: 14, upvotedBy: [], isVerified: true, createdAt: new Date(Date.now() - 8 * 60000) },
+      { user: pick(createdUsers)._id, station: 'Thaltej', tag: 'Queue', text: 'Automatic Ticket Vending Machine 2 accepting UPI quickly.', upvotes: 9, upvotedBy: [], isVerified: true, createdAt: new Date(Date.now() - 15 * 60000) },
+      { user: pick(createdUsers)._id, station: 'Gujarat University', tag: 'AC', text: 'Coach 3 AC is set super cold (around 20°C).', upvotes: 6, upvotedBy: [], isVerified: false, createdAt: new Date(Date.now() - 22 * 60000) },
+    ];
+    await CommuterUpdate.insertMany(dummyUpdates).catch(console.error);
+    console.log(`   ✅ Inserted ${dummyUpdates.length} commuter updates`);
+  } else {
+    console.log(`   ⏭  Commuter Updates already seeded (${pulseCount} found), skipping`);
   }
 
   // ── 6. Summary ────────────────────────────────────────────────────

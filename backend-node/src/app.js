@@ -32,6 +32,9 @@ const geocodeRoutes    = require('./routes/geocode.routes');
 const voiceRoutes      = require('./routes/voice.routes');
 const adminRoutes      = require('./routes/admin.routes');
 const announcementRoutes = require('./routes/announcements.routes');
+const holidaysRoutes   = require('./routes/holidays.routes');
+const routingRoutes    = require('./routes/routing.routes');
+const commuterRoutes   = require('./routes/commuter.routes');
 
 const app = express();
 
@@ -92,6 +95,9 @@ app.use('/api/geocode',    geocodeRoutes);
 app.use('/api/voice',      voiceRoutes);
 app.use('/api/admin',      adminRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/holidays',   holidaysRoutes);
+app.use('/api/routing',    routingRoutes);
+app.use('/api/commuter',   commuterRoutes);
 
 // Health check — returns DB + ML status for admin dashboard
 app.get('/api/health', async (req, res) => {

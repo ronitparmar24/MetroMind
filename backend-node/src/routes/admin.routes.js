@@ -8,6 +8,7 @@ const Wallet = require('../models/Wallet.model');
 const Feedback = require('../models/Feedback.model');
 const LostFound = require('../models/LostFound.model');
 const Announcement = require('../models/Announcement.model');
+const SystemSetting = require('../models/SystemSetting.model');
 
 // Apply both auth and admin check to ALL routes in this file
 router.use(protect, requireAdmin);
@@ -308,6 +309,50 @@ router.delete('/announcements/:id', async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, error: 'Server Error' });
   }
+});
+
+// System Settings
+router.get('/settings', async (req, res) => {
+  try {
+    let settings = await SystemSetting.findOne();
+    if (!settings) {
+      settings = await SystemSetting.create({});
+    }
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+});
+
+router.put('/settings', async (req, res) => {
+  try {
+    let settings = await SystemSetting.findOne();
+    if (!settings) {
+      settings = new SystemSetting({});
+    }
+    
+    const allowed = ['maintenanceMode', 'maxWalletBalance', 'ticketCancellationWindow', 'supportEmailAlerts'];
+    allowed.forEach(key => {
+      if (req.body[key] !== undefined) settings[key] = req.body[key];
+    });
+    
+    await settings.save();
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+});
+
+// Sample admin endpoint
+router.get('/dashboard', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Welcome to the Admin Panel',
+    data: {
+      activeUsers: 145,
+      systemHealth: 'Online'
+    }
+  });
 });
 
 module.exports = router;

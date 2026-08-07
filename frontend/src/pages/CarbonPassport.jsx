@@ -5,16 +5,50 @@ import { useTickets } from '../hooks/useTickets';
 import GlassCard from '../components/common/GlassCard';
 import StatCard from '../components/common/StatCard';
 import { downloadCarbonPassportPDF } from '../api/analytics.api';
+import { convertCarbonReward } from '../api/wallet.api';
 
 export default function CarbonPassport() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { tickets } = useTickets();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
+  
+  const [converting, setConverting] = useState(false);
+  const [convertMessage, setConvertMessage] = useState({ type: '', text: '' });
 
   const totalCO2 = tickets.reduce((sum, t) => sum + (t.co2Saved || 0), 0);
   const totalDistance = tickets.reduce((sum, t) => sum + (t.distance || 0), 0);
   const treesEquivalent = (totalCO2 / 21).toFixed(1); // ~21 kg CO2 per tree per year
+
+  // Carbon Reward Logic (1kg = ₹5)
+  const claimedCO2 = user?.claimedCO2 || 0;
+  const unclaimedCO2 = Math.max(0, totalCO2 - claimedCO2);
+  const rewardCash = Number((unclaimedCO2 * 5).toFixed(2));
+  const canConvert = unclaimedCO2 >= 0.4;
+
+  const [sliderValue, setSliderValue] = useState(null);
+  const selectedAmount = sliderValue !== null ? sliderValue : Math.floor(rewardCash);
+
+  const handleConvert = async () => {
+    if (!canConvert) return;
+    setConverting(true);
+    setConvertMessage({ type: '', text: '' });
+    
+    try {
+      const res = await convertCarbonReward(selectedAmount);
+      if (res.data.success) {
+        setConvertMessage({ type: 'success', text: `Success! Added ₹${res.data.rewardCash} to your wallet.` });
+        updateUser({ claimedCO2: res.data.claimedCO2 });
+      }
+    } catch (err) {
+      setConvertMessage({ 
+        type: 'error', 
+        text: err.response?.data?.error || 'Failed to convert reward.' 
+      });
+    } finally {
+      setConverting(false);
+    }
+  };
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -137,6 +171,76 @@ export default function CarbonPassport() {
         }}>
           🌳 Equivalent to planting <strong>{treesEquivalent}</strong> trees
         </div>
+      </GlassCard>
+
+      {/* ── Carbon Reward Conversion Card ── */}
+      <GlassCard style={{
+        maxWidth: '500px', margin: '0 auto var(--space-xl)', padding: '24px',
+        display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>🎁 Carbon Cash Reward</h3>
+          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Convert your saved CO₂ directly into wallet balance! (400g = ₹2)
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '20px', width: '100%', justifyContent: 'center', margin: '8px 0' }}>
+          <div style={{ textAlign: 'center', background: 'var(--bg-tertiary)', padding: '12px 24px', borderRadius: '12px', minWidth: '120px' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{unclaimedCO2.toFixed(2)} <span style={{fontSize: '0.8rem', fontWeight: 500}}>kg</span></div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Unclaimed CO₂</div>
+          </div>
+          <div style={{ textAlign: 'center', background: 'var(--bg-tertiary)', padding: '12px 24px', borderRadius: '12px', minWidth: '120px' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10B981' }}>₹{rewardCash.toFixed(2)}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Max Value</div>
+          </div>
+        </div>
+
+        {canConvert && (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Choose Amount:</span>
+              <strong style={{ color: '#10B981', fontSize: '1.1rem' }}>₹{selectedAmount}</strong>
+            </div>
+            <input 
+              type="range" 
+              min="2" 
+              max={Math.max(2, Math.floor(rewardCash))} 
+              step="1" 
+              value={selectedAmount} 
+              onChange={(e) => setSliderValue(Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#10B981' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <span>₹2 min</span>
+              <span>₹{Math.floor(rewardCash)} max</span>
+            </div>
+          </div>
+        )}
+
+        {convertMessage.text && (
+          <div style={{
+            padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 500, width: '100%', textAlign: 'center',
+            background: convertMessage.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+            color: convertMessage.type === 'success' ? '#10B981' : '#dc2626'
+          }}>
+            {convertMessage.text}
+          </div>
+        )}
+
+        <button
+          onClick={handleConvert}
+          disabled={!canConvert || converting}
+          style={{
+            width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+            background: (!canConvert || converting) ? 'var(--bg-tertiary)' : 'linear-gradient(135deg, #10B981, #059669)',
+            color: (!canConvert || converting) ? 'var(--text-muted)' : '#fff',
+            fontSize: '0.95rem', fontWeight: 700, cursor: (!canConvert || converting) ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s', boxShadow: (!canConvert || converting) ? 'none' : '0 4px 12px rgba(16,185,129,0.3)',
+          }}
+        >
+          {converting ? 'Converting...' : (canConvert ? `Convert ₹${selectedAmount} to Wallet Cash` : 'Need at least 400g to convert')}
+        </button>
       </GlassCard>
 
       <div className="grid grid-3">

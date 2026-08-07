@@ -121,7 +121,7 @@ export default function EmergencySOS() {
   };
 
   return (
-    <div style={{ padding: 'var(--space-lg)', maxWidth: '680px', margin: '0 auto', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ padding: 'var(--space-lg)', width: '100%', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
       <style>{`
         @keyframes fadeInUp { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
         @keyframes sosPulse { 0%,100%{box-shadow:0 0 0 20px rgba(239,68,68,0.1),0 0 0 40px rgba(239,68,68,0.05);} 50%{box-shadow:0 0 0 28px rgba(239,68,68,0.15),0 0 0 56px rgba(239,68,68,0.06);} }
@@ -156,7 +156,7 @@ export default function EmergencySOS() {
       {/* ═══ EMERGENCY CONTACTS ═══ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {CONTACTS.map(c => (
-          <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 18px', borderRadius: '16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
+          <div key={c.label} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '14px', padding: '16px 18px', borderRadius: '16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.06)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: `${c.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0, border: `1px solid ${c.color}30` }}>

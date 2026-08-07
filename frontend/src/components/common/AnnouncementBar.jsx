@@ -95,7 +95,7 @@ export default function AnnouncementBar() {
           width: 'max-content'
         }}>
           {[...announcements, ...announcements].map((ann, idx) => (
-            <div key={`${ann._id}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div key={`${ann._id}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
               <span style={{
                 color: ann.priority === 'critical' ? '#ef4444' : ann.priority === 'warning' ? '#f59e0b' : '#3b82f6',
                 fontWeight: 800,

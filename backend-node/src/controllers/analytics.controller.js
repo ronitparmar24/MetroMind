@@ -105,8 +105,15 @@ const getSpending = async (req, res, next) => {
     });
 
     const totalMetroCost = tickets.reduce((sum, t) => sum + t.fare, 0);
-    // Cab fare estimate: ₹12/km (Ahmedabad average auto/cab rate)
-    const totalCabCost = tickets.reduce((sum, t) => sum + t.distance * 12, 0);
+    // Cab fare estimate: ₹50 base + ₹15/km. If distance is 0 (old data), estimate based on fare or default to 5km.
+    const totalCabCost = tickets.reduce((sum, t) => {
+      let dist = t.distance;
+      if (!dist || dist === 0) {
+        // Fallback for old tickets: ~5km
+        dist = 5;
+      }
+      return sum + (50 + dist * 15);
+    }, 0);
     const savings = Math.round(totalCabCost - totalMetroCost);
 
     res.json({

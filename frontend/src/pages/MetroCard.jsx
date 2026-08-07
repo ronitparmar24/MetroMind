@@ -130,7 +130,7 @@ export default function MetroCard() {
 
       {card ? (
         /* ══ TWO-COLUMN LAYOUT ══ */
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '14px', alignItems: 'start' }}>
+        <div className="book-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '14px', alignItems: 'start' }}>
 
           {/* LEFT: Card + Stats + Top-up */}
           <div>
@@ -219,7 +219,7 @@ export default function MetroCard() {
           </div>
 
           {/* RIGHT: Benefits (sticky) */}
-          <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', position: 'sticky', top: '80px' }}>
+          <div className="book-sidebar" style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', position: 'sticky', top: '80px' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               Card Benefits
             </div>

@@ -436,7 +436,6 @@ input, select, textarea {
 @media (max-width: 768px) {
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .page { padding: var(--space-md); }
-  :root { --sidebar-width: 0px; }
   
   .page-title { font-size: 1.4rem; }
   .page-subtitle { font-size: 0.85rem; }

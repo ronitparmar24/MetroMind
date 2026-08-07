@@ -12,6 +12,11 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
+// Log once at startup if key is missing — not on every request
+if (!GEMINI_API_KEY) {
+  console.info('[Gemini] API key not set — AI features will use built-in fallbacks. Set GEMINI_API_KEY in .env to enable.');
+}
+
 // Initialise lazily so a missing key doesn't crash the entire server boot
 let _gemini = null;
 let _model   = null;
@@ -40,8 +45,11 @@ async function _withRetry(fn, retries = 2, delayMs = 2000) {
     try {
       return await fn();
     } catch (err) {
-      const isTransient = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('fetch failed') || err.message?.includes('Error fetching');
-      if (isTransient && attempt < retries) {
+      const isQuota = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('exceeded');
+      const isTransient = err.message?.includes('fetch failed') || err.message?.includes('Error fetching');
+      
+      // Do not retry on strict quota errors, fail fast to fallback!
+      if (isTransient && !isQuota && attempt < retries) {
         await new Promise(r => setTimeout(r, delayMs * (attempt + 1)));
         continue;
       }
@@ -91,7 +99,7 @@ Write exactly 2-3 sentences, second person ("you"), warm and specific to these n
     console.log(`✅ [Gemini] Digest generated for user ${userId.slice(0,8)}…`);
     return text;
   } catch (err) {
-    console.error('⚠️  [Gemini] Weekly digest failed (using fallback):', err.message?.slice(0, 80));
+    // Silently fall back to built-in strings without cluttering terminal
     const fallback = tripCount > 0
       ? `You made ${tripCount} trip${tripCount !== 1 ? 's' : ''} this week, covering ${totalDistanceKm} km and saving ₹${cabSavings} compared to cab fares. Your metro use kept ${co2Saved} kg of CO₂ out of the atmosphere.`
       : 'No trips recorded this week — hop on the metro and start building your weekly streak!';
@@ -128,7 +136,7 @@ async function generatePersonalityDescription(userId, personalityType, ratios) {
     console.log(`✅ [Gemini] Personality generated for user ${userId.slice(0,8)}…`);
     return text;
   } catch (err) {
-    console.error('⚠️  [Gemini] Personality failed (using fallback):', err.message?.slice(0, 80));
+    // Silently fall back to built-in strings without cluttering terminal
     const fallback = `You're classified as ${personalityType} based on your consistent travel patterns.`;
     _cache.set(key, fallback);
     return fallback;

@@ -176,7 +176,7 @@ export default function QRModal({ isOpen, onClose, ticket, onDownloadPDF }) {
                 </div>
 
                 {/* QR Code */}
-                <div style={{
+                <div className="qr-code" style={{
                   background: '#ffffff',
                   padding: '12px',
                   borderRadius: '12px',
@@ -190,14 +190,14 @@ export default function QRModal({ isOpen, onClose, ticket, onDownloadPDF }) {
                       src={p.qrCode}
                       alt={`QR for ${p.name}`}
                       style={{
-                        width: isGroup ? '140px' : '180px',
-                        height: isGroup ? '140px' : '180px',
+                        width: isGroup ? '160px' : '180px',
+                        height: isGroup ? '160px' : '180px',
                         display: 'block',
                         imageRendering: 'pixelated'
                       }}
                     />
                   ) : (
-                    <div style={{ width: isGroup ? '140px' : '180px', height: isGroup ? '140px' : '180px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: isGroup ? '160px' : '180px', height: isGroup ? '160px' : '180px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <span style={{ color: '#94a3b8', fontSize: '20px', fontWeight: 600 }}>NO QR</span>
                     </div>
                   )}

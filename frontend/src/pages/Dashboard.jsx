@@ -50,6 +50,8 @@ const S = {
   page: {
     padding: 'var(--space-lg)',
     maxWidth: '1200px',
+    width: '100%',
+    boxSizing: 'border-box',
     margin: '0 auto',
     animation: 'fadeInUp 0.4s ease',
     position: 'relative',
@@ -745,6 +747,11 @@ export default function Dashboard() {
           .dash-suggestion { padding: 12px 16px !important; }
           .dash-stats-row { gap: 16px !important; }
           .dash-line-header { padding: 14px 16px !important; }
+          .dash-main-cols { grid-template-columns: 1fr !important; }
+          .dash-hero-bg { padding: 24px 16px 0 !important; }
+          .dash-hero-content { flex-direction: column !important; }
+          .dash-hero-content > div { width: 100% !important; min-width: 0 !important; }
+          .dash-page { padding: 16px !important; box-sizing: border-box !important; width: 100% !important; min-width: 0 !important; }
         }
         @media (max-width: 576px) {
           .dash-station-row { padding-left: 36px !important; }
@@ -754,7 +761,7 @@ export default function Dashboard() {
         /* ── Bento Box Grid ── */
         .bento-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
           gap: 24px;
           align-items: start;
         }
@@ -785,13 +792,14 @@ export default function Dashboard() {
         }
         @media (max-width: 768px) {
           .bento-span-2 { grid-column: span 1; }
+          .dash-hero-title { font-size: 1.8rem !important; }
         }
       `}</style>
 
       {/* ═══ 1. HERO SECTION ═══ */}
       <div style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden', marginBottom: '28px' }}>
           {/* Vivid gradient background */}
-          <div style={{
+          <div className="dash-hero-bg" style={{
             background: 'linear-gradient(135deg, #312e81 0%, #4F46E5 40%, #7C3AED 70%, #9d174d 100%)',
             padding: '32px 36px 0',
             position: 'relative',
@@ -801,13 +809,13 @@ export default function Dashboard() {
             <div style={{ position: 'absolute', bottom: '0', left: '200px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
 
             {/* Content row */}
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: '260px' }}>
+            <div className="dash-hero-content" style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, width: '100%', minWidth: '260px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>MetroMind · Ahmedabad GMRC</span>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', animation: 'dashPulse 2s infinite' }} />
                 </div>
-                <h1 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'white', margin: '0 0 8px', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                <h1 className="dash-hero-title" style={{ fontSize: '2.4rem', fontWeight: 800, color: 'white', margin: '0 0 8px', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
                   {getGreeting()}, {user?.name?.split(' ')[0] || 'there'}! 👋
                 </h1>
                 <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.75)', margin: '0 0 20px', lineHeight: 1.5 }}>
@@ -929,7 +937,7 @@ export default function Dashboard() {
           </div>
 
           {/* Glassmorphism bottom panel */}
-          <div style={{
+          <div className="dash-hero-bg" style={{
             background: isDark ? 'rgba(10,14,26,0.5)' : 'rgba(255,255,255,0.7)',
             backdropFilter: 'blur(20px)',
             borderTop: '1px solid rgba(255,255,255,0.15)',
@@ -957,7 +965,7 @@ export default function Dashboard() {
 
       {/* ═══ 2. QUICK ACTIONS — Premium gradient pills ═══ */}
       <div style={{ marginBottom: '28px' }}>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div className="quick-actions-row" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
           {quickActionItems.map((action, idx) => {
             const content = (
               <>

@@ -35,7 +35,7 @@ export default function FareCalculator() {
         <p className="page-subtitle">Calculate fares, compare peak vs off-peak</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-xl)', alignItems: 'start' }}>
+      <div className="grid grid-2" style={{ alignItems: 'start', gap: 'var(--space-xl)' }}>
         <GlassCard style={{ padding: '28px' }}>
           <StationSelector label="From" value={source} onChange={setSource} excludeStation={destination} />
           <StationSelector label="To" value={destination} onChange={setDestination} excludeStation={source} />

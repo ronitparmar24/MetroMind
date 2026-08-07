@@ -234,9 +234,16 @@ export default function Achievements() {
 
   const totalCO2 = tickets.reduce((sum, t) => sum + (t.co2Saved || 0), 0);
   const uniqueStations = new Set(tickets.flatMap(t => [t.source, t.destination])).size;
+  const getHour = (t) => {
+    if (t.travelTime && typeof t.travelTime === 'string' && t.travelTime.includes(':')) {
+      return parseInt(t.travelTime.split(':')[0], 10);
+    }
+    return t.travelDate ? new Date(t.travelDate).getHours() : -1;
+  };
+
   const nightRides = tickets.filter(t => {
-    const h = t.travelDate ? new Date(t.travelDate).getHours() : -1;
-    return h >= 22 || h < 5;
+    const h = getHour(t);
+    return h >= 22 || (h >= 0 && h < 5);
   }).length;
 
   const getProgress = (a) => {
@@ -247,7 +254,7 @@ export default function Achievements() {
       case 'stations':return Math.min(uniqueStations / a.target, 1);
       case 'group':   return tickets.some(t => (t.passengers?.length || 0) >= 3) ? 1 : 0;
       case 'night':   return Math.min(nightRides / a.target, 1);
-      case 'offpeak': return Math.min(tickets.filter(t => { const h = t.travelDate ? new Date(t.travelDate).getHours() : -1; return h < 7 || h > 21; }).length / a.target, 1);
+      case 'offpeak': return Math.min(tickets.filter(t => { const h = getHour(t); return h >= 11 && h < 17; }).length / a.target, 1);
       case 'speed':   return tickets.length >= 3 ? 1 : 0; // simplification
       default:        return Math.min(tickets.length / a.target, 1);
     }
@@ -274,7 +281,7 @@ export default function Achievements() {
   const filtered = activeFilter ? ACHIEVEMENTS.filter(activeFilter) : ACHIEVEMENTS;
 
   return (
-    <div style={{ padding: 'var(--space-lg)', maxWidth: '900px', margin: '0 auto', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ padding: 'var(--space-lg)', width: '100%', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
       <style>{`
         @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
         @keyframes achieveStar { 0%,100%{transform:scale(1) rotate(0deg);} 50%{transform:scale(1.15) rotate(10deg);} }

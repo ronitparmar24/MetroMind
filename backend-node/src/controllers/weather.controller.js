@@ -40,7 +40,8 @@ exports.getWeather = async (req, res) => {
 
     return res.json({ ...weather, cached: false, cachedAge: 0 });
   } catch (err) {
-    console.error('❌ [Weather] API error:', err.message);
+    // Service already handles missing key with mock data.
+    // Only real network errors reach here — serve stale cache silently.
 
     // If cache has stale data, serve it with a warning rather than
     // returning a 500 — better UX when OWM is temporarily down.

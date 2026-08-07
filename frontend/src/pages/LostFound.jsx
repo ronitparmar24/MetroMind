@@ -71,7 +71,7 @@ export default function LostFound() {
   };
 
   return (
-    <div style={{ padding: 'var(--space-lg)', maxWidth: '720px', margin: '0 auto', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ padding: 'var(--space-lg)', width: '100%', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
       <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}`}</style>
 
       <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '4px' }}>Lost & Found 🔍</h1>
@@ -109,32 +109,32 @@ export default function LostFound() {
           <div style={{ borderRadius: '24px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '24px' }}>
             <form onSubmit={handleSubmit}>
               {/* Category quick picker */}
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Item Category</div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ marginBottom: '28px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px', textAlign: 'center' }}>Item Category</div>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
                   {QUICK_CATEGORIES.map(c => (
                     <button key={c.value} type="button" onClick={() => update('category', c.value)} style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                      padding: '10px 14px', borderRadius: '14px', cursor: 'pointer', border: 'none',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                      padding: '16px 20px', borderRadius: '16px', cursor: 'pointer', border: 'none',
                       background: form.category === c.value ? 'linear-gradient(135deg,#6366f1,#a855f7)' : 'var(--bg-tertiary)',
                       color: form.category === c.value ? '#fff' : 'var(--text-muted)',
-                      transition: 'all 0.2s ease', fontSize: '1.2rem',
+                      transition: 'all 0.2s ease', fontSize: '1.4rem',
                       boxShadow: form.category === c.value ? '0 4px 12px rgba(99,102,241,0.3)' : 'none',
                     }}>
                       {c.icon}
-                      <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>{c.label}</span>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{c.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Item description */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }}>Description *</label>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '12px' }}>Description *</label>
                 <textarea value={form.itemDescription} onChange={e => update('itemDescription', e.target.value)}
                   placeholder={`Describe your lost ${form.category}… colour, brand, any identifying features`}
-                  rows={3}
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '14px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.875rem', resize: 'vertical', outline: 'none', boxSizing: 'border-box', lineHeight: 1.5 }}
+                  rows={4}
+                  style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.95rem', resize: 'vertical', outline: 'none', boxSizing: 'border-box', lineHeight: 1.5 }}
                 />
               </div>
 

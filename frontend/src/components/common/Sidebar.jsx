@@ -1,8 +1,10 @@
 // frontend/src/components/common/Sidebar.jsx
-// MetroMind — Upgraded sidebar with glow active states, icon scale, collapsed sections
-import { useState } from 'react';
+// MetroMind — Responsive sidebar
+//   Desktop (≥768px): fixed sidebar that collapses by width (current behaviour)
+//   Mobile  (<768px):  full-height overlay that slides in/out via translateX
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { NAV_ROUTES } from '../../constants/routes';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -17,7 +19,7 @@ const SECTION_COLORS = {
   Support:  '#ef4444',
 };
 
-export default function Sidebar({ isOpen }) {
+export default function Sidebar({ isOpen, isMobile = false, onClose }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState({});
@@ -26,18 +28,27 @@ export default function Sidebar({ isOpen }) {
     setCollapsed(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  // On desktop: width transition. On mobile: translateX transition (overlay).
+  const mobileStyle = isMobile ? {
+    position: 'fixed',
+    top: 0, left: 0, bottom: 0,
+    width: 'var(--sidebar-width)',
+    transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+    transition: 'transform var(--transition-base)',
+    zIndex: 'var(--z-sidebar)',
+    // Extend to top on mobile so it covers under the navbar
+    paddingTop: 'var(--navbar-height)',
+  } : {
+    position: 'fixed',
+    top: 'var(--navbar-height)', left: 0, bottom: 0,
+    width: isOpen ? 'var(--sidebar-width)' : '0px',
+    overflow: 'hidden',
+    transition: 'width var(--transition-base)',
+    zIndex: 'var(--z-sidebar)',
+  };
+
   return (
-    <aside
-      className="glass-sidebar"
-      style={{
-        position: 'fixed', top: 'var(--navbar-height)', left: 0, bottom: 0,
-        width: isOpen ? 'var(--sidebar-width)' : '0px',
-        overflow: 'hidden',
-        transition: 'width var(--transition-base)',
-        zIndex: 'var(--z-sidebar)',
-        display: 'flex', flexDirection: 'column',
-      }}
-    >
+    <aside className="glass-sidebar" style={{ ...mobileStyle, display: 'flex', flexDirection: 'column' }}>
       <style>{`
         .sidebar-nav-item {
           display: flex; align-items: center; gap: 12px;
@@ -47,6 +58,8 @@ export default function Sidebar({ isOpen }) {
           transition: all 0.2s cubic-bezier(0.2,0.8,0.2,1);
           position: relative; white-space: nowrap; overflow: hidden;
           border: 1px solid transparent;
+          /* 44px minimum touch target */
+          min-height: 44px;
         }
         .sidebar-nav-item:hover {
           background: var(--bg-tertiary);
@@ -63,32 +76,35 @@ export default function Sidebar({ isOpen }) {
           flex-shrink: 0;
           transition: transform 0.3s cubic-bezier(0.2,0.8,0.2,1);
         }
-        .sidebar-nav-item:hover .sidebar-icon {
-          transform: scale(1.2);
-        }
-        .sidebar-nav-item.active .sidebar-icon {
-          transform: scale(1.15);
-        }
+        .sidebar-nav-item:hover .sidebar-icon { transform: scale(1.2); }
+        .sidebar-nav-item.active  .sidebar-icon { transform: scale(1.15); }
         .sidebar-section-toggle {
           display: flex; align-items: center; justify-content: space-between;
           padding: 8px 20px 4px; cursor: pointer;
           background: none; border: none; width: 100%; text-align: left;
+          min-height: 36px;
         }
         .sidebar-section-toggle:hover { opacity: 0.8; }
-        @keyframes sidebarFadeIn { from{opacity:0;transform:translateX(-8px);} to{opacity:1;transform:translateX(0);} }
+        @keyframes sidebarFadeIn {
+          from { opacity: 0; transform: translateX(-8px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
       `}</style>
 
-      <div style={{ width: 'var(--sidebar-width)', padding: '12px 0 24px', overflowY: 'auto', flex: 1, overflowX: 'hidden' }}>
+      <div style={{
+        width: 'var(--sidebar-width)',
+        padding: '12px 0 24px',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        flex: 1,
+      }}>
         {NAV_ROUTES.map((section, sIdx) => {
           const sectionColor = SECTION_COLORS[section.section] || '#6366f1';
           const isCollapsed = collapsed[section.section];
           return (
             <div key={section.section} style={{ marginBottom: '4px', animation: `sidebarFadeIn 0.3s ease ${sIdx * 0.05}s both` }}>
               {/* Section header */}
-              <button
-                className="sidebar-section-toggle"
-                onClick={() => toggleSection(section.section)}
-              >
+              <button className="sidebar-section-toggle" onClick={() => toggleSection(section.section)}>
                 <p style={{
                   fontSize: '0.65rem', fontWeight: 800,
                   color: isCollapsed ? 'var(--text-muted)' : sectionColor,
@@ -99,8 +115,7 @@ export default function Sidebar({ isOpen }) {
                 </p>
                 <span style={{
                   fontSize: '0.6rem', color: 'var(--text-muted)',
-                  transition: 'transform 0.3s ease',
-                  display: 'inline-block',
+                  transition: 'transform 0.3s ease', display: 'inline-block',
                   transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
                 }}>▾</span>
               </button>
@@ -120,10 +135,11 @@ export default function Sidebar({ isOpen }) {
                       borderColor: isActive ? `${sectionColor}28` : undefined,
                       color: isActive ? 'var(--text-primary)' : undefined,
                     })}
+                    // Close sidebar on tap (mobile only)
+                    onClick={isMobile ? onClose : undefined}
                   >
                     {({ isActive }) => (
                       <>
-                        {/* Active left bar */}
                         {isActive && (
                           <div style={{
                             position: 'absolute', left: 0, top: '20%', bottom: '20%',
@@ -166,6 +182,7 @@ export default function Sidebar({ isOpen }) {
                 background: isActive ? 'rgba(239,68,68,0.08)' : undefined,
                 borderColor: isActive ? 'rgba(239,68,68,0.2)' : undefined,
               })}
+              onClick={isMobile ? onClose : undefined}
             >
               {({ isActive }) => (
                 <>

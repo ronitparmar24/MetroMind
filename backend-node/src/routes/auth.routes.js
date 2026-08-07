@@ -3,7 +3,7 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
 const { protect } = require('../middleware/auth.middleware');
-const { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword } = require('../controllers/auth.controller');
+const { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword, updateProfile, changePassword } = require('../controllers/auth.controller');
 
 router.post(
   '/register',
@@ -67,5 +67,8 @@ router.post(
   ]),
   resetPassword
 );
+
+router.put('/update-profile', protect, updateProfile);
+router.put('/change-password', protect, changePassword);
 
 module.exports = router;

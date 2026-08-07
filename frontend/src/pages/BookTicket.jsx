@@ -4,7 +4,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../components/common/Toast';
 import { useCrowdForecast } from '../hooks/useCrowd';
 import { useWallet } from '../hooks/useWallet';
-import { bookTicket } from '../api/tickets.api';
+import { bookTicket, checkHoliday } from '../api/tickets.api';
+import { getMetroCard } from '../api/analytics.api';
 import { STATIONS, LINES } from '../constants/stations';
 import { calculateFare, isPeakHour } from '../utils/fareEngine';
 import StationSelector from '../components/booking/StationSelector';
@@ -154,26 +155,41 @@ function CrowdHourBar({ source, selectedHour, onSelect, travelDate }) {
 }
 
 /* ── FareBreakdown ─────────────────────────────────────────── */
-function FareBreakdown({ fareData, passengers }) {
+function FareBreakdown({ fareData, passengers, holidayInfo, metroCardDiscount = 0, paymentMethod = 'wallet' }) {
   if (!fareData) return null;
   const chargeable = passengers.filter(p => !p.age || parseInt(p.age) > 4).length;
   const free = passengers.filter(p => p.age && parseInt(p.age) <= 4).length;
-  
+
+  // If we have a live holiday discount from the API, apply it to the preview fare
+  const liveHoliday = holidayInfo?.isHoliday;
+  const liveDiscount = liveHoliday ? Math.round(fareData.fare * 0.15) : 0;
+  const displayFare = fareData.fare === 0
+    ? 0  // children-only booking — no minimum floor
+    : Math.max(1, fareData.fare - liveDiscount - metroCardDiscount);
+  const hasDiscount = liveDiscount > 0 || metroCardDiscount > 0;
+  // Use live holiday status from API over static engine (API is more accurate)
+  const isHolidayFinal = liveHoliday !== undefined ? liveHoliday : fareData.isHoliday;
+
   return (
     <div style={{
-      background: fareData.isPeak ? 'linear-gradient(135deg,rgba(245,158,11,0.08),rgba(239,68,68,0.05))' : 'linear-gradient(135deg,rgba(34,197,94,0.08),rgba(99,102,241,0.05))',
-      border: `1px solid ${fareData.isPeak ? 'rgba(245,158,11,0.2)' : 'rgba(34,197,94,0.2)'}`,
+      background: isHolidayFinal ? 'linear-gradient(135deg,rgba(236,72,153,0.08),rgba(168,85,247,0.05))' : fareData.isPeak ? 'linear-gradient(135deg,rgba(245,158,11,0.08),rgba(239,68,68,0.05))' : 'linear-gradient(135deg,rgba(34,197,94,0.08),rgba(99,102,241,0.05))',
+      border: `1px solid ${isHolidayFinal ? 'rgba(236,72,153,0.25)' : fareData.isPeak ? 'rgba(245,158,11,0.2)' : 'rgba(34,197,94,0.2)'}`,
       borderRadius: '14px', padding: '14px', marginBottom: '12px',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <div>
           <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Total Fare</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>
-            ₹{fareData.fare}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            {hasDiscount && fareData.fare > 0 && (
+              <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-muted)', textDecoration: 'line-through', fontVariantNumeric: 'tabular-nums' }}>₹{fareData.fare}</div>
+            )}
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: (hasDiscount && fareData.fare > 0) ? '#16a34a' : fareData.fare === 0 ? '#6366f1' : 'var(--text-primary)', lineHeight: 1, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>
+              {fareData.fare === 0 ? '🆓 Free' : `₹${displayFare}`}
+            </div>
           </div>
         </div>
-        <div style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: fareData.isHoliday ? 'rgba(236,72,153,0.15)' : fareData.isPeak ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)', color: fareData.isHoliday ? '#ec4899' : fareData.isPeak ? '#d97706' : '#16a34a' }}>
-          {fareData.isHoliday ? '🎉 Holiday' : fareData.isPeak ? '⚡ Peak' : '✨ Off-Peak'}
+        <div style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: isHolidayFinal ? 'rgba(236,72,153,0.15)' : fareData.isPeak ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)', color: isHolidayFinal ? '#ec4899' : fareData.isPeak ? '#d97706' : '#16a34a' }}>
+          {isHolidayFinal ? '🎉 Holiday' : fareData.isPeak ? '⚡ Peak' : '✨ Off-Peak'}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.82rem' }}>
@@ -182,15 +198,16 @@ function FareBreakdown({ fareData, passengers }) {
           ['🎫 Base fare', `₹${fareData.baseFare}`],
           chargeable > 0 ? ['👥 Passengers', `${chargeable} × ₹${fareData.baseFare}`] : null,
           free > 0 ? ['👶 Child (Free)', `${free} × ₹0`] : null,
-          fareData.isPeak && chargeable > 0 ? ['⚡ Peak surcharge', '+20%'] : null,
-          fareData.isHoliday && chargeable > 0 ? ['🎉 Holiday Discount', '-50%'] : null,
+          fareData.isPeak && !isHolidayFinal && chargeable > 0 ? ['⚡ Peak surcharge', '+20%'] : null,
+          isHolidayFinal && chargeable > 0 ? ['🎉 Holiday Discount', '-15%'] : null,
+          metroCardDiscount > 0 ? ['🪪 Metro Card (-5%)', `-₹${metroCardDiscount}`] : null,
         ].filter(Boolean).map(([label, val]) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
             <span>{label}</span><span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{val}</span>
           </div>
         ))}
-        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '8px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-          <span>💳 Total</span><span>₹{fareData.fare}</span>
+        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '8px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: isHolidayFinal ? '#16a34a' : 'var(--text-primary)', fontSize: '0.9rem' }}>
+          <span>💳 Total</span><span>₹{displayFare}</span>
         </div>
       </div>
     </div>
@@ -251,6 +268,12 @@ export default function BookTicket() {
   const [loading, setLoading] = useState(false);
   const [inputMode, setInputMode] = useState('search');
   const [swapping, setSwapping] = useState(false);
+  // Live holiday check from backend
+  const [holidayInfo, setHolidayInfo] = useState(null);
+  const [holidayLoading, setHolidayLoading] = useState(false);
+  // Payment method
+  const [paymentMethod, setPaymentMethod] = useState('wallet'); // 'wallet' | 'metrocard'
+  const [metroCard, setMetroCard] = useState(null); // null = not loaded yet
   const navigate = useNavigate();
   const toast = useToast();
   const { wallet } = useWallet();
@@ -263,6 +286,13 @@ export default function BookTicket() {
       toastShownRef.current = true;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch metro card once on mount
+  useEffect(() => {
+    getMetroCard().then(res => {
+      setMetroCard(res.data.card || null);
+    }).catch(() => setMetroCard(null));
   }, []);
 
   // Default hour to now, and prevent past hours on today
@@ -278,6 +308,25 @@ export default function BookTicket() {
       setTravelHour(validH);
     }
   }, [travelDate, travelHour]);
+
+  // ── Live holiday check whenever date changes ─────────────
+  useEffect(() => {
+    let cancelled = false;
+    const doCheck = async () => {
+      setHolidayLoading(true);
+      try {
+        const res = await checkHoliday(travelDate);
+        if (!cancelled) setHolidayInfo(res.data);
+      } catch {
+        // Silently ignore — the backend has its own fallback
+        if (!cancelled) setHolidayInfo(null);
+      } finally {
+        if (!cancelled) setHolidayLoading(false);
+      }
+    };
+    doCheck();
+    return () => { cancelled = true; };
+  }, [travelDate]);
 
   const travelTime = travelHour !== null ? `${String(travelHour).padStart(2,'0')}:00` : '';
 
@@ -312,24 +361,54 @@ export default function BookTicket() {
   const validPassengers = passengers.filter(p => p.name && p.age);
   const canBook = source && destination && travelDate && travelHour !== null && validPassengers.length > 0;
 
+  // ── Effective fare considering payment method discount ──────────────────
+  // This mirrors backend logic for the UI preview
+  const METRO_CARD_DISCOUNT = 0.05; // 5% — must match backend
+  const baseFarePreview = farePreview?.fare ?? 0;
+  const holidayDiscount = (holidayInfo?.isHoliday && baseFarePreview)
+    ? Math.round(baseFarePreview * 0.15) : 0;
+  const metroCardDiscount = (paymentMethod === 'metrocard' && metroCard?.isActive && baseFarePreview)
+    ? Math.round(baseFarePreview * METRO_CARD_DISCOUNT) : 0;
+  // Only enforce ₹1 minimum when base fare is non-zero (prevents children-only bookings from being charged ₹1)
+  const effectiveFare = baseFarePreview === 0
+    ? 0
+    : Math.max(1, baseFarePreview - holidayDiscount - metroCardDiscount);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!source || !destination || !travelDate || !travelTime) { toast.error('Please fill in all required fields'); return; }
     if (validPassengers.length === 0) { toast.error('Please add at least one passenger with name and age'); return; }
-    if (farePreview && balance !== null && balance < farePreview.fare) {
-      toast.error(`Insufficient wallet balance (₹${balance}). Need ₹${farePreview.fare}.`);
-      setTimeout(() => navigate('/wallet'), 1500);
-      return;
+
+    // Balance check for the selected payment source
+    if (paymentMethod === 'metrocard') {
+      if (!metroCard?.isActive) { toast.error('No active Metro Card. Please get a Metro Card first.'); return; }
+      if (metroCard.balance < effectiveFare) {
+        toast.error(`Insufficient Metro Card balance (₹${metroCard.balance}). Need ₹${effectiveFare}.`);
+        setTimeout(() => navigate('/metro-card'), 1500);
+        return;
+      }
+    } else {
+      if (farePreview && balance !== null && balance < effectiveFare) {
+        toast.error(`Insufficient wallet balance (₹${balance}). Need ₹${effectiveFare}.`);
+        setTimeout(() => navigate('/wallet'), 1500);
+        return;
+      }
     }
+
     setLoading(true);
     try {
-      const res = await bookTicket({ source, destination, passengers: validPassengers.map(p => ({ name: p.name, age: parseInt(p.age) })), travelDate, travelTime });
+      const res = await bookTicket({
+        source, destination,
+        passengers: validPassengers.map(p => ({ name: p.name, age: parseInt(p.age) })),
+        travelDate, travelTime,
+        paymentMethod,
+      });
       toast.success(`🎫 Ticket booked! ${res.data.ticket.ticketId}`);
       navigate('/tickets');
     } catch (err) {
       if (err.response?.status === 402) {
         toast.error(err.response?.data?.error || 'Insufficient balance!');
-        setTimeout(() => navigate('/wallet'), 1500);
+        setTimeout(() => navigate(paymentMethod === 'metrocard' ? '/metro-card' : '/wallet'), 1500);
       } else {
         toast.error(err.response?.data?.error || 'Booking failed');
       }
@@ -389,10 +468,12 @@ export default function BookTicket() {
           90% { opacity: 1; }
           100% { transform: translateX(calc(100vw)); opacity: 0; }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '12px', alignItems: 'start' }}>
+        <div className="book-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '12px', alignItems: 'start' }}>
 
           {/* ═══ LEFT COLUMN ═══ */}
           <div>
@@ -465,6 +546,32 @@ export default function BookTicket() {
                   onFocus={e => e.target.style.borderColor = '#6366f1'}
                   onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
                 />
+                {/* ── Live Holiday Discount Badge ── */}
+                {holidayLoading && (
+                  <div style={{ marginTop: '8px', fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', border: '2px solid #6366f1', borderTopColor: 'transparent', animation: 'spin 0.6s linear infinite' }} />
+                    Checking holiday discounts…
+                  </div>
+                )}
+                {!holidayLoading && holidayInfo?.isHoliday && (
+                  <div style={{
+                    marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '8px 12px', borderRadius: '10px',
+                    background: 'linear-gradient(135deg,rgba(34,197,94,0.12),rgba(16,185,129,0.08))',
+                    border: '1px solid rgba(34,197,94,0.35)',
+                    animation: 'fadeIn 0.3s ease',
+                  }}>
+                    <span style={{ fontSize: '16px' }}>🎉</span>
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#16a34a' }}>
+                        {holidayInfo.holidayName} — {holidayInfo.discountPercent}% discount applied!
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#15803d', marginTop: '1px' }}>
+                        Your fare is reduced. Celebrate and commute!
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -524,6 +631,67 @@ export default function BookTicket() {
               </div>
             </div>
 
+            {/* ── Payment Method Card ── */}
+            <div style={{ background: 'var(--bg-card)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '18px', padding: '16px', marginBottom: '14px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>💳 Payment Method</div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+
+                {/* Wallet option */}
+                <button type="button" onClick={() => setPaymentMethod('wallet')}
+                  style={{
+                    flex: 1, padding: '12px 14px', borderRadius: '14px', cursor: 'pointer',
+                    border: `2px solid ${paymentMethod === 'wallet' ? '#6366f1' : 'var(--border-color)'}`,
+                    background: paymentMethod === 'wallet' ? 'rgba(99,102,241,0.08)' : 'var(--bg-secondary)',
+                    transition: 'all 0.2s ease', textAlign: 'left',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '18px' }}>👛</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.88rem', color: paymentMethod === 'wallet' ? '#6366f1' : 'var(--text-primary)' }}>Wallet</span>
+                    {paymentMethod === 'wallet' && <span style={{ marginLeft: 'auto', width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', flexShrink: 0 }} />}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Balance: <span style={{ fontWeight: 700, color: balance !== null && balance > 0 ? '#16a34a' : '#ef4444' }}>₹{balance ?? '—'}</span>
+                  </div>
+                </button>
+
+                {/* Metro Card option */}
+                <button type="button" onClick={() => setPaymentMethod('metrocard')}
+                  style={{
+                    flex: 1, padding: '12px 14px', borderRadius: '14px', cursor: metroCard?.isActive ? 'pointer' : 'not-allowed',
+                    border: `2px solid ${paymentMethod === 'metrocard' ? '#7c3aed' : 'var(--border-color)'}`,
+                    background: paymentMethod === 'metrocard' ? 'rgba(124,58,237,0.08)' : 'var(--bg-secondary)',
+                    transition: 'all 0.2s ease', textAlign: 'left',
+                    opacity: metroCard?.isActive ? 1 : 0.5,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '18px' }}>🪪</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.88rem', color: paymentMethod === 'metrocard' ? '#7c3aed' : 'var(--text-primary)' }}>Metro Card</span>
+                    {paymentMethod === 'metrocard' && metroCard?.isActive && <span style={{ marginLeft: 'auto', width: '8px', height: '8px', borderRadius: '50%', background: '#7c3aed', flexShrink: 0 }} />}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {metroCard?.isActive
+                      ? <><span style={{ color: '#16a34a', fontWeight: 700 }}>-5% off</span> · Bal: <span style={{ fontWeight: 700 }}>₹{metroCard.balance}</span></>
+                      : <span style={{ color: '#ef4444' }}>No active card</span>
+                    }
+                  </div>
+                </button>
+              </div>
+
+              {/* Metro Card discount callout */}
+              {paymentMethod === 'metrocard' && metroCard?.isActive && (
+                <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '10px', background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)', fontSize: '0.78rem', color: '#7c3aed', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🎉 5% Metro Card discount saves you ₹{metroCardDiscount} on this booking!
+                </div>
+              )}
+              {paymentMethod === 'metrocard' && !metroCard?.isActive && (
+                <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '10px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', fontSize: '0.78rem', color: '#ef4444', fontWeight: 600 }}>
+                  ⚠️ You don't have an active Metro Card. <span onClick={() => navigate('/metro-card')} style={{ textDecoration: 'underline', cursor: 'pointer' }}>Get one →</span>
+                </div>
+              )}
+            </div>
+
             {/* ── Submit ── */}
             <button type="submit" disabled={loading || !canBook}
               style={{
@@ -541,19 +709,18 @@ export default function BookTicket() {
               {loading ? (
                 <><div style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /> Booking...</>
               ) : (
-                <>{farePreview ? `🎫 Book Now — ₹${farePreview.fare}` : '🎫 Book Ticket'}</>
+                <>{farePreview ? (effectiveFare === 0 ? '🎫 Book Now — 🆓 Free' : `🎫 Book Now — ₹${effectiveFare}`) : '🎫 Book Ticket'}</>
               )}
             </button>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
 
           {/* ═══ RIGHT SIDEBAR ═══ */}
-          <div style={{ position: 'sticky', top: '80px' }}>
+          <div className="book-sidebar" style={{ position: 'sticky', top: '80px' }}>
             {/* Journey summary */}
             <JourneySummary source={source} destination={destination} travelDate={travelDate} travelHour={travelHour} />
 
             {/* Fare breakdown */}
-            {farePreview && <FareBreakdown fareData={farePreview} passengers={passengers} />}
+            {farePreview && <FareBreakdown fareData={farePreview} passengers={passengers} holidayInfo={holidayInfo} metroCardDiscount={metroCardDiscount} paymentMethod={paymentMethod} />}
 
             {/* Travel Tips */}
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '14px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>

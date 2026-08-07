@@ -14,13 +14,29 @@ if (EMAIL_USER && EMAIL_APP_PASSWORD) {
   transporter.verify((err) => {
     if (err) {
       console.error('❌ Email SMTP connection failed:', err.message);
-      transporter = null; // disable so errors don't silently swallow
+      console.error('   Check EMAIL_USER and EMAIL_APP_PASSWORD in .env');
+      transporter = null;
     } else {
       console.log('✅ Email SMTP ready — sending from:', EMAIL_USER);
     }
   });
 } else {
-  console.warn('⚠️  Email not configured (EMAIL_USER / EMAIL_APP_PASSWORD missing) — emails will be logged to console only');
+  console.log('⏳ Generating Ethereal Test Account for Emails...');
+  nodemailer.createTestAccount().then((account) => {
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: account.user,
+        pass: account.pass,
+      },
+    });
+    console.log(`✅ Email SMTP ready — using Ethereal Test Account: ${account.user}`);
+    console.log(`   → View sent emails at: https://ethereal.email/login`);
+  }).catch((err) => {
+    console.error('❌ Failed to create Ethereal test account:', err.message);
+  });
 }
 
 /**
@@ -49,7 +65,7 @@ const sendOTPEmail = async (toEmail, otp) => {
 
   try {
     await transporter.sendMail({
-      from: `"MetroMind" <${EMAIL_USER}>`,
+      from: `"MetroMind" <${EMAIL_USER || 'test@ethereal.email'}>`,
       to: toEmail,
       subject: 'Verify your MetroMind account',
       html: `
@@ -103,7 +119,7 @@ const sendOTPEmail = async (toEmail, otp) => {
  */
 const sendLoginNotificationEmail = async (toEmail, userName, method = 'password') => {
   if (!transporter) {
-    console.warn('⚠️  [Login Notification] Not configured — skipping email to', toEmail);
+    // Email not configured — add EMAIL_APP_PASSWORD to .env to enable
     return;
   }
 
@@ -130,7 +146,7 @@ const sendLoginNotificationEmail = async (toEmail, userName, method = 'password'
 
   try {
     await transporter.sendMail({
-      from: `"MetroMind Security" <${EMAIL_USER}>`,
+      from: `"MetroMind Security" <${EMAIL_USER || 'test@ethereal.email'}>`,
       to: toEmail,
       subject: `✅ Login Successful — MetroMind`,
       html: `
@@ -223,7 +239,7 @@ const sendWelcomeEmail = async (toEmail, userName) => {
 
   try {
     await transporter.sendMail({
-      from: `"MetroMind" <${EMAIL_USER}>`,
+      from: `"MetroMind" <${EMAIL_USER || 'test@ethereal.email'}>`,
       to: toEmail,
       subject: `🎉 Welcome to MetroMind, ${userName}!`,
       html: `
@@ -299,4 +315,25 @@ const sendWelcomeEmail = async (toEmail, userName) => {
   }
 };
 
-module.exports = { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail };
+/**
+ * Generic email sender for internal alerts
+ */
+const sendEmail = async ({ to, subject, html }) => {
+  if (!transporter) {
+    console.warn(`⚠️  [Generic Email] Not configured — Subject: ${subject}`);
+    return;
+  }
+  try {
+    await transporter.sendMail({
+      from: `"MetroMind Alerts" <${EMAIL_USER || 'test@ethereal.email'}>`,
+      to,
+      subject,
+      html,
+    });
+    console.log(`🎉 [Generic Email] Sent to ${to}`);
+  } catch (err) {
+    console.error(`❌ [Generic Email] Failed to send to ${to} :`, err.message);
+  }
+};
+
+module.exports = { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail, sendEmail };

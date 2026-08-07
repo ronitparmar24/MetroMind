@@ -373,7 +373,7 @@ class NetworkPulseView(APIView):
         total = len(stations_result) if stations_result else 1
         high_pct = (high_count / total) * 100
         med_pct = (med_count / total) * 100
-        health_raw = 100 - (high_pct * 2.5) - (med_pct * 0.5)
+        health_raw = 100 - (high_pct * 0.7) - (med_pct * 0.2)
         network_health_score = max(0, min(100, round(health_raw)))
 
         return Response({

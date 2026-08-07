@@ -1,5 +1,5 @@
 // frontend/src/pages/Feedback.jsx
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import GlassCard from '../components/common/GlassCard';
 import { useToast } from '../components/common/Toast';
 import { submitFeedback } from '../api/analytics.api';
@@ -9,9 +9,18 @@ export default function Feedback() {
   const [loading, setLoading] = useState(false);
   const [aiReply, setAiReply] = useState(null);
   const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
   const toast = useToast();
 
-  const startListening = () => {
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       toast.error('Voice input is not supported in this browser.');
@@ -27,11 +36,14 @@ export default function Feedback() {
       setText(prev => prev + (prev ? ' ' : '') + transcript);
     };
     recognition.onerror = (event) => {
-      toast.error('Voice input error: ' + event.error);
+      if (event.error !== 'aborted') {
+        toast.error('Voice input error: ' + event.error);
+      }
       setIsListening(false);
     };
     recognition.onend = () => setIsListening(false);
     
+    recognitionRef.current = recognition;
     recognition.start();
   };
 
@@ -109,7 +121,7 @@ export default function Feedback() {
 
                   <button 
                     type="button"
-                    onClick={startListening}
+                    onClick={toggleListening}
                     style={{
                       position: 'absolute',
                       bottom: '16px',

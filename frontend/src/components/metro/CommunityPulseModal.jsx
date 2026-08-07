@@ -1,40 +1,60 @@
 // frontend/src/components/metro/CommunityPulseModal.jsx
 // Crowdsourced Live Station Reports & Commuter Verification
-import { useState } from 'react';
-
-const INITIAL_REPORTS = [
-  { id: 1, user: 'Amit P.', station: 'Kalupur Ry.', tag: 'Amenity', text: 'Elevator #2 near Gate 3 is back operational!', upvotes: 14, time: '8 mins ago', verified: true },
-  { id: 2, user: 'Priya K.', station: 'Thaltej', tag: 'Queue', text: 'Automatic Ticket Vending Machine 2 accepting UPI quickly.', upvotes: 9, time: '15 mins ago', verified: true },
-  { id: 3, user: 'Rahul M.', station: 'Gujarat University', tag: 'AC', text: 'Coach 3 AC is set super cold (around 20°C).', upvotes: 6, time: '22 mins ago', verified: false },
-];
+import { useState, useEffect } from 'react';
+import { getCommuterUpdates, postCommuterUpdate, upvoteCommuterUpdate } from '../../api/commuter.api';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function CommunityPulseModal({ isOpen, onClose }) {
-  const [reports, setReports] = useState(INITIAL_REPORTS);
+  const [reports, setReports] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [newText, setNewText] = useState('');
   const [selectedTag, setSelectedTag] = useState('Amenity');
   const [station, setStation] = useState('Kalupur Ry.');
 
-  const handleUpvote = (id) => {
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoading(true);
+      getCommuterUpdates()
+        .then((res) => {
+          setReports(res.data.data || []);
+        })
+        .catch(console.error)
+        .finally(() => setIsLoading(false));
+    }
+  }, [isOpen]);
+
+  const handleUpvote = async (id) => {
+    // Optimistic UI update
     setReports(reports.map(r => r.id === id ? { ...r, upvotes: r.upvotes + 1 } : r));
+    try {
+      const res = await upvoteCommuterUpdate(id);
+      if (res.data.success) {
+        setReports(reports.map(r => r.id === id ? { ...r, upvotes: res.data.upvotes } : r));
+      }
+    } catch (error) {
+      console.error(error);
+      // Revert on failure
+      setReports(reports.map(r => r.id === id ? { ...r, upvotes: r.upvotes - 1 } : r));
+    }
   };
 
-  const handleAddReport = (e) => {
+  const handleAddReport = async (e) => {
     e.preventDefault();
     if (!newText.trim()) return;
 
-    const newRep = {
-      id: Date.now(),
-      user: 'You',
-      station,
-      tag: selectedTag,
-      text: newText,
-      upvotes: 1,
-      time: 'Just now',
-      verified: true,
-    };
-
-    setReports([newRep, ...reports]);
-    setNewText('');
+    try {
+      const res = await postCommuterUpdate({
+        station,
+        tag: selectedTag,
+        text: newText,
+      });
+      if (res.data.success) {
+        setReports([res.data.data, ...reports]);
+        setNewText('');
+      }
+    } catch (error) {
+      console.error('Failed to post update:', error);
+    }
   };
 
   if (!isOpen) return null;
@@ -144,7 +164,16 @@ export default function CommunityPulseModal({ isOpen, onClose }) {
 
         {/* Live Feed Reports List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {reports.map((r) => (
+          {isLoading ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              Loading updates...
+            </div>
+          ) : reports.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              No updates yet. Be the first to post!
+            </div>
+          ) : (
+            reports.map((r) => (
             <div
               key={r.id}
               style={{
@@ -159,7 +188,7 @@ export default function CommunityPulseModal({ isOpen, onClose }) {
                     {r.user}
                   </span>
                   <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-                    · {r.station} · {r.time}
+                    · {r.station} · {r.time ? (r.time === 'Just now' ? r.time : formatDistanceToNow(new Date(r.time), { addSuffix: true })) : 'recently'}
                   </span>
                   {r.verified && (
                     <span style={{ fontSize: '0.6875rem', color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
@@ -184,7 +213,7 @@ export default function CommunityPulseModal({ isOpen, onClose }) {
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{r.upvotes}</span>
               </button>
             </div>
-          ))}
+          )))}
         </div>
       </div>
     </div>

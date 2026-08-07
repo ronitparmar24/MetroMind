@@ -16,6 +16,34 @@ const generateOtp = async () => {
   return { otp, hash };
 };
 
+// ─── Helper: update user day streak upon login ───
+const updateUserStreak = async (user) => {
+  const now = new Date();
+  const today = now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toDateString();
+
+  const lastTravel = user.lastTravelDate ? user.lastTravelDate.toDateString() : null;
+  let modified = false;
+
+  if (!lastTravel) {
+    user.streakDays = (user.streakDays || 0) + 1;
+    modified = true;
+  } else if (lastTravel === yesterdayStr) {
+    user.streakDays += 1;
+    modified = true;
+  } else if (lastTravel !== today) {
+    user.streakDays = 1;
+    modified = true;
+  }
+
+  if (modified) {
+    user.lastTravelDate = now;
+    await user.save();
+  }
+};
+
 // POST /api/auth/register
 const register = async (req, res, next) => {
   try {
@@ -297,8 +325,14 @@ const login = async (req, res, next) => {
     // Generate JWT
     const token = signToken(user._id);
 
-    // Fire-and-forget login notification email
-    sendLoginNotificationEmail(user.email, user.name, 'password');
+    // Await email to prevent serverless function from freezing before sending
+    try {
+      await sendLoginNotificationEmail(user.email, user.name, 'password');
+    } catch (err) {
+      console.error('Non-fatal: failed to send login notification email', err);
+    }
+
+    await updateUserStreak(user);
 
     res.json({
       success: true,
@@ -323,6 +357,7 @@ const login = async (req, res, next) => {
 const getMe = async (req, res, next) => {
   try {
     const user = req.user;
+    await updateUserStreak(user);
     const wallet = await Wallet.findOne({ userId: user._id });
 
     res.json({
@@ -339,6 +374,7 @@ const getMe = async (req, res, next) => {
         loyaltyPoints: user.loyaltyPoints,
         streakDays: user.streakDays,
         lastTravelDate: user.lastTravelDate,
+        claimedCO2: user.claimedCO2 || 0,
         walletBalance: wallet ? wallet.balance : 0,
         createdAt: user.createdAt,
       },
@@ -463,6 +499,8 @@ const googleLogin = async (req, res, next) => {
     } catch (err) {
       console.error('Non-fatal: failed to send google auth email', err);
     }
+
+    await updateUserStreak(user);
 
     res.json({
       success: true,
@@ -591,4 +629,46 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword };
+// PUT /api/auth/update-profile
+const updateProfile = async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ success: false, message: 'Name is required' });
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    user.name = name;
+    await user.save();
+
+    res.json({ success: true, message: 'Profile updated successfully', data: { name: user.name, email: user.email } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /api/auth/change-password
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current and new passwords are required' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) return res.status(401).json({ success: false, message: 'Incorrect current password' });
+
+    const salt = await bcrypt.genSalt(12);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword, updateProfile, changePassword };

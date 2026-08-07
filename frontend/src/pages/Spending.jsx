@@ -6,11 +6,13 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EcoLeaderboard from '../components/charts/EcoLeaderboard';
 import { getSpending } from '../api/analytics.api';
 import { formatCurrency } from '../utils/formatters';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 export default function Spending() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const width = useWindowWidth();
 
   useEffect(() => {
     const fetch = async () => {
@@ -29,6 +31,13 @@ export default function Spending() {
   const chartData = Object.entries(data.dailySpending || {}).map(([date, amount]) => ({
     date: date.slice(5), amount,
   }));
+
+  // Recharts sometimes fails to render a BarChart if there is exactly 1 data point.
+  // Pad with empty data points if necessary to ensure it renders axes properly.
+  if (chartData.length === 1) {
+    chartData.unshift({ date: 'Start', amount: 0 });
+    chartData.push({ date: 'End', amount: 0 });
+  }
 
   return (
     <div className="page">
@@ -85,14 +94,19 @@ export default function Spending() {
           <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: '16px' }}>
             📊 Daily Spending (Last 30 Days)
           </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={chartData}>
-              <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
-              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
-              <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8 }} />
-              <Bar dataKey="amount" fill="#6366f1" radius={[4, 4, 0, 0]} />
+          <div style={{ width: '100%', height: 250, overflowX: 'auto', overflowY: 'hidden' }}>
+            <BarChart 
+              width={Math.max(width - (width < 768 ? 64 : 320), 400)} 
+              height={250} 
+              data={chartData} 
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            >
+              <XAxis dataKey="date" type="category" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: 'var(--bg-tertiary)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8 }} />
+              <Bar dataKey="amount" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={40} />
             </BarChart>
-          </ResponsiveContainer>
+          </div>
         </GlassCard>
       )}
 

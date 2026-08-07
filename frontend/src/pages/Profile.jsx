@@ -237,7 +237,7 @@ function StationExplorer() {
 
       {profile && !loading && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>
+          <div className="card-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>
             {[
               { label: 'Busiest Hour', value: busiestHour?.display || '—' },
               { label: 'Busiest Day',  value: profile.busiestDay?.day || '—' },
@@ -302,7 +302,11 @@ export default function Profile() {
         @keyframes profileSkeleton { 0%,100%{opacity:0.4;} 50%{opacity:0.8;} }
         @keyframes auroraShift { 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
         @keyframes fadeInUp { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
-        @media(max-width:768px){ .profile-stats-row{flex-direction:column!important;} }
+        @media(max-width:768px){ 
+          .profile-stats-row { display: grid !important; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border-color) !important; }
+          .profile-stats-row > div:not(.stat-divider) { background: var(--bg-tertiary); }
+          .stat-divider { display: none; }
+        }
       `}</style>
 
       {/* ═══ HERO BANNER + PROFILE CARD — single stacked container ═══ */}
@@ -380,11 +384,11 @@ export default function Profile() {
           {/* ═══ STATS ROW — Spotify Wrapped style ═══ */}
           <div className="profile-stats-row" style={{ display: 'flex', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', marginTop: '20px' }}>
             <StatBig value={tickets.length} label="Total Rides" icon="🎫" color="#6366f1" />
-            <div style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
+            <div className="stat-divider" style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
             <StatBig value={Math.round(totalCO2)} label="CO₂ Saved (g)" icon="🌿" color="#22c55e" />
-            <div style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
+            <div className="stat-divider" style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
             <StatBig value={user.streakDays || 0} label="Day Streak" icon="🔥" color="#f59e0b" />
-            <div style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
+            <div className="stat-divider" style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
             <StatBig value={uniqueStations} label="Stations" icon="📍" color="#a855f7" />
           </div>
 

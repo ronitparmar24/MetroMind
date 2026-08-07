@@ -4,6 +4,7 @@ const Wallet = require('../models/Wallet.model');
 const Transaction = require('../models/Transaction.model');
 const User = require('../models/User.model');
 const MetroCard = require('../models/MetroCard.model');
+const SystemSetting = require('../models/SystemSetting.model');
 const { generateQR } = require('../utils/qrGenerator');
 const { calculateFare } = require('../utils/fareEngine');
 const { calculateCO2Saved } = require('../utils/carbonCalc');
@@ -12,6 +13,7 @@ const { bookingBus } = require('../events/bookingEvents');
 const axios = require('axios');
 const { DJANGO_API_URL } = require('../config/env');
 const { METRO_CARD_DISCOUNT } = require('./metrocard.controller');
+const { checkHolidayDiscount } = require('../services/holiday.service');
 
 // Hardcoded GMRC station coordinates — used for fare calculation
 // These are imported from a shared constants file
@@ -23,7 +25,7 @@ const STATIONS = require('../constants/stations');
 const generateTicketId = () => {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const rand = Math.floor(1000 + Math.random() * 9000);
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
   return `MM-${dateStr}-${rand}`;
 };
 
@@ -39,6 +41,13 @@ const bookTicket = async (req, res, next) => {
       coachPref,
       paymentMethod = 'wallet', // 'wallet' | 'metrocard'
     } = req.body;
+
+    const settings = await SystemSetting.findOne();
+    if (settings && settings.maintenanceMode) {
+      const err = new Error('System is currently under maintenance. Ticket booking is temporarily disabled.');
+      err.statusCode = 503;
+      return next(err);
+    }
 
 
 
@@ -97,10 +106,21 @@ const bookTicket = async (req, res, next) => {
 
     // ── Metro Card lookup ──
     const metroCard = await MetroCard.findOne({ userId: req.user._id, isActive: true });
-    // Discount ONLY applies when user explicitly pays with Metro Card
     const useMetroCard = !!metroCard && paymentMethod === 'metrocard';
-    const discountAmount = useMetroCard ? Math.round(fareResult.fare * METRO_CARD_DISCOUNT) : 0;
-    const finalFare = fareResult.fare - discountAmount;
+    const metroCardDiscountAmount = useMetroCard ? Math.round(fareResult.fare * METRO_CARD_DISCOUNT) : 0;
+
+    // ── Live Holiday discount (15%) via Calendarific / Nager.Date ──
+    const holidayCheck = await checkHolidayDiscount(travelDate);
+    const holidayDiscountAmount = holidayCheck.isHoliday
+      ? Math.round(fareResult.fare * (holidayCheck.discountPercent / 100))
+      : 0;
+
+    // Combine discounts: Metro Card applied first, then holiday on top
+    const discountAmount = metroCardDiscountAmount;
+    // Only enforce ₹1 minimum when base fare is non-zero — children-only bookings should stay free
+    const finalFare = fareResult.fare === 0
+      ? 0
+      : Math.max(1, fareResult.fare - discountAmount - holidayDiscountAmount);
 
 
     // ── Payment source check ──
@@ -190,14 +210,14 @@ const bookTicket = async (req, res, next) => {
     const payLabel = paymentMethod === 'metrocard' ? 'Metro Card' : 'Wallet';
     const newBalance = paymentMethod === 'metrocard'
       ? (wallet ? wallet.balance : 0)  // wallet unchanged
-      : wallet.balance;                 // wallet was deducted
+      : wallet.balance;
     await Transaction.create({
       userId: req.user._id,
       type: 'debit',
       amount: finalFare,
       balance: newBalance,
       ref: ticketId,
-      note: `Ticket: ${source} \u2192 ${destination} (${passengers.length} pax) | ${payLabel}${discountAmount > 0 ? ` | Metro Card \u221210% \u2212\u20b9${discountAmount}` : ''}`,
+      note: `Ticket: ${source} \u2192 ${destination} (${passengers.length} pax) | ${payLabel}${discountAmount > 0 ? ` | Metro Card \u221210% \u2212\u20b9${discountAmount}` : ''}${holidayDiscountAmount > 0 ? ` | ${holidayCheck.holidayName} \u221215% \u2212\u20b9${holidayDiscountAmount}` : ''}`,
     });
 
 
@@ -205,14 +225,23 @@ const bookTicket = async (req, res, next) => {
     // Update user loyalty points and streak
     const user = await User.findById(req.user._id);
     user.loyaltyPoints += Math.floor(fareResult.fare / 10); // 1 point per ₹10 spent
-    const today = new Date().toDateString();
+    const now = new Date();
+    const today = now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+
     const lastTravel = user.lastTravelDate ? user.lastTravelDate.toDateString() : null;
-    if (lastTravel === new Date(Date.now() - 86400000).toDateString()) {
-      user.streakDays += 1; // Consecutive day
+
+    if (!lastTravel) {
+      user.streakDays = (user.streakDays || 0) + 1;
+    } else if (lastTravel === yesterdayStr) {
+      user.streakDays += 1;
     } else if (lastTravel !== today) {
-      user.streakDays = 1; // Reset streak
+      user.streakDays = 1;
     }
-    user.lastTravelDate = new Date();
+    
+    user.lastTravelDate = now;
     await user.save();
 
     // Emit booking event (first-class feature: Node EventEmitter + fs logging)
@@ -233,6 +262,8 @@ const bookTicket = async (req, res, next) => {
       crowdBucket,
       co2Saved,
       metroCardDiscount: discountAmount,
+      holidayDiscount: holidayDiscountAmount,
+      holidayName: holidayCheck.holidayName || null,
       originalFare: fareResult.fare,
       finalFare,
     });
@@ -308,6 +339,31 @@ const cancelTicket = async (req, res, next) => {
       const err = new Error('Cannot cancel a completed ticket');
       err.statusCode = 400;
       return next(err);
+    }
+
+    const settings = await SystemSetting.findOne();
+    const windowMins = settings ? settings.ticketCancellationWindow : 30;
+
+    if (ticket.travelDate && ticket.travelTime) {
+      let timeParts = ticket.travelTime.split(' ');
+      let time = timeParts[0];
+      let modifier = timeParts[1];
+      
+      let [hours, minutes] = time.split(':');
+      hours = parseInt(hours, 10);
+      
+      if (modifier && modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
+      if (modifier && modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+      
+      const ticketDateTime = new Date(ticket.travelDate);
+      ticketDateTime.setHours(hours, parseInt(minutes || 0, 10), 0, 0);
+      
+      const diffMins = (ticketDateTime.getTime() - Date.now()) / (1000 * 60);
+      if (diffMins < windowMins) {
+        const err = new Error(`Cancellations are only allowed up to ${windowMins} minutes before departure.`);
+        err.statusCode = 400;
+        return next(err);
+      }
     }
 
     // Cancel and refund
