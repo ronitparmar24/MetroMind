@@ -52,3 +52,6 @@ logs/
 coverage/
 .nyc_output/
 htmlcov/
+
+# Secrets
+backend-node/config/firebase-service-account.json
