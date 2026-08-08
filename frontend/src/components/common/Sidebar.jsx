@@ -21,7 +21,7 @@ const SECTION_COLORS = {
 
 export default function Sidebar({ isOpen, isMobile = false, onClose }) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState({});
 
   const toggleSection = (section) => {
@@ -195,6 +195,38 @@ export default function Sidebar({ isOpen, isMobile = false, onClose }) {
           </div>
         )}
       </div>
+
+      {/* Logout Button (Sticky Footer) - Mobile Only */}
+      {isMobile && (
+        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-color)' }}>
+          <button 
+            onClick={() => {
+              if (isMobile && onClose) onClose();
+              logout();
+            }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              background: 'rgba(239, 68, 68, 0.08)',
+              color: '#ef4444',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
+          >
+            <span className="sidebar-icon">👋</span>
+            <span>Logout</span>
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

@@ -94,7 +94,7 @@ const isHoliday = (dateStr) => {
  * @param {string} dateStr        - Travel date (YYYY-MM-DD)
  * @returns {{ fare, perPassenger, baseFare, distance, trackDistance, isPeak, isHoliday }}
  */
-const calculateFare = (source, dest, hour, dayOfWeek, passengerCount = 1, dateStr = null) => {
+const calculateFare = (source, dest, hour, dayOfWeek, passengers = 1, dateStr = null) => {
   const straightKm   = haversine(source.lat, source.lng, dest.lat, dest.lng);
   const trackKm      = Math.round(straightKm * TRACK_CORRECTION * 100) / 100;
   const baseFare     = slabFare(trackKm);
@@ -102,11 +102,22 @@ const calculateFare = (source, dest, hour, dayOfWeek, passengerCount = 1, dateSt
   const peak         = !holiday && isPeakHour(hour, dayOfWeek);
   
   let perPassenger = peak ? Math.round(baseFare * 1.2) : baseFare;
-  if (holiday) {
-    perPassenger = Math.round(perPassenger * 0.85); // 15% discount on holidays (aligned with holiday.service.js)
-  }
   
-  const totalFare    = perPassenger * passengerCount;
+  let totalFare = 0;
+  if (Array.isArray(passengers)) {
+    passengers.forEach(p => {
+      const age = p.age ? parseInt(p.age) : 99;
+      if (age <= 0) {
+        // Free
+      } else if (age >= 1 && age <= 3) {
+        totalFare += Math.round(perPassenger * 0.5);
+      } else {
+        totalFare += perPassenger;
+      }
+    });
+  } else {
+    totalFare = perPassenger * passengers;
+  }
 
   return {
     fare:          totalFare,

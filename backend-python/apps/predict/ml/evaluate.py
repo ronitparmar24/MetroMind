@@ -16,7 +16,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from apps.predict.ml.features import engineer_features, REVERSE_BUCKET_MAP
+from apps.predict.ml.features import engineer_features, REVERSE_BUCKET_MAP  # pyrefly: ignore [missing-import]
 
 SAVED_DIR = SCRIPT_DIR / 'saved'
 DATA_PATH = PROJECT_ROOT / 'data' / 'raw' / 'ahmedabad_metro_bookings.csv'

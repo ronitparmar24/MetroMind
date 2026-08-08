@@ -1,14 +1,19 @@
 // backend-node/src/controllers/voice.controller.js
 // MetroMind Voice AI — Gemini 2.0 Flash via direct REST (bypasses SDK quota issues)
-// + rich local NLP fallback that always works with live DB data.
+// + Groq fallback + rich local NLP fallback that always works with live DB data.
 
 const User   = require('../models/User.model');
 const Ticket = require('../models/Ticket.model');
 const Wallet = require('../models/Wallet.model');
+const Groq   = require('groq-sdk');
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const isDummy = (k) => !k || k.includes('your_');
+const GEMINI_API_KEY = isDummy(process.env.GEMINI_API_KEY) ? '' : process.env.GEMINI_API_KEY;
+const GROQ_API_KEY = isDummy(process.env.GROQ_API_KEY) ? '' : process.env.GROQ_API_KEY;
 // Use v1beta endpoint with gemini-2.0-flash which is the current stable model
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+let _groqClient = null;
 
 // ── Gemini REST call (direct fetch, no SDK) ───────────────────────────────
 async function callGemini(systemPrompt, userMessage, history = []) {
@@ -32,7 +37,7 @@ async function callGemini(systemPrompt, userMessage, history = []) {
   };
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000); // 10s timeout
+  const timer = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
   try {
     const res  = await fetch(GEMINI_URL, {
@@ -49,25 +54,71 @@ async function callGemini(systemPrompt, userMessage, history = []) {
   }
 }
 
-// ── Retry with backoff for 429 ─────────────────────────────────────────────
-async function geminiWithRetry(systemPrompt, userMessage, history, maxRetries = 2) {
-  for (let i = 0; i <= maxRetries; i++) {
-    try {
-      return await callGemini(systemPrompt, userMessage, history);
-    } catch (err) {
-      const isQuota = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('exceeded');
-      const isTimeout = err.name === 'AbortError';
-      
-      // Do not retry on strict quota errors, fail fast to fallback!
-      if (isTimeout && i < maxRetries) {
-        const wait = 1000;
-        console.warn(`[VoiceAI] timeout — retry ${i + 1} in ${wait}ms`);
-        await new Promise(r => setTimeout(r, wait));
-      } else {
-        throw err;
-      }
+// ── Groq REST call (via SDK) ──────────────────────────────────────────────
+async function callGroq(systemPrompt, userMessage, history = []) {
+  if (!GROQ_API_KEY) throw new Error('No Groq key');
+  if (!_groqClient) _groqClient = new Groq({ apiKey: GROQ_API_KEY });
+
+  const clean = [];
+  let last = null;
+  for (const h of history.slice(-8)) {
+    const role = h.role === 'user' ? 'user' : 'assistant';
+    if (role !== last) {
+      clean.push({ role, content: h.text });
+      last = role;
     }
   }
+  while (clean.length && clean[clean.length - 1].role === 'user') clean.pop();
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...clean,
+    { role: 'user', content: userMessage }
+  ];
+
+  let timer;
+  const timeoutPromise = new Promise((_, reject) =>
+    timer = setTimeout(() => reject(new Error('Groq timeout')), 30000)
+  );
+
+  try {
+    const res = await Promise.race([
+      _groqClient.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages,
+        max_tokens: 200,
+        temperature: 0.75,
+      }),
+      timeoutPromise,
+    ]);
+    
+    return res.choices[0].message.content.trim();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ── AI Fallback Chain (Gemini -> Groq -> Error) ───────────────────────────
+async function aiWithFallback(systemPrompt, userMessage, history) {
+  try {
+    if (GEMINI_API_KEY) {
+      const gemHistory = sanitizeHistory(history);
+      return await callGemini(systemPrompt, userMessage, gemHistory);
+    }
+  } catch (err) {
+    const is429 = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('exceeded');
+    console.warn(`[VoiceAI] Gemini ${is429 ? '429 — quota' : 'error'}: ${err.message?.slice(0, 60)} — falling back to Groq`);
+  }
+
+  if (GROQ_API_KEY) {
+    try {
+      return await callGroq(systemPrompt, userMessage, history);
+    } catch (err) {
+      console.warn(`[VoiceAI] Groq error: ${err.message?.slice(0, 60)}`);
+    }
+  }
+
+  throw new Error('All AI providers failed');
 }
 
 // ── System prompt for voice AI ────────────────────────────────────────────
@@ -245,6 +296,8 @@ function localNLP(text, ctx) {
 }
 
 // ── POST /api/voice/chat ──────────────────────────────────────────────────
+exports.aiWithFallback = aiWithFallback;
+
 exports.voiceChat = async (req, res) => {
   try {
     const { userMessage, history = [], context = {} } = req.body;
@@ -270,12 +323,11 @@ exports.voiceChat = async (req, res) => {
       }
     } catch (_) { /* best-effort */ }
 
-    // ── Try Gemini (with retry) ─────────────────────────────────────────
-    if (GEMINI_API_KEY) {
+    // ── Try AI (Gemini → Groq) ──────────────────────────────────────────
+    if (GEMINI_API_KEY || GROQ_API_KEY) {
       try {
         const sysPrompt = buildSystemPrompt(ctx);
-        const gemHistory = sanitizeHistory(history);
-        const aiText = await geminiWithRetry(sysPrompt, userMessage.trim(), gemHistory);
+        const aiText = await aiWithFallback(sysPrompt, userMessage.trim(), history);
 
         // Parse ACTION tag
         let action = null;
@@ -283,17 +335,10 @@ exports.voiceChat = async (req, res) => {
         if (m) { action = { type: 'NAVIGATE', target: m[1].trim() }; }
         const reply = aiText.replace(/\[ACTION:[^\]]+\]/g, '').trim();
 
-        console.log(`🤖 [VoiceAI/Gemini] "${userMessage.slice(0,30)}" → "${reply.slice(0,55)}"`);
-        return res.json({ success: true, reply, action, source: 'gemini' });
+        console.log(`🤖 [VoiceAI] "${userMessage.slice(0,30)}" → "${reply.slice(0,55)}"`);
+        return res.json({ success: true, reply, action, source: 'ai' });
       } catch (err) {
-        const is429 = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('exceeded');
-        console.warn(`[VoiceAI] Gemini ${is429 ? '429 — quota' : 'error'}: ${err.message?.slice(0, 60)} — using local NLP`);
-
-        // For quota errors, return a specific message and skip local NLP to save confusion
-        if (is429) {
-          const { reply, action } = localNLP(userMessage, ctx);
-          return res.json({ success: true, reply, action, source: 'local' });
-        }
+        console.warn(`[VoiceAI] AI fallback chain failed: ${err.message} — using local NLP`);
       }
     }
 

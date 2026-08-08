@@ -1,8 +1,8 @@
 // frontend/src/components/metro/CoachHeatmap.jsx
 // Visual Coach-by-Coach Crowd Heatmap & Platform Boarding Helper
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
-const MOCK_COACHES = [
+const INITIAL_COACHES = [
   { id: 1, type: 'General', level: 'low', pct: 28, temp: '22°C', seatsLeft: 18, label: 'Coach 1 (Front)' },
   { id: 2, type: 'General', level: 'high', pct: 88, temp: '24°C', seatsLeft: 2, label: 'Coach 2' },
   { id: 3, type: 'General', level: 'med', pct: 62, temp: '23°C', seatsLeft: 8, label: 'Coach 3' },
@@ -18,11 +18,38 @@ const CROWD_STYLES = {
 };
 
 export default function CoachHeatmap({ stationName = 'Kalupur Railway Station' }) {
-  const [selectedCoach, setSelectedCoach] = useState(MOCK_COACHES[3]); // Default to Coach 4
+  const [coaches, setCoaches] = useState(INITIAL_COACHES);
+  const [selectedCoachId, setSelectedCoachId] = useState(4); // Default to Coach 4
+
+  // Simulate live sensor updates every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCoaches(prev => prev.map(coach => {
+        // Randomly drift percentage by -3 to +3
+        let newPct = coach.pct + (Math.floor(Math.random() * 7) - 3);
+        newPct = Math.max(5, Math.min(95, newPct)); // clamp between 5 and 95
+        
+        // Update level based on new percentage
+        let newLevel = 'low';
+        if (newPct > 75) newLevel = 'high';
+        else if (newPct > 45) newLevel = 'med';
+
+        return { 
+          ...coach, 
+          pct: newPct, 
+          level: newLevel, 
+          seatsLeft: Math.round(50 * (1 - newPct/100)) 
+        };
+      }));
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const selectedCoach = useMemo(() => coaches.find(c => c.id === selectedCoachId), [coaches, selectedCoachId]);
 
   const bestCoach = useMemo(() => {
-    return [...MOCK_COACHES].sort((a, b) => a.pct - b.pct)[0];
-  }, []);
+    return [...coaches].sort((a, b) => a.pct - b.pct)[0];
+  }, [coaches]);
 
   return (
     <div style={{
@@ -107,15 +134,15 @@ export default function CoachHeatmap({ stationName = 'Kalupur Railway Station' }
           </div>
 
           {/* Individual Coaches */}
-          {MOCK_COACHES.map((coach) => {
+          {coaches.map((coach) => {
             const style = CROWD_STYLES[coach.level];
-            const isSelected = selectedCoach.id === coach.id;
-            const isBest = bestCoach.id === coach.id;
+            const isSelected = selectedCoach && selectedCoach.id === coach.id;
+            const isBest = bestCoach && bestCoach.id === coach.id;
 
             return (
               <button
                 key={coach.id}
-                onClick={() => setSelectedCoach(coach)}
+                onClick={() => setSelectedCoachId(coach.id)}
                 style={{
                   flex: 1,
                   minWidth: '80px',

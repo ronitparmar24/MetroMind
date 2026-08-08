@@ -264,6 +264,26 @@ export default function Landing() {
   const [openFaq, setOpenFaq] = useState(0);
   const activeSection = useActiveSection(SECTION_IDS);
 
+  const [stats, setStats] = useState({
+    activeCommuters: '12000',
+    dailyPredictions: '500',
+    mlAccuracy: '94',
+    stations: '32',
+    co2Saved: '2400',
+  });
+
+  useEffect(() => {
+    import('../api/public.api').then(({ getLandingStats }) => {
+      getLandingStats()
+        .then(res => {
+          if (res.data?.success) {
+            setStats(res.data.stats);
+          }
+        })
+        .catch(console.error);
+    });
+  }, []);
+
   // Always follow OS/system theme on this public page
   useSystemTheme();
 
@@ -374,11 +394,11 @@ export default function Landing() {
         <div className="container">
           <div className="mm-stats__inner">
             {[
-              { val: '12000', suffix: '+', label: 'Active Commuters', icon: 'fas fa-users' },
-              { val: '500',   suffix: '+', label: 'Daily Predictions', icon: 'fas fa-chart-line' },
-              { val: '94',    suffix: '%', label: 'ML Accuracy', icon: 'fas fa-bullseye' },
-              { val: '32',    suffix: '',  label: 'Stations', icon: 'fas fa-subway' },
-              { val: '2400',  suffix: 't', label: 'CO₂ Saved', icon: 'fas fa-leaf' },
+              { val: stats.activeCommuters.toString(), suffix: '+', label: 'Active Commuters', icon: 'fas fa-users' },
+              { val: stats.dailyPredictions.toString(), suffix: '+', label: 'Daily Predictions', icon: 'fas fa-chart-line' },
+              { val: stats.mlAccuracy.toString(), suffix: '%', label: 'ML Accuracy', icon: 'fas fa-bullseye' },
+              { val: stats.stations.toString(), suffix: '',  label: 'Stations', icon: 'fas fa-subway' },
+              { val: stats.co2Saved.toString(), suffix: 'kg', label: 'CO₂ Saved', icon: 'fas fa-leaf' },
             ].map(s => (
               <div className="mm-stat" key={s.label}>
                 <div className="mm-stat__icon"><i className={s.icon} /></div>

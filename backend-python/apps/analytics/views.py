@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
-from apps.predict.ml.features import normalize_station
+from apps.predict.ml.features import normalize_station  # pyrefly: ignore [missing-import]
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import JsonResponse

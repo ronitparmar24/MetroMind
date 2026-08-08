@@ -11,6 +11,8 @@ import { predictCrowd, checkAnomaly, getBestDeparture, getPersonalityProfile } f
 import { formatCurrency } from '../utils/formatters';
 import { getNetworkPulse } from '../api/analytics.api';
 import { fetchWeather } from '../api/weather.api';
+import { requestFCMToken } from '../firebase';
+import { registerFCMToken, scheduleReminder } from '../api/notifications.api';
 import QRModal from '../components/common/QRModal';
 import CoachHeatmap from '../components/metro/CoachHeatmap';
 import VoiceAssistantModal from '../components/common/VoiceAssistantModal';
@@ -391,9 +393,10 @@ function AnomalyWhisper({ station, hour, dayOfWeek, predictedCrowd }) {
 /* ═══════════════════════════════════════════════════════════
    BEST DEPARTURE CARD — only renders if usualRoute exists
    ═══════════════════════════════════════════════════════════ */
-function BestDepartureCard({ usualRoute }) {
+function SmarterTiming({ usualRoute }) {
   const [result, setResult] = useState(null);
-  const timerRef = useRef(null);
+  const [reminderState, setReminderState] = useState('idle');
+  const [reminderError, setReminderError] = useState('');
 
   useEffect(() => {
     if (!usualRoute) return;
@@ -403,7 +406,6 @@ function BestDepartureCard({ usualRoute }) {
     getBestDeparture({ station: usualRoute.source, targetHour: hour, dayOfWeek: pyDay })
       .then(res => setResult(res.data.bestDeparture))
       .catch(() => {});
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [usualRoute]);
 
   if (!usualRoute || !result) return null;
@@ -411,17 +413,49 @@ function BestDepartureCard({ usualRoute }) {
   const currentHour = new Date().getHours();
   const isBestAlready = result.deltaPct === 0 || result.bestHour === currentHour;
 
-  const handleRemind = () => {
-    if (!('Notification' in window)) return;
-    Notification.requestPermission().then(perm => {
-      if (perm !== 'granted') return;
-      const delayMs = Math.max(0, (result.bestHour - currentHour) * 60 * 60 * 1000 - 15 * 60 * 1000);
-      timerRef.current = setTimeout(() => {
-        new Notification('MetroMind', {
-          body: `Time to head to ${usualRoute.source} — ${result.bestHour}:00 is your best departure window`,
+  const handleRemind = async () => {
+    setReminderState('loading');
+    setReminderError('');
+    try {
+      const d = new Date();
+      d.setHours(result.bestHour, 0, 0, 0);
+      let leaveByDate = new Date(d.getTime() - 15 * 60 * 1000);
+      
+      // If time has already passed today, schedule it for tomorrow
+      if (leaveByDate < new Date()) {
+        leaveByDate.setDate(leaveByDate.getDate() + 1);
+      }
+      
+      const msUntilLeave = leaveByDate - Date.now();
+
+      const token = await requestFCMToken();
+      if (token) {
+        await registerFCMToken(token);
+        await scheduleReminder({
+          leaveByISO: leaveByDate.toISOString(),
+          route: `Commute from ${usualRoute.source}`,
+          walkMins: 15,
         });
-      }, delayMs);
-    });
+        setReminderState('active');
+        return;
+      }
+
+      if (!('Notification' in window)) throw new Error('Notifications not supported');
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted' && msUntilLeave > 0) {
+        setTimeout(() => {
+          new Notification('MetroMind', {
+            body: `Time to head to ${usualRoute.source} — ${result.bestHour}:00 is your best departure window`,
+          });
+        }, msUntilLeave);
+        setReminderState('active');
+      } else {
+        throw new Error('Notifications blocked or time has passed');
+      }
+    } catch (err) {
+      setReminderError(err.response?.data?.error || err.message || 'Could not set reminder');
+      setReminderState('error');
+    }
   };
 
   return (
@@ -441,10 +475,19 @@ function BestDepartureCard({ usualRoute }) {
             <div style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: '10px' }}>
               Leave for <strong>{result.bestHour}:00</strong> instead — <strong>{result.deltaPct}% less crowded</strong> than now
             </div>
-            <button style={S.ghostBtn} onClick={handleRemind}>
-              <i className="fas fa-bell" style={{ fontSize: '0.7rem' }} />
-              Remind me
-            </button>
+            {reminderState === 'idle' || reminderState === 'error' ? (
+              <button style={S.ghostBtn} onClick={handleRemind}>
+                <i className="fas fa-bell" style={{ fontSize: '0.7rem' }} />
+                Remind me
+              </button>
+            ) : reminderState === 'loading' ? (
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Setting up push…</span>
+            ) : (
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#059669', background: 'rgba(16,185,129,0.12)', padding: '4px 10px', borderRadius: '12px' }}>
+                ✅ Push reminder set
+              </span>
+            )}
+            {reminderError && <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: '6px' }}>⚠️ {reminderError}</div>}
           </>
         )}
       </div>
@@ -680,7 +723,7 @@ export default function Dashboard() {
 
   const activeTicket = useMemo(() => {
     return tickets.find(t =>
-      t.status === 'active' || t.status === 'confirmed' || t.status === 'booked'
+      t.status === 'upcoming' || t.status === 'active' || t.status === 'confirmed' || t.status === 'booked'
     ) || null;
   }, [tickets]);
 
@@ -1122,7 +1165,7 @@ export default function Dashboard() {
           </div>
 
           {/* Best Departure */}
-          <BestDepartureCard usualRoute={usualRoute} />
+          <SmarterTiming usualRoute={usualRoute} />
 
           {/* Metro Stats Card */}
           <div style={{

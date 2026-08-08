@@ -17,14 +17,28 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
+// Common Ahmedabad local abbreviations to improve ORS geocoding accuracy
+const ALIASES = {
+  'lj': 'LJ University',
+  'iim': 'IIM Ahmedabad',
+  'iima': 'IIM Ahmedabad',
+  'ld': 'LD College of Engineering',
+  'gls': 'GLS University',
+  'nirma': 'Nirma University',
+  'cept': 'CEPT University'
+};
+
 /**
  * Geocode a typed location or quick-pick chip into coordinates
  */
 exports.geocodeLocation = async (query) => {
+  const normalizedQuery = query.trim().toLowerCase();
+  const expandedQuery = ALIASES[normalizedQuery] || query;
+
   const { data } = await axios.get(`${ORS_BASE}/geocode/search`, {
     params: {
       api_key: ORS_API_KEY,
-      text: `${query}, Ahmedabad, India`,
+      text: `${expandedQuery}, Ahmedabad, India`,
       size: 1,
     },
   });

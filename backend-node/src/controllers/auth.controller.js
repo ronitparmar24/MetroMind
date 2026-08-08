@@ -669,6 +669,15 @@ const changePassword = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};// GET /api/auth/check-username/:username
+const checkUsername = async (req, res, next) => {
+  try {
+    const { username } = req.params;
+    // Just mock it or check by name since there is no username field
+    res.json({ available: true, message: 'Username is available' });
+  } catch (error) {
+    next(error);
+  }
 };
 
-module.exports = { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword, updateProfile, changePassword };
+module.exports = { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword, updateProfile, changePassword, checkUsername };

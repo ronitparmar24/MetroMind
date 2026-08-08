@@ -72,9 +72,13 @@ router.get('/tickets', async (req, res) => {
     let query = {};
     if (status) query.status = status;
     if (dateFrom || dateTo) {
-      query.createdAt = {};
-      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
-      if (dateTo) query.createdAt.$lte = new Date(dateTo);
+      query.travelDate = {};
+      if (dateFrom) query.travelDate.$gte = new Date(dateFrom);
+      if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setUTCHours(23, 59, 59, 999);
+        query.travelDate.$lte = toDate;
+      }
     }
 
     const tickets = await Ticket.find(query)

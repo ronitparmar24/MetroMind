@@ -28,16 +28,22 @@ export default function Spending() {
   if (loading) return <div className="page"><LoadingSpinner /></div>;
   if (!data) return <div className="page"><p>No spending data available</p></div>;
 
-  const chartData = Object.entries(data.dailySpending || {}).map(([date, amount]) => ({
-    date: date.slice(5), amount,
-  }));
+  // Generate the last 30 days to ensure the chart timeline is consistent
+  // and bars are placed correctly along the x-axis even with sparse data.
+  const chartData = Array.from({ length: 30 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
+    
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
 
-  // Recharts sometimes fails to render a BarChart if there is exactly 1 data point.
-  // Pad with empty data points if necessary to ensure it renders axes properly.
-  if (chartData.length === 1) {
-    chartData.unshift({ date: 'Start', amount: 0 });
-    chartData.push({ date: 'End', amount: 0 });
-  }
+    return {
+      date: `${mm}-${dd}`,
+      amount: data.dailySpending?.[dateStr] || 0,
+    };
+  });
 
   return (
     <div className="page">

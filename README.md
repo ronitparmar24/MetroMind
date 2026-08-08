@@ -58,7 +58,7 @@ npm run dev          # http://localhost:3000
 ```bash
 cd backend-node
 npm install
-cp .env.example .env   # fill in values
+cp .env.template .env   # CAUTION: Run this ONLY ONCE to avoid overwriting your keys!
 npm run dev             # http://localhost:5000
 ```
 
@@ -68,7 +68,7 @@ cd backend-python
 python -m venv venv
 # Windows: venv\Scripts\activate | Linux/Mac: source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
+cp .env.template .env   # CAUTION: Run this ONLY ONCE to avoid overwriting your keys!
 python manage.py migrate
 python apps/predict/ml/train.py   # ONE-TIME: train ML model
 python manage.py runserver 8000   # http://localhost:8000

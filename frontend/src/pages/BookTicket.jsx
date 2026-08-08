@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../components/common/Toast';
 import { useCrowdForecast } from '../hooks/useCrowd';
 import { useWallet } from '../hooks/useWallet';
-import { bookTicket, checkHoliday } from '../api/tickets.api';
+import { bookTicket, checkHoliday, getDailyFact } from '../api/tickets.api';
 import { getMetroCard } from '../api/analytics.api';
 import { STATIONS, LINES } from '../constants/stations';
 import { calculateFare, isPeakHour } from '../utils/fareEngine';
@@ -157,8 +157,9 @@ function CrowdHourBar({ source, selectedHour, onSelect, travelDate }) {
 /* ── FareBreakdown ─────────────────────────────────────────── */
 function FareBreakdown({ fareData, passengers, holidayInfo, metroCardDiscount = 0, paymentMethod = 'wallet' }) {
   if (!fareData) return null;
-  const chargeable = passengers.filter(p => !p.age || parseInt(p.age) > 4).length;
-  const free = passengers.filter(p => p.age && parseInt(p.age) <= 4).length;
+  const fullFareCount = passengers.filter(p => !p.age || parseInt(p.age) >= 4).length;
+  const halfFareCount = passengers.filter(p => p.age && parseInt(p.age) >= 1 && parseInt(p.age) <= 3).length;
+  const freeCount = passengers.filter(p => p.age && parseInt(p.age) <= 0).length;
 
   // If we have a live holiday discount from the API, apply it to the preview fare
   const liveHoliday = holidayInfo?.isHoliday;
@@ -196,10 +197,11 @@ function FareBreakdown({ fareData, passengers, holidayInfo, metroCardDiscount = 
         {[
           ['📏 Distance', `${fareData.distance} km`],
           ['🎫 Base fare', `₹${fareData.baseFare}`],
-          chargeable > 0 ? ['👥 Passengers', `${chargeable} × ₹${fareData.baseFare}`] : null,
-          free > 0 ? ['👶 Child (Free)', `${free} × ₹0`] : null,
-          fareData.isPeak && !isHolidayFinal && chargeable > 0 ? ['⚡ Peak surcharge', '+20%'] : null,
-          isHolidayFinal && chargeable > 0 ? ['🎉 Holiday Discount', '-15%'] : null,
+          fullFareCount > 0 ? ['👥 Passengers', `${fullFareCount} × ₹${fareData.baseFare}`] : null,
+          halfFareCount > 0 ? ['🧒 Child (50% Off)', `${halfFareCount} × ₹${Math.round(fareData.baseFare * 0.5)}`] : null,
+          freeCount > 0 ? ['👶 Child (Free)', `${freeCount} × ₹0`] : null,
+          fareData.isPeak && !isHolidayFinal && (fullFareCount + halfFareCount) > 0 ? ['⚡ Peak surcharge', '+20%'] : null,
+          isHolidayFinal && (fullFareCount + halfFareCount) > 0 ? ['🎉 Holiday Discount', '-15%'] : null,
           metroCardDiscount > 0 ? ['🪪 Metro Card (-5%)', `-₹${metroCardDiscount}`] : null,
         ].filter(Boolean).map(([label, val]) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
@@ -271,6 +273,8 @@ export default function BookTicket() {
   // Live holiday check from backend
   const [holidayInfo, setHolidayInfo] = useState(null);
   const [holidayLoading, setHolidayLoading] = useState(false);
+  const [dailyFact, setDailyFact] = useState('');
+  const [factLoading, setFactLoading] = useState(false);
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState('wallet'); // 'wallet' | 'metrocard'
   const [metroCard, setMetroCard] = useState(null); // null = not loaded yet
@@ -325,6 +329,20 @@ export default function BookTicket() {
       }
     };
     doCheck();
+
+    const doFact = async () => {
+      setFactLoading(true);
+      try {
+        const res = await getDailyFact(travelDate);
+        if (!cancelled) setDailyFact(res.data.fact);
+      } catch {
+        if (!cancelled) setDailyFact('Enjoy your seamless metro journey today!');
+      } finally {
+        if (!cancelled) setFactLoading(false);
+      }
+    };
+    doFact();
+
     return () => { cancelled = true; };
   }, [travelDate]);
 
@@ -336,8 +354,7 @@ export default function BookTicket() {
     const destStation = STATIONS.find(s => s.name === destination);
     if (!srcStation || !destStation) return null;
     const dayOfWeek = new Date(travelDate).getDay();
-    const chargeableCount = passengers.filter(p => !p.age || parseInt(p.age) > 4).length;
-    return calculateFare(srcStation, destStation, travelHour || new Date().getHours(), dayOfWeek, chargeableCount, travelDate);
+    return calculateFare(srcStation, destStation, travelHour || new Date().getHours(), dayOfWeek, passengers, travelDate);
   }, [source, destination, travelDate, travelHour, passengers]);
 
   const fromStationId = useMemo(() => STATIONS.find(s => s.name === source)?.id || null, [source]);
@@ -378,6 +395,7 @@ export default function BookTicket() {
     e.preventDefault();
     if (!source || !destination || !travelDate || !travelTime) { toast.error('Please fill in all required fields'); return; }
     if (validPassengers.length === 0) { toast.error('Please add at least one passenger with name and age'); return; }
+    if (validPassengers.some(p => /\d/.test(p.name))) { toast.error('Passenger name cannot contain numbers'); return; }
 
     // Balance check for the selected payment source
     if (paymentMethod === 'metrocard') {
@@ -494,6 +512,38 @@ export default function BookTicket() {
 
               {inputMode === 'search' && (
                 <div>
+                  {/* Keyboard Shortcuts */}
+                  <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                      <div>
+                        <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                          Keyboard Shortcuts
+                        </h4>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px', marginBottom: 0 }}>
+                          Quick navigation keys
+                        </p>
+                      </div>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#0ea5e9', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)' }}>
+                        ⌨️
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {[
+                        { label: 'Go to Dashboard', key: 'H' },
+                        { label: 'Book Ticket', key: 'B' },
+                        { label: 'My Tickets', key: 'T' },
+                        { label: 'Wallet', key: 'W' },
+                        { label: 'Close Sidebar / Escape', key: 'Esc' },
+                        { label: 'Skip to Content', key: 'Tab' },
+                      ].map((shortcut) => (
+                        <div key={shortcut.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{shortcut.label}</span>
+                          <kbd style={{ background: '#1e293b', color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, boxShadow: '0 2px 0 #0f172a, inset 0 1px 0 rgba(255,255,255,0.1)' }}>{shortcut.key}</kbd>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <StationSelector
                     label="From — Departure" value={source} onChange={setSource}
                     excludeStation={destination} color="#22c55e" icon="🟢"
@@ -615,9 +665,14 @@ export default function BookTicket() {
                       onFocus={e => e.target.style.borderColor = '#6366f1'}
                       onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
                     />
-                    {p.age && parseInt(p.age) <= 4 && (
+                    {p.age && parseInt(p.age) <= 0 && (
                       <div style={{ flexShrink: 0, background: 'rgba(34,197,94,0.15)', color: '#16a34a', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                         👶 Free
+                      </div>
+                    )}
+                    {p.age && parseInt(p.age) >= 1 && parseInt(p.age) <= 3 && (
+                      <div style={{ flexShrink: 0, background: 'rgba(245,158,11,0.15)', color: '#d97706', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        🧒 50% Off
                       </div>
                     )}
                     {passengers.length > 1 && (
@@ -716,21 +771,15 @@ export default function BookTicket() {
 
           {/* ═══ RIGHT SIDEBAR ═══ */}
           <div className="book-sidebar" style={{ position: 'sticky', top: '80px' }}>
-            {/* Journey summary */}
-            <JourneySummary source={source} destination={destination} travelDate={travelDate} travelHour={travelHour} />
-
-            {/* Fare breakdown */}
-            {farePreview && <FareBreakdown fareData={farePreview} passengers={passengers} holidayInfo={holidayInfo} metroCardDiscount={metroCardDiscount} paymentMethod={paymentMethod} />}
-
             {/* Travel Tips */}
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '14px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '14px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', marginBottom: '16px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>💡 Smart Tips</div>
               {[
-                { icon: '🕐', tip: 'Off-peak (11am–5pm) saves you 20% on fares' },
-                { icon: '👥', tip: 'Group bookings (up to 6 passengers) in one go' },
-                { icon: '🌿', tip: 'Every ride saves ~90g CO₂ vs driving' },
-                { icon: '🏆', tip: 'Earn 1 loyalty point per ₹10 spent' },
-                { icon: '📱', tip: 'QR code valid for 30 mins after travel time' },
+                { icon: '💳', tip: 'Pay with Metro Card for an instant 10% discount' },
+                { icon: '🎉', tip: 'Travel on public holidays to get a 15% discount' },
+                { icon: '👶', tip: 'Children aged 4 and under ride completely free!' },
+                { icon: '🌿', tip: 'Taking the metro saves ~90g CO₂ per km vs driving' },
+                { icon: '🕒', tip: 'Your QR ticket remains valid for 1 hour after travel' },
               ].map(({ icon, tip }) => (
                 <div key={tip} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-start' }}>
                   <span style={{ fontSize: '14px', flexShrink: 0, marginTop: '1px' }}>{icon}</span>
@@ -738,6 +787,25 @@ export default function BookTicket() {
                 </div>
               ))}
             </div>
+
+            {/* AI Daily Fact Widget */}
+            <div style={{ background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%)', border: '1px solid #bae6fd', borderRadius: '16px', padding: '14px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '16px' }}>✨</span>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.06em' }}>MetroMind AI</span>
+              </div>
+              {factLoading ? (
+                <div style={{ fontSize: '0.82rem', color: '#0ea5e9', fontStyle: 'italic' }}>Generating daily insight...</div>
+              ) : (
+                <div style={{ fontSize: '0.82rem', color: '#0c4a6e', lineHeight: 1.45 }}>{dailyFact}</div>
+              )}
+            </div>
+
+            {/* Journey summary */}
+            <JourneySummary source={source} destination={destination} travelDate={travelDate} travelHour={travelHour} />
+
+            {/* Fare breakdown */}
+            {farePreview && <FareBreakdown fareData={farePreview} passengers={passengers} holidayInfo={holidayInfo} metroCardDiscount={metroCardDiscount} paymentMethod={paymentMethod} />}
 
             {/* Balance warning */}
             {farePreview && balance !== null && balance < farePreview.fare && (

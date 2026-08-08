@@ -30,7 +30,7 @@ export default function AdminAnnouncements() {
   // Form state
   const [title, setTitle]       = useState('');
   const [message, setMessage]   = useState('');
-  const [priority, setPriority] = useState('low');
+  const [priority, setPriority] = useState('info');
   const [isActive, setIsActive] = useState(true);
   const [error, setError]       = useState('');
 
@@ -56,7 +56,7 @@ export default function AdminAnnouncements() {
       setEditingId(null);
       setTitle('');
       setMessage('');
-      setPriority('low');
+      setPriority('info');
       setIsActive(true);
     }
     setShowModal(true);
@@ -150,7 +150,7 @@ export default function AdminAnnouncements() {
                     <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'1.05rem', fontWeight:800, color:'var(--adm-text)' }}>
                       {a.title}
                     </div>
-                    <span className={`admin-badge ${a.priority === 'high' ? 'admin-badge-red' : a.priority === 'medium' ? 'admin-badge-yellow' : 'admin-badge-blue'}`}>
+                    <span className={`admin-badge ${a.priority === 'critical' ? 'admin-badge-red' : a.priority === 'warning' ? 'admin-badge-yellow' : 'admin-badge-blue'}`}>
                       {a.priority}
                     </span>
                   </div>
@@ -226,15 +226,15 @@ export default function AdminAnnouncements() {
                 <div>
                   <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, color:'var(--adm-text-3)', marginBottom:6 }}>PRIORITY</label>
                   <select className="admin-input" value={priority} onChange={e => setPriority(e.target.value)}>
-                    <option value="low">Low (Blue)</option>
-                    <option value="medium">Medium (Yellow)</option>
-                    <option value="high">High (Red)</option>
+                    <option value="info">Info (Blue)</option>
+                    <option value="warning">Warning (Yellow)</option>
+                    <option value="critical">Critical (Red)</option>
                   </select>
                 </div>
                 <div>
                   <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, color:'var(--adm-text-3)', marginBottom:6 }}>STATUS</label>
-                  <label className="admin-toggle-switch" style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ position:'relative', width:44, height:24 }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
+                    <div className="admin-toggle-switch">
                       <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
                       <div className="admin-toggle-track" />
                       <div className="admin-toggle-thumb" />
@@ -253,7 +253,7 @@ export default function AdminAnnouncements() {
                   display: 'flex', alignItems: 'center', gap: 12, overflow: 'hidden'
                 }}>
                   <div style={{
-                    background: priority === 'high' ? ROSE : priority === 'medium' ? AMBER : PURPLE,
+                    background: priority === 'critical' ? ROSE : priority === 'warning' ? AMBER : PURPLE,
                     color: '#000', fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: 12, textTransform: 'uppercase', flexShrink: 0
                   }}>
                     {priority}

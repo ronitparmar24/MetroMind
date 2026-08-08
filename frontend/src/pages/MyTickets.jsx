@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTickets } from '../hooks/useTickets';
 import TicketCard from '../components/tickets/TicketCard';
 import QRModal from '../components/common/QRModal';
+import CancellationPolicy from '../components/tickets/CancellationPolicy';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useToast } from '../components/common/Toast';
 import { cancelTicket, downloadTicketPDF } from '../api/tickets.api';
@@ -86,6 +87,8 @@ export default function MyTickets() {
           </p>
         </div>
       )}
+
+      <CancellationPolicy />
 
       <QRModal
         isOpen={qrModal.open}

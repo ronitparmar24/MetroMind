@@ -479,13 +479,21 @@ export default function JourneyPlanner() {
     setTimeout(async () => {
       setGeoLoading(true);
       try {
-        const geo = await geocodeLocation(label);
-        setResolvedAddr(geo);
-        setNearestResults(findNearestStations(geo.lat, geo.lng, 3));
+        const geo = await geocodeLocationRouting(label);
+        setResolvedAddr({ ...geo, displayName: geo.label });
+        const stations = await getNearestStationsRouting(geo.lat, geo.lng);
+        setNearestResults(stations);
         saveRecent(label);
         setRecentSearches(loadRecent());
-      } catch { setGeoError(`"${label}" not found.`); }
-      finally { setGeoLoading(false); }
+      } catch (err) {
+        if (err.response?.status === 404 || err.message === 'Location not found') {
+          setGeoError(`"${label}" not found. Try a landmark, area, or road name.`);
+        } else {
+          setGeoError('Location service unavailable. Please try again.');
+        }
+      } finally {
+        setGeoLoading(false);
+      }
     }, 0);
   };
 

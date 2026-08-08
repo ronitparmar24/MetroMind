@@ -82,6 +82,10 @@ exports.getHolidaysForYear = async (year) => {
       );
       holidayMap = _parseNager(data);
       source = 'Nager.Date';
+      
+      if (Object.keys(holidayMap).length === 0) {
+        throw new Error('Nager.Date returned empty array/no data');
+      }
     } catch (err) {
       console.warn(`[Holiday] Nager.Date also failed (${err.message?.slice(0, 60)}) — using hardcoded fallback list.`);
       // Last-resort hardcoded list of major Indian public holidays (MM-DD)

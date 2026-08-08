@@ -76,7 +76,10 @@ app.use(limiter);
 app.use(auditMiddleware);
 
 // 7. Mount routes
+const publicRoutes   = require('./routes/public.routes');
+
 app.use('/api/auth', authRoutes);
+app.use('/api/public', publicRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
@@ -98,6 +101,7 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/holidays',   holidaysRoutes);
 app.use('/api/routing',    routingRoutes);
 app.use('/api/commuter',   commuterRoutes);
+app.get('/api/check-username/:username', require('./controllers/auth.controller').checkUsername);
 
 // Health check — returns DB + ML status for admin dashboard
 app.get('/api/health', async (req, res) => {

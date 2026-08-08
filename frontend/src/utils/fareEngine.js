@@ -107,13 +107,26 @@ export const calculateFare = (source, dest, hour, dayOfWeek, passengers = 1, dat
   const peak         = !holiday && isPeakHour(hour, dayOfWeek);
   
   let perPassenger = peak ? Math.round(baseFare * 1.2) : baseFare;
-  if (holiday) {
-    perPassenger = Math.round(perPassenger * 0.85); // 15% discount on holidays (static fallback; live check via API)
+
+  let totalFare = 0;
+  if (Array.isArray(passengers)) {
+    passengers.forEach(p => {
+      const age = p.age ? parseInt(p.age) : 99; // Default adult
+      if (age <= 0) {
+        // Free
+      } else if (age >= 1 && age <= 3) {
+        totalFare += Math.round(perPassenger * 0.5);
+      } else {
+        totalFare += perPassenger;
+      }
+    });
+  } else {
+    totalFare = perPassenger * passengers;
   }
 
   return {
     baseFare,
-    fare:          perPassenger * passengers,
+    fare:          totalFare,
     perPassenger,
     distance:      Math.round(straightKm * 100) / 100,
     trackDistance: trackKm,

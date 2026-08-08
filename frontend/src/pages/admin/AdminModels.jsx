@@ -259,10 +259,10 @@ export default function AdminModels() {
                 <linearGradient id="gPersonal" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#34d399" stopOpacity={0.5}/><stop offset="95%" stopColor="#34d399" stopOpacity={0}/></linearGradient>
                 <linearGradient id="gDeparture"x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#fbbf24" stopOpacity={0.5}/><stop offset="95%" stopColor="#fbbf24" stopOpacity={0}/></linearGradient>
               </defs>
-              <Area type="monotone" dataKey="crowd"          stackId="1" stroke="#818cf8" fill="url(#gCrowd)"    strokeWidth={2} />
-              <Area type="monotone" dataKey="anomaly"        stackId="1" stroke="#f87171" fill="url(#gAnomaly)"  strokeWidth={2} />
-              <Area type="monotone" dataKey="personality"    stackId="1" stroke="#34d399" fill="url(#gPersonal)" strokeWidth={2} />
-              <Area type="monotone" dataKey="best_departure" stackId="1" stroke="#fbbf24" fill="url(#gDeparture)"strokeWidth={2} />
+              <Area type="monotone" dataKey="crowd"          stroke="#818cf8" fill="url(#gCrowd)"    strokeWidth={2} />
+              <Area type="monotone" dataKey="anomaly"        stroke="#f87171" fill="url(#gAnomaly)"  strokeWidth={2} />
+              <Area type="monotone" dataKey="personality"    stroke="#34d399" fill="url(#gPersonal)" strokeWidth={2} />
+              <Area type="monotone" dataKey="best_departure" stroke="#fbbf24" fill="url(#gDeparture)"strokeWidth={2} />
             </AreaChart>
           </div>
         </div>

@@ -54,17 +54,16 @@ export default function LostFound() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.itemDescription) { toast.error('Please describe the item'); return; }
+    if (form.contactPhone && form.contactPhone.length !== 10) { toast.error('Contact phone must be exactly 10 digits'); return; }
     setLoading(true);
     try {
-      await reportLostItem(form);
+      const submitData = { ...form, contactPhone: form.contactPhone ? '+91 ' + form.contactPhone : '' };
+      await reportLostItem(submitData);
       const id = 'LF' + Math.random().toString(36).slice(2, 8).toUpperCase();
       setTicketId(id);
       setSubmitted(true);
     } catch (err) {
-      // Even if backend fails, show success UX with ticket ID
-      const id = 'LF' + Math.random().toString(36).slice(2, 8).toUpperCase();
-      setTicketId(id);
-      setSubmitted(true);
+      toast.error(err.response?.data?.message || 'Failed to submit report. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -149,13 +148,15 @@ export default function LostFound() {
                 />
               </div>
 
-              {/* Phone */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }}>Contact Phone</label>
-                <input type="tel" value={form.contactPhone} onChange={e => update('contactPhone', e.target.value)}
-                  placeholder="+91 98765 43210"
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '14px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', borderRadius: '14px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', overflow: 'hidden' }}>
+                  <span style={{ padding: '12px 0 12px 16px', color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>+91</span>
+                  <input type="tel" value={form.contactPhone} onChange={e => update('contactPhone', e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
+                    placeholder="98765 43210"
+                    style={{ flex: 1, padding: '12px 16px 12px 8px', background: 'transparent', color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none', border: 'none' }}
+                  />
+                </div>
               </div>
 
               <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: '16px', background: 'linear-gradient(135deg,#6366f1,#a855f7)', color: '#fff', border: 'none', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', opacity: loading ? 0.7 : 1, boxShadow: '0 4px 16px rgba(99,102,241,0.35)', transition: 'all 0.2s ease' }}>

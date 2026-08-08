@@ -63,6 +63,12 @@ const bookTicket = async (req, res, next) => {
       return next(err);
     }
 
+    if (passengers.some(p => /\d/.test(p.name))) {
+      const err = new Error('Passenger name cannot contain numbers');
+      err.statusCode = 400;
+      return next(err);
+    }
+
     // Find station coordinates
     const sourceStation = STATIONS.find((s) => s.name === source);
     const destStation = STATIONS.find((s) => s.name === destination);
@@ -83,7 +89,7 @@ const bookTicket = async (req, res, next) => {
       { lat: destStation.lat, lng: destStation.lng },
       hour,
       dayOfWeek,
-      passengers.length,
+      passengers,
       travelDate
     );
 
@@ -294,8 +300,8 @@ const getTickets = async (req, res, next) => {
       const ticketDateTime = new Date(ticket.travelDate);
       ticketDateTime.setHours(hours, parseInt(minutes || 0, 10), 0, 0);
       
-      // Add 6 hours
-      const expiryTime = new Date(ticketDateTime.getTime() + 6 * 60 * 60 * 1000);
+      // Add 1 hour
+      const expiryTime = new Date(ticketDateTime.getTime() + 1 * 60 * 60 * 1000);
       
       if (now >= expiryTime) {
         ticket.status = 'completed';
@@ -344,6 +350,8 @@ const cancelTicket = async (req, res, next) => {
     const settings = await SystemSetting.findOne();
     const windowMins = settings ? settings.ticketCancellationWindow : 30;
 
+    let refundAmount = ticket.fare;
+
     if (ticket.travelDate && ticket.travelTime) {
       let timeParts = ticket.travelTime.split(' ');
       let time = timeParts[0];
@@ -358,11 +366,14 @@ const cancelTicket = async (req, res, next) => {
       const ticketDateTime = new Date(ticket.travelDate);
       ticketDateTime.setHours(hours, parseInt(minutes || 0, 10), 0, 0);
       
-      const diffMins = (ticketDateTime.getTime() - Date.now()) / (1000 * 60);
-      if (diffMins < windowMins) {
-        const err = new Error(`Cancellations are only allowed up to ${windowMins} minutes before departure.`);
-        err.statusCode = 400;
-        return next(err);
+      const diffHours = (ticketDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
+      
+      if (diffHours >= 24) {
+        refundAmount = Math.round(ticket.fare * 0.8);
+      } else if (diffHours > 0) {
+        refundAmount = Math.round(ticket.fare * 0.5);
+      } else {
+        refundAmount = 0;
       }
     }
 
@@ -372,29 +383,31 @@ const cancelTicket = async (req, res, next) => {
 
     // Refund to wallet
     const wallet = await Wallet.findOne({ userId: req.user._id });
-    wallet.balance += ticket.fare;
+    wallet.balance += refundAmount;
     await wallet.save();
 
-    // Record refund transaction
-    await Transaction.create({
-      userId: req.user._id,
-      type: 'credit',
-      amount: ticket.fare,
-      balance: wallet.balance,
-      ref: ticket.ticketId,
-      note: `Refund: ${ticket.source} → ${ticket.destination}`,
-    });
+    if (refundAmount > 0) {
+      // Record refund transaction
+      await Transaction.create({
+        userId: req.user._id,
+        type: 'credit',
+        amount: refundAmount,
+        balance: wallet.balance,
+        ref: ticket.ticketId,
+        note: `Refund: ${ticket.source} → ${ticket.destination} (${Math.round((refundAmount/ticket.fare)*100)}%)`,
+      });
+    }
 
     // Emit cancellation event
     bookingBus.emit('cancelled', {
       ticketId: ticket.ticketId,
       userId: req.user._id,
-      refundAmount: ticket.fare,
+      refundAmount: refundAmount,
     });
 
     res.json({
       success: true,
-      message: `Ticket cancelled. ₹${ticket.fare} refunded to wallet.`,
+      message: refundAmount > 0 ? `Ticket cancelled. ₹${refundAmount} refunded to wallet.` : 'Ticket cancelled. No refund is available for this ticket.',
       ticket,
       newBalance: wallet.balance,
     });

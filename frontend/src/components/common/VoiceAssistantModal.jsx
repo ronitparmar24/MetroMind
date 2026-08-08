@@ -203,8 +203,11 @@ export default function VoiceAssistantModal({ isOpen, onClose, weatherData }) {
   }, [isOpen, listening]);
 
   /* ── TTS ─────────────────────────────────────────────────────────────── */
-  const speak = useCallback((text) => {
-    if (!('speechSynthesis' in window)) return;
+  const speak = useCallback((text, onComplete) => {
+    if (!('speechSynthesis' in window)) {
+      if (onComplete) onComplete();
+      return;
+    }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'en-IN'; u.rate = 1.05; u.pitch = 1.05;
@@ -213,7 +216,14 @@ export default function VoiceAssistantModal({ isOpen, onClose, weatherData }) {
     );
     if (v) u.voice = v;
     u.onstart = () => setIsSpeaking(true);
-    u.onend   = () => setIsSpeaking(false);
+    u.onend   = () => {
+      setIsSpeaking(false);
+      if (onComplete) onComplete();
+    };
+    u.onerror = () => {
+      setIsSpeaking(false);
+      if (onComplete) onComplete();
+    };
     window.speechSynthesis.speak(u);
   }, []);
 
@@ -239,10 +249,12 @@ export default function VoiceAssistantModal({ isOpen, onClose, weatherData }) {
       });
       const { reply, action } = res.data;
       setMessages(prev => [...prev, { role: 'model', text: reply }]);
-      speak(reply);
-      if (action?.type === 'NAVIGATE' && action.target) {
-        setTimeout(() => { onClose(); navigate(action.target); }, 1800);
-      }
+      speak(reply, () => {
+        if (action?.type === 'NAVIGATE' && action.target) {
+          onClose();
+          navigate(action.target);
+        }
+      });
     } catch (err) {
       const fb = 'Sorry, I hit a snag. Try asking about your wallet, tickets, or live trains!';
       setMessages(prev => [...prev, { role: 'model', text: fb }]);

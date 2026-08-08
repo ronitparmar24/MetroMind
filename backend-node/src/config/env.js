@@ -19,7 +19,7 @@ if (missing.length > 0) {
   if (process.env.VERCEL) {
     throw new Error(`Missing env vars: ${missing.join(', ')}`);
   }
-  console.error('   Copy .env.example to .env and fill in the values.');
+  console.error('   Copy .env.template to .env and fill in the values.');
   process.exit(1);
 }
 

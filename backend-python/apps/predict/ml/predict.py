@@ -315,11 +315,27 @@ def run_best_departure(station: str, target_hour: int, day_of_week: int) -> dict
         }
     """
     station = normalize_station(station)
-    # Check hours: target-1, target, target+1 (clamped to metro operating hours 6-22)
+    
+    from datetime import datetime
+    now = datetime.now()
+    
+    # If it's today and target_hour - 1 is in the past, shift the 3-hour window forward
+    if day_of_week == now.weekday() and (target_hour - 1) < now.hour:
+        base_hours = [max(target_hour, now.hour), max(target_hour, now.hour) + 1, max(target_hour, now.hour) + 2]
+    else:
+        base_hours = [target_hour - 1, target_hour, target_hour + 1]
+        
     candidate_hours = sorted(set(
-        max(6, min(22, h))
-        for h in [target_hour - 1, target_hour, target_hour + 1]
+        max(6, min(22, h)) for h in base_hours
     ))
+    
+    # Final safety: strictly remove any past hours for today
+    if day_of_week == now.weekday():
+        candidate_hours = [h for h in candidate_hours if h >= now.hour]
+        
+    # Fallback if no valid hours (e.g. after 22:00)
+    if not candidate_hours:
+        candidate_hours = [max(6, min(22, target_hour))]
 
     options = []
     bucket_score_map = {'Low': 1, 'Medium': 2, 'High': 3}

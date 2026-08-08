@@ -31,7 +31,7 @@ const LostFoundSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['electronics', 'bags', 'documents', 'clothing', 'other'],
+      enum: ['electronics', 'bags', 'wallet', 'keys', 'documents', 'jewellery', 'umbrella', 'clothing', 'other'],
       default: 'other',
     },
   },
