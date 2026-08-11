@@ -285,7 +285,7 @@ const sendWelcomeEmail = async (toEmail, userName) => {
 
             <!-- CTA -->
             <div style="text-align:center;margin:0 0 24px">
-              <a href="http://localhost:3000/dashboard"
+              <a href="${process.env.CLIENT_URL || 'https://metro-mind-lemon.vercel.app'}/dashboard"
                 style="display:inline-block;background:linear-gradient(135deg,#4F46E5,#7C3AED);color:white;
                 text-decoration:none;padding:14px 36px;border-radius:10px;font-weight:700;font-size:15px;
                 letter-spacing:0.2px">
