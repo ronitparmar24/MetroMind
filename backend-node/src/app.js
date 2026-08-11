@@ -40,27 +40,35 @@ const app = express();
 
 // --- Middleware stack (ORDER MATTERS) ---
 
-// 1. Security headers
-app.use(helmet());
-
-// 2. CORS — allow the React frontend (local + Vercel deployed)
-app.use(cors({
+// 0. Handle CORS preflight (OPTIONS) FIRST — before helmet or any other middleware.
+//    Without this, preflight requests fall through to routes and get rejected.
+const corsOptions = {
   origin: function (origin, callback) {
     const allowed = [
       CLIENT_URL,
       'http://localhost:3000',
       'http://localhost:3001',
     ];
-    // Allow requests with no origin (mobile apps, curl, etc.)
+    // Allow requests with no origin (mobile apps, curl, Vercel serverless-to-serverless)
     if (!origin) return callback(null, true);
-    // Allow any *.vercel.app domain
+    // Allow any *.vercel.app domain (covers all preview + production deployments)
     if (origin.endsWith('.vercel.app') || allowed.includes(origin)) {
       return callback(null, true);
     }
     callback(null, false);
   },
   credentials: true,
-}));
+  optionsSuccessStatus: 204,
+};
+
+// Respond immediately to all OPTIONS preflight requests
+app.options('*', cors(corsOptions));
+
+// 1. Security headers
+app.use(helmet());
+
+// 2. CORS — apply to all regular requests
+app.use(cors(corsOptions));
 
 // 3. Body parsing
 app.use(express.json({ limit: '10mb' }));
