@@ -6,9 +6,8 @@ pandas>=2.1.0
 numpy>=1.26.0
 scikit-learn>=1.4.0
 joblib>=1.3.0
-seaborn>=0.13.0
-matplotlib>=3.8.0
-plotly>=5.18.0
 beautifulsoup4>=4.12.0
 requests>=2.31.0
-shap==0.48.0
+# matplotlib, seaborn, plotly, shap removed for Vercel bundle size (<500 MB limit)
+# These are used via lazy try/except imports — the API degrades gracefully when unavailable
+# Install locally with: pip install matplotlib seaborn plotly shap

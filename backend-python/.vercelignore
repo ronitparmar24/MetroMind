@@ -1,0 +1,16 @@
+# Exclude heavy local-only directories from Vercel bundle
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+notebooks/
+data/
+db.sqlite3
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
