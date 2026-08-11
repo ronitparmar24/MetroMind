@@ -64,8 +64,11 @@ const corsOptions = {
 // Respond immediately to all OPTIONS preflight requests
 app.options('*', cors(corsOptions));
 
-// 1. Security headers
-app.use(helmet());
+// 1. Security headers — disable policies that interfere with CORS cross-origin requests
+app.use(helmet({
+  crossOriginResourcePolicy: false,   // don't block cross-origin resource loads
+  contentSecurityPolicy: false,       // not needed for a REST API (no HTML)
+}));
 
 // 2. CORS — apply to all regular requests
 app.use(cors(corsOptions));
