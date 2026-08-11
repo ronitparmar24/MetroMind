@@ -4,8 +4,15 @@
 
 import axios from 'axios';
 
+// Use the Vercel env var if set, otherwise fall back to the canonical
+// Node backend production URL. Never fall back to '' (same-origin) since
+// the frontend and Node backend are on different Vercel projects.
+const NODE_API_BASE =
+  import.meta.env.VITE_NODE_API_URL ||
+  'https://metro-mind-x9mm.vercel.app';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_NODE_API_URL || '',
+  baseURL: NODE_API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -57,11 +57,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'metromind.wsgi.application'
 
 # CORS — only accept requests from the Node service (API Gateway pattern)
-NODE_SERVICE_URL = config('NODE_SERVICE_URL', default='https://metro-mind-x9mm-pvpus2plx-ronit-parmar-s-projects.vercel.app')
+# Use canonical Vercel URL (not deployment-hash URLs which expire with each deploy)
+NODE_SERVICE_URL = config('NODE_SERVICE_URL', default='https://metro-mind-x9mm.vercel.app')
 CORS_ALLOWED_ORIGINS = [
-    config('NODE_SERVICE_URL'),
+    config('NODE_SERVICE_URL', default='https://metro-mind-x9mm.vercel.app'),
+    'https://metro-mind-lemon.vercel.app',   # frontend production URL
 ]
 CORS_ALLOW_ALL_ORIGINS = False # In dev, allow all for testing
+
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
