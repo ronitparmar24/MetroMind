@@ -114,6 +114,34 @@ app.use('/api/routing',    routingRoutes);
 app.use('/api/commuter',   commuterRoutes);
 app.get('/api/check-username/:username', require('./controllers/auth.controller').checkUsername);
 
+// Temporary debug endpoint — shows user identity + DB data counts to diagnose data mismatch
+app.get('/api/debug/me', require('./middleware/auth.middleware').protect, async (req, res) => {
+  const mongoose = require('mongoose');
+  const Ticket = require('./models/Ticket.model');
+  const Transaction = require('./models/Transaction.model');
+  const Wallet = require('./models/Wallet.model');
+
+  const [ticketCount, txCount, wallet] = await Promise.all([
+    Ticket.countDocuments({ userId: req.user._id }),
+    Transaction.countDocuments({ userId: req.user._id }),
+    Wallet.findOne({ userId: req.user._id }),
+  ]);
+
+  res.json({
+    debug: true,
+    userId: req.user._id,
+    email: req.user.email,
+    name: req.user.name,
+    dbState: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    dbName: mongoose.connection.db?.databaseName || 'unknown',
+    tickets: ticketCount,
+    transactions: txCount,
+    walletBalance: wallet?.balance ?? 'no wallet',
+    JWT_SECRET_prefix: process.env.JWT_SECRET?.slice(0, 6) + '...',
+  });
+});
+
+
 // Health check — returns DB + ML status for admin dashboard
 app.get('/api/health', async (req, res) => {
   const mongoose = require('mongoose');
