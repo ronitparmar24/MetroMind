@@ -149,7 +149,7 @@ export default function Login() {
   const navigate = useNavigate();
   const toast = useToast();
   const formRef = useRef(null);
-  const googleBtnRef = useRef(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const clock = useClock();
 
   // Always follow OS/system theme on this public page
@@ -173,113 +173,59 @@ export default function Login() {
     return () => clearInterval(id);
   }, [showOtpFlow]);
 
-  const [isGoogleSdkReady, setIsGoogleSdkReady] = useState(false);
-  const [googleSdkFailed, setGoogleSdkFailed] = useState(false);
-
-  // Keep a stable ref to the callback so Google GIS always calls the latest version
-  const googleCallbackRef = useRef(null);
-
-  const handleGoogleCallback = async (response) => {
-    if (!response?.credential) {
-      setError('Google sign-in was cancelled or failed. Please try again.');
-      return;
-    }
-    setError('');
-    setLoading(true);
-    try {
-      // Decode picture directly from Google JWT — available before API call
-      let googlePicture = '';
-      try {
-        const parts = response.credential.split('.');
-        if (parts.length === 3) {
-          const pad = (4 - (parts[1].length % 4)) % 4;
-          const b64 = parts[1] + '='.repeat(pad);
-          const decoded = JSON.parse(atob(b64.replace(/-/g, '+').replace(/_/g, '/')));
-          googlePicture = decoded.picture || '';
-        }
-      } catch (_) { /* ignore JWT decode errors */ }
-
-      // Cache picture in localStorage — survives page refreshes without re-login
-      if (googlePicture) localStorage.setItem('mm_g_pic', googlePicture);
-
-      const res = await googleLoginApi(response.credential);
-      // Prefer backend avatar, fallback to JWT picture for old accounts without avatar saved
-      const userData = { ...res.data.user, avatar: res.data.user.avatar || googlePicture };
-
-      login(res.data.token, userData);
-      toast.success(
-        res.data.isNewUser
-          ? `Welcome to MetroMind, ${userData.name}! 🎉`
-          : `Welcome back, ${userData.name}!`
-      );
-      setShowSuccess(true);
-      setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
-      setLoading(false);
-    }
-  };
-
-  // Keep the ref up-to-date on every render
-  googleCallbackRef.current = handleGoogleCallback;
-
-  // Initialize Google Identity Services
+  // Handle id_token from Google OAuth redirect (no-popup redirect flow)
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1077224737562-8cjsrpmplh7i84ch09ai3s2j6uqlk26d.apps.googleusercontent.com';
-    let initAttempts = 0;
-    let initInterval;
-
-    // Stable wrapper — always delegates to the latest handler via ref
-    const stableCallback = (response) => googleCallbackRef.current(response);
-
-    const initGoogle = () => {
-      if (window.google?.accounts?.id) {
-        clearInterval(initInterval);
+    const hash = new URLSearchParams(window.location.hash.replace('#', '?'));
+    const idToken = hash.get('id_token');
+    if (!idToken) return;
+    // Clean the hash from the URL immediately
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setGoogleLoading(true);
+    setLoading(true);
+    (async () => {
+      try {
+        let googlePicture = '';
         try {
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: stableCallback,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
-
-          if (googleBtnRef.current) {
-            googleBtnRef.current.innerHTML = '';
-            window.google.accounts.id.renderButton(googleBtnRef.current, {
-              type: 'standard',
-              theme: 'outline',
-              size: 'large',
-              text: 'signin_with',
-              shape: 'rectangular',
-              width: 340,
-              logo_alignment: 'left',
-            });
-            setIsGoogleSdkReady(true);
+          const parts = idToken.split('.');
+          if (parts.length === 3) {
+            const pad = (4 - (parts[1].length % 4)) % 4;
+            const b64 = parts[1] + '='.repeat(pad);
+            const decoded = JSON.parse(atob(b64.replace(/-/g, '+').replace(/_/g, '/')));
+            googlePicture = decoded.picture || '';
           }
-        } catch (e) {
-          console.warn('Google GIS initialize failed:', e);
-          setGoogleSdkFailed(true);
-        }
-      } else {
-        initAttempts++;
-        if (initAttempts > 50) {
-          clearInterval(initInterval);
-          setGoogleSdkFailed(true);
-        }
+        } catch (_) { /* ignore */ }
+        if (googlePicture) localStorage.setItem('mm_g_pic', googlePicture);
+        const res = await googleLoginApi(idToken);
+        const userData = { ...res.data.user, avatar: res.data.user.avatar || googlePicture };
+        login(res.data.token, userData);
+        toast.success(res.data.isNewUser ? `Welcome to MetroMind, ${userData.name}! 🎉` : `Welcome back, ${userData.name}!`);
+        setShowSuccess(true);
+        setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
+      } catch (err) {
+        setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
+        setLoading(false);
+        setGoogleLoading(false);
       }
-    };
-
-    // Try immediately
-    if (window.google?.accounts?.id) {
-      initGoogle();
-    } else {
-      // Poll if not loaded yet
-      initInterval = setInterval(initGoogle, 100);
-    }
-
-    return () => clearInterval(initInterval);
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Redirect to Google OAuth — no popups needed, works in all browsers
+  const handleGoogleSignIn = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1077224737562-8cjsrpmplh7i84ch09ai3s2j6uqlk26d.apps.googleusercontent.com';
+    const redirectUri = window.location.origin + '/login';
+    const nonce = Math.random().toString(36).substring(2, 18);
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'id_token',
+      scope: 'openid email profile',
+      nonce,
+      prompt: 'select_account',
+    });
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -784,29 +730,35 @@ export default function Login() {
                 <div className="auth-divider auth-anim d4"><span>or</span></div>
 
                 <div className="auth-anim d5" style={{ width: '100%' }}>
-                  {/* Google button — GIS iframe handles clicks directly, no wrapper onClick */}
+                  {/* Google Sign-In — redirect OAuth flow, no popup needed */}
                   <div className="google-btn-wrapper">
-                    <div className="google-btn-inner" style={{ minHeight: '44px' }}>
-                      {/* Rendered by Google GIS SDK — handles OAuth natively */}
-                      <div ref={googleBtnRef} style={{ display: isGoogleSdkReady ? 'flex' : 'none', justifyContent: 'center', width: '100%' }} />
-                      {!isGoogleSdkReady && !googleSdkFailed && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '10px 16px', fontWeight: 600, fontSize: '14px', color: '#94a3b8', width: '100%' }}>
-                          <svg width="18" height="18" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                          </svg>
-                          <span>Connecting to Google…</span>
-                        </div>
+                    <button
+                      type="button"
+                      className="google-signin-btn"
+                      onClick={handleGoogleSignIn}
+                      disabled={googleLoading || loading}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: '10px', width: '100%', padding: '11px 16px',
+                        background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px',
+                        cursor: 'pointer', fontWeight: 600, fontSize: '14px', color: '#374151',
+                        transition: 'box-shadow 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 3px 10px rgba(0,0,0,0.13)'}
+                      onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.07)'}
+                    >
+                      {googleLoading ? (
+                        <div className="auth-spinner" style={{ width: '18px', height: '18px' }} />
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24">
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                        </svg>
                       )}
-                      {googleSdkFailed && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px 16px', fontSize: '13px', color: '#94a3b8', width: '100%' }}>
-                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>info</span>
-                          <span>Google Sign-In requires an authorized origin. Check Google Cloud Console.</span>
-                        </div>
-                      )}
-                    </div>
+                      <span>{googleLoading ? 'Signing in…' : 'Sign in with Google'}</span>
+                    </button>
                   </div>
                 </div>
               </form>
