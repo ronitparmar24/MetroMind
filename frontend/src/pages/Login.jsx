@@ -225,7 +225,7 @@ export default function Login() {
 
   // Initialize Google Identity Services
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1077224737562-8cjsrpmplh7i84ch09ai3s2j6uqlk26d.apps.googleusercontent.com';
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com';
     let initAttempts = 0;
     let initInterval;
 
