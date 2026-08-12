@@ -517,6 +517,7 @@
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.4s ease;
   animation: googleGradientRotate 3s linear infinite paused;
 }
