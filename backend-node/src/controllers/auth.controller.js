@@ -387,28 +387,55 @@ const getMe = async (req, res, next) => {
 // POST /api/auth/google
 const googleLogin = async (req, res, next) => {
   try {
-    const { credential } = req.body;
+    const { credential, code, redirectUri } = req.body;
 
-    if (!credential) {
-      const err = new Error('Google credential is required');
+    if (!credential && !code) {
+      const err = new Error('Google credential or authorization code is required');
       err.statusCode = 400;
       return next(err);
     }
 
     let payload;
+    const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-    // 1. If credential looks like an access_token (not a JWT), fetch userinfo from Google
-    //    Access tokens from @react-oauth/google implicit flow are opaque strings (not JWT format)
-    const isAccessToken = !credential.includes('.') || credential.split('.').length !== 3;
-    if (isAccessToken) {
+    // 0. If we received an authorization code (Redirect Flow), exchange it for tokens
+    let idToken = credential;
+    if (code) {
+      if (!GOOGLE_CLIENT_SECRET) {
+        return next(new Error('Server misconfiguration: missing Google Client Secret'));
+      }
+      try {
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            code,
+            client_id: GOOGLE_CLIENT_ID,
+            client_secret: GOOGLE_CLIENT_SECRET,
+            redirect_uri: redirectUri || 'https://metro-mind-lemon.vercel.app/login',
+            grant_type: 'authorization_code',
+          }),
+        });
+        const tokenData = await tokenRes.json();
+        if (!tokenRes.ok) {
+          throw new Error(`Code exchange failed: ${tokenData.error_description || tokenData.error}`);
+        }
+        idToken = tokenData.id_token;
+      } catch (err) {
+        return next(new Error(`Failed to exchange authorization code: ${err.message}`));
+      }
+    }
+
+    // 1. If token looks like an access_token (not a JWT), fetch userinfo from Google
+    const isAccessToken = !idToken.includes('.') || idToken.split('.').length !== 3;
+    if (isAccessToken && !code) {
       try {
         const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${credential}` },
+          headers: { Authorization: `Bearer ${idToken}` },
         });
-        if (!response.ok) {
-          throw new Error(`Google userinfo returned ${response.status}`);
+        if (response.ok) {
+          payload = await response.json();
         }
-        payload = await response.json();
       } catch (fetchErr) {
         console.warn('Google userinfo fetch failed:', fetchErr.message);
       }
@@ -419,7 +446,7 @@ const googleLogin = async (req, res, next) => {
       try {
         const client = new OAuth2Client(GOOGLE_CLIENT_ID);
         const ticket = await client.verifyIdToken({
-          idToken: credential,
+          idToken: idToken,
           audience: GOOGLE_CLIENT_ID,
         });
         payload = ticket.getPayload();
@@ -429,9 +456,9 @@ const googleLogin = async (req, res, next) => {
     }
 
     // 3. Fallback: decode JWT payload directly if credential is a valid JWT string
-    if (!payload && typeof credential === 'string' && !isAccessToken) {
+    if (!payload && typeof idToken === 'string' && !isAccessToken) {
       try {
-        const parts = credential.split('.');
+        const parts = idToken.split('.');
         if (parts.length === 3) {
           const base64Url = parts[1];
           const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');

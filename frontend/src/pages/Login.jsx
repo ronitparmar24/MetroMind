@@ -149,9 +149,7 @@ export default function Login() {
   const navigate = useNavigate();
   const toast = useToast();
   const formRef = useRef(null);
-  const googleBtnRef = useRef(null);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [gisReady, setGisReady] = useState(false);
   const clock = useClock();
 
   // Always follow OS/system theme on this public page
@@ -175,68 +173,65 @@ export default function Login() {
     return () => clearInterval(id);
   }, [showOtpFlow]);
 
-  // ── Google Identity Services (GIS) setup ────────────────────────────────
-  // Renders Google's own sign-in button in an invisible overlay.
-  // This works for new Google OAuth clients (post-2022 implicit flow restrictions).
+  // ── Google OAuth: Full Page Redirect (100% reliable, bypasses popup blockers) ──
   useEffect(() => {
+    // Check if we just returned from Google with an auth code
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const error = params.get('error');
+
+    if (error) {
+      setError('Google sign-in was cancelled or failed.');
+      // Remove query params
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    if (code) {
+      // Remove the code from the URL immediately so it doesn't stay there
+      window.history.replaceState({}, document.title, window.location.pathname);
+      processGoogleToken(null, code);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleGoogleSignIn = () => {
     const clientId = (
       import.meta.env.VITE_GOOGLE_CLIENT_ID ||
       '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com'
     ).trim();
 
-    const initGIS = () => {
-      if (!window.google?.accounts?.id || !googleBtnRef.current) return false;
+    const redirectUri = `${window.location.origin}/login`;
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      prompt: 'select_account',
+    });
+    
+    // Redirect the entire page to Google (never gets blocked)
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  };
 
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (response) => {
-          // response.credential is a signed id_token from Google
-          setGoogleLoading(true);
-          setLoading(true);
-          try {
-            const res = await googleLoginApi(response.credential);
-            const userData = { ...res.data.user };
-            login(res.data.token, userData);
-            toast.success(res.data.isNewUser ? `Welcome to MetroMind, ${userData.name}! 🎉` : `Welcome back, ${userData.name}!`);
-            setShowSuccess(true);
-            setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
-          } catch (err) {
-            setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
-          } finally {
-            setLoading(false);
-            setGoogleLoading(false);
-          }
-        },
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-
-      window.google.accounts.id.renderButton(googleBtnRef.current, {
-        type: 'standard',
-        theme: 'outline',
-        size: 'large',
-        text: 'signin_with',
-        width: googleBtnRef.current.offsetWidth || 360,
-        logo_alignment: 'center',
-      });
-
-      setGisReady(true);
-      return true;
-    };
-
-    if (!initGIS()) {
-      const timer = setInterval(() => { if (initGIS()) clearInterval(timer); }, 250);
-      const timeout = setTimeout(() => clearInterval(timer), 12000);
-      return () => { clearInterval(timer); clearTimeout(timeout); };
+  // Shared handler: sends code to backend and logs in
+  const processGoogleToken = async (credential, code) => {
+    setGoogleLoading(true);
+    setLoading(true);
+    try {
+      const redirectUri = `${window.location.origin}/login`;
+      const res = await googleLoginApi(credential, code, redirectUri);
+      const userData = { ...res.data.user };
+      login(res.data.token, userData);
+      toast.success(res.data.isNewUser ? `Welcome to MetroMind, ${userData.name}! 🎉` : `Welcome back, ${userData.name}!`);
+      setShowSuccess(true);
+      setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
+    } finally {
+      setLoading(false);
+      setGoogleLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Fallback: only used if GIS renderButton hasn't rendered yet
-  const handleGoogleSignIn = () => {
-    const gBtn = googleBtnRef.current?.querySelector('div[role="button"], iframe');
-    if (gBtn) { gBtn.click(); return; }
-    setError('Google Sign-In is loading… please try again in a moment.');
   };
 
 
@@ -744,9 +739,7 @@ export default function Login() {
                 <div className="auth-divider auth-anim d4"><span>or</span></div>
 
                 <div className="auth-anim d5" style={{ width: '100%' }}>
-                  {/* Google Sign-In — GIS renderButton overlay technique */}
-                  <div style={{ position: 'relative', width: '100%' }}>
-                    {/* Visual custom button */}
+                  <div className="google-btn-wrapper">
                     <button
                       type="button"
                       className="google-signin-btn"
@@ -774,15 +767,6 @@ export default function Login() {
                       )}
                       <span>{googleLoading ? 'Signing in…' : 'Sign in with Google'}</span>
                     </button>
-                    {/* Google's real button — transparent overlay, captures the actual click */}
-                    <div
-                      ref={googleBtnRef}
-                      style={{
-                        position: 'absolute', inset: 0, opacity: 0,
-                        overflow: 'hidden', borderRadius: '10px',
-                        pointerEvents: gisReady ? 'all' : 'none',
-                      }}
-                    />
                   </div>
                 </div>
               </form>
