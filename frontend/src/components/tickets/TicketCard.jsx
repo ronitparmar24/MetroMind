@@ -11,7 +11,7 @@ export default function TicketCard({ ticket, onCancel, onShowQR }) {
     : ticket.fare;
 
   return (
-    <div className="glass-card stagger-item" style={{ padding: '20px' }}>
+    <div className="glass-card stagger-item" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
         <div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
@@ -82,7 +82,7 @@ export default function TicketCard({ ticket, onCancel, onShowQR }) {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
         {ticket.passengers?.[0]?.qrCode && (
           <button
             className="btn btn-sm btn-primary"
