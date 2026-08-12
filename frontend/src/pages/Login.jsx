@@ -2,7 +2,6 @@
 // Premium split-screen login — handles unverified accounts with inline OTP
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useGoogleLogin } from '@react-oauth/google';
 import { loginUser, googleLogin as googleLoginApi, verifyOtp, resendOtp, forgotPassword, resetPassword } from '../api/auth.api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
@@ -174,31 +173,46 @@ export default function Login() {
     return () => clearInterval(id);
   }, [showOtpFlow]);
 
-  // useGoogleLogin hook — opens Google's own popup, no redirect URI issues
-  const handleGoogleSignIn = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setGoogleLoading(true);
-      setLoading(true);
-      try {
-        const res = await googleLoginApi(tokenResponse.access_token);
-        const userData = { ...res.data.user };
-        login(res.data.token, userData);
-        toast.success(res.data.isNewUser ? `Welcome to MetroMind, ${userData.name}! 🎉` : `Welcome back, ${userData.name}!`);
-        setShowSuccess(true);
-        setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
-      } catch (err) {
-        setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
-      } finally {
-        setLoading(false);
-        setGoogleLoading(false);
-      }
-    },
-    onError: (err) => {
-      console.error('Google Login Error:', err);
-      setError('Google sign-in was cancelled or failed. Please try again.');
-    },
-    flow: 'implicit',
-  });
+  // Google Sign-In via GIS (Google Identity Services) — loaded in index.html
+  const handleGoogleSignIn = () => {
+    const clientId = (
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com'
+    ).trim();
+
+    if (!window.google?.accounts?.oauth2) {
+      setError('Google Sign-In is still loading. Please try again in a moment.');
+      return;
+    }
+
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'openid email profile',
+      callback: async (tokenResponse) => {
+        if (tokenResponse.error) {
+          setError('Google sign-in was cancelled or failed. Please try again.');
+          return;
+        }
+        setGoogleLoading(true);
+        setLoading(true);
+        try {
+          const res = await googleLoginApi(tokenResponse.access_token);
+          const userData = { ...res.data.user };
+          login(res.data.token, userData);
+          toast.success(res.data.isNewUser ? `Welcome to MetroMind, ${userData.name}! 🎉` : `Welcome back, ${userData.name}!`);
+          setShowSuccess(true);
+          setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
+        } catch (err) {
+          setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
+        } finally {
+          setLoading(false);
+          setGoogleLoading(false);
+        }
+      },
+    });
+
+    client.requestAccessToken({ prompt: 'select_account' });
+  };
 
 
   const handleSubmit = async (e) => {

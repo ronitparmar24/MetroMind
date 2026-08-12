@@ -2,7 +2,6 @@
 // 3-step registration: Account (all fields) → Verify (OTP) → Done
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useGoogleLogin } from '@react-oauth/google';
 import { registerUser, googleLogin as googleLoginApi, verifyOtp, resendOtp } from '../api/auth.api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
@@ -349,32 +348,47 @@ export default function Register() {
     return () => clearInterval(id);
   }, [step]);
 
-  // useGoogleLogin hook — opens Google's own popup, no redirect URI issues
-  const handleGoogleSignIn = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setGoogleLoading(true);
-      setLoading(true);
-      try {
-        // Send access_token to backend; backend fetches user info from Google's /userinfo
-        const res = await googleLoginApi(tokenResponse.access_token);
-        login(res.data.token, res.data.user);
-        toast.success(`Welcome to MetroMind, ${res.data.user.name}! 🎉`);
-        setStep(3);
-        setShowSuccess(true);
-        setTimeout(() => navigate('/dashboard'), 1800);
-      } catch (err) {
-        setError(err.response?.data?.error || 'Google sign-up failed. Please try again.');
-      } finally {
-        setLoading(false);
-        setGoogleLoading(false);
-      }
-    },
-    onError: (err) => {
-      console.error('Google Login Error:', err);
-      setError('Google sign-up was cancelled or failed. Please try again.');
-    },
-    flow: 'implicit',
-  });
+  // Google Sign-In via GIS (Google Identity Services) — loaded in index.html
+  const handleGoogleSignIn = () => {
+    const clientId = (
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com'
+    ).trim();
+
+    if (!window.google?.accounts?.oauth2) {
+      setError('Google Sign-In is still loading. Please try again in a moment.');
+      return;
+    }
+
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'openid email profile',
+      callback: async (tokenResponse) => {
+        if (tokenResponse.error) {
+          setError('Google sign-up was cancelled or failed. Please try again.');
+          return;
+        }
+        setGoogleLoading(true);
+        setLoading(true);
+        try {
+          // Send access_token to backend; backend fetches user info from Google's /userinfo
+          const res = await googleLoginApi(tokenResponse.access_token);
+          login(res.data.token, res.data.user);
+          toast.success(`Welcome to MetroMind, ${res.data.user.name}! 🎉`);
+          setStep(3);
+          setShowSuccess(true);
+          setTimeout(() => navigate('/dashboard'), 1800);
+        } catch (err) {
+          setError(err.response?.data?.error || 'Google sign-up failed. Please try again.');
+        } finally {
+          setLoading(false);
+          setGoogleLoading(false);
+        }
+      },
+    });
+
+    client.requestAccessToken({ prompt: 'select_account' });
+  };
 
 
   // Step 1 → register + send OTP
