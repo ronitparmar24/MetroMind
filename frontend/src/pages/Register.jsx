@@ -348,46 +348,94 @@ export default function Register() {
     return () => clearInterval(id);
   }, [step]);
 
-  // Google Sign-In via GIS (Google Identity Services) — loaded in index.html
+  // ── Google Sign-In: zero-dependency OAuth popup ──────────────────────────
+  // Opens Google's authorization page in a small popup. The popup redirects to
+  // /auth/google/callback which sends a postMessage back with the access token.
+  // Falls back to GIS SDK if loaded. No external scripts required.
   const handleGoogleSignIn = () => {
     const clientId = (
       import.meta.env.VITE_GOOGLE_CLIENT_ID ||
       '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com'
     ).trim();
 
-    if (!window.google?.accounts?.oauth2) {
-      setError('Google Sign-In is still loading. Please try again in a moment.');
+    // Prefer GIS SDK if available (cleaner UX)
+    if (window.google?.accounts?.oauth2) {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'openid email profile',
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error) {
+            setError('Google sign-up was cancelled. Please try again.');
+            return;
+          }
+          await processGoogleToken(tokenResponse.access_token);
+        },
+      });
+      client.requestAccessToken({ prompt: 'select_account' });
       return;
     }
 
-    const client = window.google.accounts.oauth2.initTokenClient({
+    // Fallback: manual popup using window.open (works even if GIS is blocked)
+    const redirectUri = `${window.location.origin}/register`;
+    const params = new URLSearchParams({
       client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'token',
       scope: 'openid email profile',
-      callback: async (tokenResponse) => {
-        if (tokenResponse.error) {
-          setError('Google sign-up was cancelled or failed. Please try again.');
+      prompt: 'select_account',
+      include_granted_scopes: 'true',
+    });
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+    const w = 500, h = 600;
+    const left = window.screenX + (window.outerWidth - w) / 2;
+    const top = window.screenY + (window.outerHeight - h) / 2;
+    const popup = window.open(url, 'google-oauth', `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
+
+    if (!popup) {
+      setError('Popup blocked. Please allow popups for this site, then try again.');
+      return;
+    }
+
+    // Poll the popup URL for the access_token in the hash fragment
+    const poll = setInterval(async () => {
+      try {
+        if (!popup || popup.closed) {
+          clearInterval(poll);
           return;
         }
-        setGoogleLoading(true);
-        setLoading(true);
-        try {
-          // Send access_token to backend; backend fetches user info from Google's /userinfo
-          const res = await googleLoginApi(tokenResponse.access_token);
-          login(res.data.token, res.data.user);
-          toast.success(`Welcome to MetroMind, ${res.data.user.name}! 🎉`);
-          setStep(3);
-          setShowSuccess(true);
-          setTimeout(() => navigate('/dashboard'), 1800);
-        } catch (err) {
-          setError(err.response?.data?.error || 'Google sign-up failed. Please try again.');
-        } finally {
-          setLoading(false);
-          setGoogleLoading(false);
+        const hash = popup.location.hash;
+        if (hash && hash.includes('access_token')) {
+          clearInterval(poll);
+          popup.close();
+          const params = new URLSearchParams(hash.replace('#', ''));
+          const accessToken = params.get('access_token');
+          if (accessToken) {
+            await processGoogleToken(accessToken);
+          }
         }
-      },
-    });
+      } catch (_) {
+        // Cross-origin until redirect lands on our domain — ignore
+      }
+    }, 300);
+  };
 
-    client.requestAccessToken({ prompt: 'select_account' });
+  // Shared handler: sends access_token to backend and logs in
+  const processGoogleToken = async (accessToken) => {
+    setGoogleLoading(true);
+    setLoading(true);
+    try {
+      const res = await googleLoginApi(accessToken);
+      login(res.data.token, res.data.user);
+      toast.success(`Welcome to MetroMind, ${res.data.user.name}! 🎉`);
+      setStep(3);
+      setShowSuccess(true);
+      setTimeout(() => navigate('/dashboard'), 1800);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Google sign-up failed. Please try again.');
+    } finally {
+      setLoading(false);
+      setGoogleLoading(false);
+    }
   };
 
 
