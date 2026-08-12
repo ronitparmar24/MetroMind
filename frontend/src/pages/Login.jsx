@@ -196,22 +196,37 @@ export default function Login() {
   }, []);
 
   const handleGoogleSignIn = () => {
-    const clientId = (
-      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-      '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com'
-    ).trim();
+    console.log("=== GOOGLE SIGN-IN CLICKED ===");
+    try {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      console.log("1. Checked environment variables.");
+      console.log("   VITE_GOOGLE_CLIENT_ID exists:", !!clientId);
+      
+      const finalClientId = (clientId || '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com').trim();
 
-    const redirectUri = `${window.location.origin}/login`;
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'openid email profile',
-      prompt: 'select_account',
-    });
-    
-    // Redirect the entire page to Google (never gets blocked)
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+      const redirectUri = `${window.location.origin}/login`;
+      console.log("2. Constructed redirect URI:", redirectUri);
+      
+      const params = new URLSearchParams({
+        client_id: finalClientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'openid email profile',
+        prompt: 'select_account',
+      });
+      
+      const targetUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+      console.log("3. Generated OAuth URL. Initiating redirect to:", targetUrl);
+      
+      alert(`DIAGNOSTIC: Button click registered!\nRedirecting to Google OAuth...`);
+      
+      // Redirect the entire page to Google (never gets blocked)
+      window.location.href = targetUrl;
+    } catch (err) {
+      console.error("!!! ERROR in handleGoogleSignIn !!!", err);
+      alert(`DIAGNOSTIC ERROR: ${err.message}`);
+      setError(`Failed to initialize Google Sign-In: ${err.message}`);
+    }
   };
 
   // Shared handler: sends code to backend and logs in
