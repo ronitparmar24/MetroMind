@@ -15,20 +15,23 @@ const LOG_FILE = path.join(LOG_DIR, 'events.log');
  * @param {Object} data - Event data
  */
 const logEvent = (eventType, data) => {
-  // Ensure log directory exists
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
-  }
-
   const entry = JSON.stringify({
     timestamp: new Date().toISOString(),
     event: eventType,
     data,
   });
 
-  // Using fs.appendFileSync + path.join per spec — this is a first-class feature,
-  // not an afterthought. Demonstrates deliberate core-module usage.
-  fs.appendFileSync(LOG_FILE, entry + '\n', 'utf8');
+  try {
+    // Ensure log directory exists
+    if (!fs.existsSync(LOG_DIR)) {
+      fs.mkdirSync(LOG_DIR, { recursive: true });
+    }
+
+    // Using fs.appendFileSync + path.join per spec
+    fs.appendFileSync(LOG_FILE, entry + '\n', 'utf8');
+  } catch (error) {
+    console.warn('Failed to write event log to file (read-only filesystem). Logging to console instead:', entry);
+  }
 };
 
 module.exports = { logEvent };

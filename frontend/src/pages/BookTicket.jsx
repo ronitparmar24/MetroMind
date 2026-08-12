@@ -512,37 +512,7 @@ export default function BookTicket() {
 
               {inputMode === 'search' && (
                 <div>
-                  {/* Keyboard Shortcuts */}
-                  <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                      <div>
-                        <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                          Keyboard Shortcuts
-                        </h4>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px', marginBottom: 0 }}>
-                          Quick navigation keys
-                        </p>
-                      </div>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#0ea5e9', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)' }}>
-                        ⌨️
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {[
-                        { label: 'Go to Dashboard', key: 'H' },
-                        { label: 'Book Ticket', key: 'B' },
-                        { label: 'My Tickets', key: 'T' },
-                        { label: 'Wallet', key: 'W' },
-                        { label: 'Close Sidebar / Escape', key: 'Esc' },
-                        { label: 'Skip to Content', key: 'Tab' },
-                      ].map((shortcut) => (
-                        <div key={shortcut.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{shortcut.label}</span>
-                          <kbd style={{ background: '#1e293b', color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, boxShadow: '0 2px 0 #0f172a, inset 0 1px 0 rgba(255,255,255,0.1)' }}>{shortcut.key}</kbd>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+
 
                   <StationSelector
                     label="From — Departure" value={source} onChange={setSource}
@@ -665,14 +635,9 @@ export default function BookTicket() {
                       onFocus={e => e.target.style.borderColor = '#6366f1'}
                       onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
                     />
-                    {p.age && parseInt(p.age) <= 0 && (
+                    {p.age && parseInt(p.age) <= 4 && (
                       <div style={{ flexShrink: 0, background: 'rgba(34,197,94,0.15)', color: '#16a34a', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                         👶 Free
-                      </div>
-                    )}
-                    {p.age && parseInt(p.age) >= 1 && parseInt(p.age) <= 3 && (
-                      <div style={{ flexShrink: 0, background: 'rgba(245,158,11,0.15)', color: '#d97706', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        🧒 50% Off
                       </div>
                     )}
                     {passengers.length > 1 && (

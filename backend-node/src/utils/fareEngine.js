@@ -107,10 +107,8 @@ const calculateFare = (source, dest, hour, dayOfWeek, passengers = 1, dateStr = 
   if (Array.isArray(passengers)) {
     passengers.forEach(p => {
       const age = p.age ? parseInt(p.age) : 99;
-      if (age <= 0) {
+      if (age <= 4) {
         // Free
-      } else if (age >= 1 && age <= 3) {
-        totalFare += Math.round(perPassenger * 0.5);
       } else {
         totalFare += perPassenger;
       }
