@@ -375,7 +375,7 @@ export default function Register() {
 
   // Redirect to Google OAuth — no popups needed, works in all browsers
   const handleGoogleSignIn = () => {
-    const clientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '1077224737562-8cjsrpmplh7i84ch09ai3s2j6uqlk26d.apps.googleusercontent.com').trim();
+    const clientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com').trim();
     const redirectUri = window.location.origin + '/register';
     const nonce = Math.random().toString(36).substring(2, 18);
     const params = new URLSearchParams({
