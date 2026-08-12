@@ -149,7 +149,9 @@ export default function Login() {
   const navigate = useNavigate();
   const toast = useToast();
   const formRef = useRef(null);
+  const googleBtnRef = useRef(null);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [gisReady, setGisReady] = useState(false);
   const clock = useClock();
 
   // Always follow OS/system theme on this public page
@@ -173,92 +175,68 @@ export default function Login() {
     return () => clearInterval(id);
   }, [showOtpFlow]);
 
-  // \u2500\u2500 Google Sign-In: zero-dependency OAuth popup \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-  // Falls back to GIS SDK if loaded; otherwise opens popup manually.
-  const handleGoogleSignIn = () => {
+  // ── Google Identity Services (GIS) setup ────────────────────────────────
+  // Renders Google's own sign-in button in an invisible overlay.
+  // This works for new Google OAuth clients (post-2022 implicit flow restrictions).
+  useEffect(() => {
     const clientId = (
       import.meta.env.VITE_GOOGLE_CLIENT_ID ||
       '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com'
     ).trim();
 
-    // Prefer GIS SDK if available (cleaner UX)
-    if (window.google?.accounts?.oauth2) {
-      const client = window.google.accounts.oauth2.initTokenClient({
+    const initGIS = () => {
+      if (!window.google?.accounts?.id || !googleBtnRef.current) return false;
+
+      window.google.accounts.id.initialize({
         client_id: clientId,
-        scope: 'openid email profile',
-        callback: async (tokenResponse) => {
-          if (tokenResponse.error) {
-            setError('Google sign-in was cancelled. Please try again.');
-            return;
+        callback: async (response) => {
+          // response.credential is a signed id_token from Google
+          setGoogleLoading(true);
+          setLoading(true);
+          try {
+            const res = await googleLoginApi(response.credential);
+            const userData = { ...res.data.user };
+            login(res.data.token, userData);
+            toast.success(res.data.isNewUser ? `Welcome to MetroMind, ${userData.name}! 🎉` : `Welcome back, ${userData.name}!`);
+            setShowSuccess(true);
+            setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
+          } catch (err) {
+            setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
+          } finally {
+            setLoading(false);
+            setGoogleLoading(false);
           }
-          await processGoogleToken(tokenResponse.access_token);
         },
+        auto_select: false,
+        cancel_on_tap_outside: true,
       });
-      client.requestAccessToken({ prompt: 'select_account' });
-      return;
+
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        width: googleBtnRef.current.offsetWidth || 360,
+        logo_alignment: 'center',
+      });
+
+      setGisReady(true);
+      return true;
+    };
+
+    if (!initGIS()) {
+      const timer = setInterval(() => { if (initGIS()) clearInterval(timer); }, 250);
+      const timeout = setTimeout(() => clearInterval(timer), 12000);
+      return () => { clearInterval(timer); clearTimeout(timeout); };
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // Fallback: manual popup using window.open (works even if GIS is blocked)
-    const redirectUri = `${window.location.origin}/login`;
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'token',
-      scope: 'openid email profile',
-      prompt: 'select_account',
-      include_granted_scopes: 'true',
-    });
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-    const w = 500, h = 600;
-    const left = window.screenX + (window.outerWidth - w) / 2;
-    const top = window.screenY + (window.outerHeight - h) / 2;
-    const popup = window.open(url, 'google-oauth', `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
-
-    if (!popup) {
-      setError('Popup blocked. Please allow popups for this site, then try again.');
-      return;
-    }
-
-    // Poll the popup URL for the access_token in the hash fragment
-    const poll = setInterval(async () => {
-      try {
-        if (!popup || popup.closed) {
-          clearInterval(poll);
-          return;
-        }
-        const hash = popup.location.hash;
-        if (hash && hash.includes('access_token')) {
-          clearInterval(poll);
-          popup.close();
-          const params = new URLSearchParams(hash.replace('#', ''));
-          const accessToken = params.get('access_token');
-          if (accessToken) {
-            await processGoogleToken(accessToken);
-          }
-        }
-      } catch (_) {
-        // Cross-origin until redirect lands on our domain — ignore
-      }
-    }, 300);
-  };
-
-  // Shared handler: sends access_token to backend and logs in
-  const processGoogleToken = async (accessToken) => {
-    setGoogleLoading(true);
-    setLoading(true);
-    try {
-      const res = await googleLoginApi(accessToken);
-      const userData = { ...res.data.user };
-      login(res.data.token, userData);
-      toast.success(res.data.isNewUser ? `Welcome to MetroMind, ${userData.name}! 🎉` : `Welcome back, ${userData.name}!`);
-      setShowSuccess(true);
-      setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
-    } finally {
-      setLoading(false);
-      setGoogleLoading(false);
-    }
+  // Fallback: only used if GIS renderButton hasn't rendered yet
+  const handleGoogleSignIn = () => {
+    const gBtn = googleBtnRef.current?.querySelector('div[role="button"], iframe');
+    if (gBtn) { gBtn.click(); return; }
+    setError('Google Sign-In is loading… please try again in a moment.');
   };
 
 
@@ -766,8 +744,9 @@ export default function Login() {
                 <div className="auth-divider auth-anim d4"><span>or</span></div>
 
                 <div className="auth-anim d5" style={{ width: '100%' }}>
-                  {/* Google Sign-In — redirect OAuth flow, no popup needed */}
-                  <div className="google-btn-wrapper">
+                  {/* Google Sign-In — GIS renderButton overlay technique */}
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    {/* Visual custom button */}
                     <button
                       type="button"
                       className="google-signin-btn"
@@ -795,6 +774,15 @@ export default function Login() {
                       )}
                       <span>{googleLoading ? 'Signing in…' : 'Sign in with Google'}</span>
                     </button>
+                    {/* Google's real button — transparent overlay, captures the actual click */}
+                    <div
+                      ref={googleBtnRef}
+                      style={{
+                        position: 'absolute', inset: 0, opacity: 0,
+                        overflow: 'hidden', borderRadius: '10px',
+                        pointerEvents: gisReady ? 'all' : 'none',
+                      }}
+                    />
                   </div>
                 </div>
               </form>
