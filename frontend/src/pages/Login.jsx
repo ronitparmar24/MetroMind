@@ -2,6 +2,7 @@
 // Premium split-screen login — handles unverified accounts with inline OTP
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { loginUser, googleLogin as googleLoginApi, verifyOtp, resendOtp, forgotPassword, resetPassword } from '../api/auth.api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
@@ -173,58 +174,31 @@ export default function Login() {
     return () => clearInterval(id);
   }, [showOtpFlow]);
 
-  // Handle id_token from Google OAuth redirect (no-popup redirect flow)
-  useEffect(() => {
-    const hash = new URLSearchParams(window.location.hash.replace('#', '?'));
-    const idToken = hash.get('id_token');
-    if (!idToken) return;
-    // Clean the hash from the URL immediately
-    window.history.replaceState({}, document.title, window.location.pathname);
-    setGoogleLoading(true);
-    setLoading(true);
-    (async () => {
+  // useGoogleLogin hook — opens Google's own popup, no redirect URI issues
+  const handleGoogleSignIn = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setGoogleLoading(true);
+      setLoading(true);
       try {
-        let googlePicture = '';
-        try {
-          const parts = idToken.split('.');
-          if (parts.length === 3) {
-            const pad = (4 - (parts[1].length % 4)) % 4;
-            const b64 = parts[1] + '='.repeat(pad);
-            const decoded = JSON.parse(atob(b64.replace(/-/g, '+').replace(/_/g, '/')));
-            googlePicture = decoded.picture || '';
-          }
-        } catch (_) { /* ignore */ }
-        if (googlePicture) localStorage.setItem('mm_g_pic', googlePicture);
-        const res = await googleLoginApi(idToken);
-        const userData = { ...res.data.user, avatar: res.data.user.avatar || googlePicture };
+        const res = await googleLoginApi(tokenResponse.access_token);
+        const userData = { ...res.data.user };
         login(res.data.token, userData);
         toast.success(res.data.isNewUser ? `Welcome to MetroMind, ${userData.name}! 🎉` : `Welcome back, ${userData.name}!`);
         setShowSuccess(true);
         setTimeout(() => navigate(userData.role === 'admin' ? '/admin' : '/dashboard'), 1800);
       } catch (err) {
         setError(err.response?.data?.error || 'Google sign-in failed. Please try again.');
+      } finally {
         setLoading(false);
         setGoogleLoading(false);
       }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Redirect to Google OAuth — no popups needed, works in all browsers
-  const handleGoogleSignIn = () => {
-    const clientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com').trim();
-    const redirectUri = window.location.origin + '/login';
-    const nonce = Math.random().toString(36).substring(2, 18);
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'id_token',
-      scope: 'openid email profile',
-      nonce,
-      prompt: 'select_account',
-    });
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-  };
+    },
+    onError: (err) => {
+      console.error('Google Login Error:', err);
+      setError('Google sign-in was cancelled or failed. Please try again.');
+    },
+    flow: 'implicit',
+  });
 
 
   const handleSubmit = async (e) => {

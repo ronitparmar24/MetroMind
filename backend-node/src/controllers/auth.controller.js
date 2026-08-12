@@ -397,8 +397,25 @@ const googleLogin = async (req, res, next) => {
 
     let payload;
 
-    // 1. Try official Google verifyIdToken if GOOGLE_CLIENT_ID is set
-    if (GOOGLE_CLIENT_ID) {
+    // 1. If credential looks like an access_token (not a JWT), fetch userinfo from Google
+    //    Access tokens from @react-oauth/google implicit flow are opaque strings (not JWT format)
+    const isAccessToken = !credential.includes('.') || credential.split('.').length !== 3;
+    if (isAccessToken) {
+      try {
+        const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${credential}` },
+        });
+        if (!response.ok) {
+          throw new Error(`Google userinfo returned ${response.status}`);
+        }
+        payload = await response.json();
+      } catch (fetchErr) {
+        console.warn('Google userinfo fetch failed:', fetchErr.message);
+      }
+    }
+
+    // 2. Try official Google verifyIdToken if credential looks like a JWT id_token
+    if (!payload && GOOGLE_CLIENT_ID && !isAccessToken) {
       try {
         const client = new OAuth2Client(GOOGLE_CLIENT_ID);
         const ticket = await client.verifyIdToken({
@@ -411,8 +428,8 @@ const googleLogin = async (req, res, next) => {
       }
     }
 
-    // 2. Fallback: decode JWT payload directly if credential is a valid JWT string
-    if (!payload && typeof credential === 'string') {
+    // 3. Fallback: decode JWT payload directly if credential is a valid JWT string
+    if (!payload && typeof credential === 'string' && !isAccessToken) {
       try {
         const parts = credential.split('.');
         if (parts.length === 3) {
@@ -440,6 +457,7 @@ const googleLogin = async (req, res, next) => {
       err.statusCode = 401;
       return next(err);
     }
+
 
     const googleId = payload.sub || payload.id || `google_${Date.now()}`;
     const email = payload.email ? payload.email.toLowerCase() : `google_user_${googleId}@metromind.in`;

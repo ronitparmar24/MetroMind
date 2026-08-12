@@ -2,6 +2,7 @@
 // 3-step registration: Account (all fields) → Verify (OTP) → Done
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { registerUser, googleLogin as googleLoginApi, verifyOtp, resendOtp } from '../api/auth.api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
@@ -348,17 +349,14 @@ export default function Register() {
     return () => clearInterval(id);
   }, [step]);
 
-  // Handle id_token from Google OAuth redirect (no-popup redirect flow)
-  useEffect(() => {
-    const hash = new URLSearchParams(window.location.hash.replace('#', '?'));
-    const idToken = hash.get('id_token');
-    if (!idToken) return;
-    window.history.replaceState({}, document.title, window.location.pathname);
-    setGoogleLoading(true);
-    setLoading(true);
-    (async () => {
+  // useGoogleLogin hook — opens Google's own popup, no redirect URI issues
+  const handleGoogleSignIn = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setGoogleLoading(true);
+      setLoading(true);
       try {
-        const res = await googleLoginApi(idToken);
+        // Send access_token to backend; backend fetches user info from Google's /userinfo
+        const res = await googleLoginApi(tokenResponse.access_token);
         login(res.data.token, res.data.user);
         toast.success(`Welcome to MetroMind, ${res.data.user.name}! 🎉`);
         setStep(3);
@@ -366,28 +364,17 @@ export default function Register() {
         setTimeout(() => navigate('/dashboard'), 1800);
       } catch (err) {
         setError(err.response?.data?.error || 'Google sign-up failed. Please try again.');
+      } finally {
         setLoading(false);
         setGoogleLoading(false);
       }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Redirect to Google OAuth — no popups needed, works in all browsers
-  const handleGoogleSignIn = () => {
-    const clientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '934944525206-q1ihuugng41ekcarp109737v13v27oa9.apps.googleusercontent.com').trim();
-    const redirectUri = window.location.origin + '/register';
-    const nonce = Math.random().toString(36).substring(2, 18);
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'id_token',
-      scope: 'openid email profile',
-      nonce,
-      prompt: 'select_account',
-    });
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-  };
+    },
+    onError: (err) => {
+      console.error('Google Login Error:', err);
+      setError('Google sign-up was cancelled or failed. Please try again.');
+    },
+    flow: 'implicit',
+  });
 
 
   // Step 1 → register + send OTP
