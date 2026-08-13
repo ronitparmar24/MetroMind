@@ -35,9 +35,7 @@ export default function Navbar({ onToggleSidebar }) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const avatarUrl = user?.avatar?.includes('googleusercontent.com')
-    ? user.avatar.replace(/=s\d+-c/, '=s400-c').replace(/\?sz=\d+/, '?sz=200')
-    : `https://api.dicebear.com/9.x/${user?.avatarStyle || 'notionists'}/svg?seed=${encodeURIComponent(user?.email || 'default')}`;
+  const avatarUrl = `https://api.dicebear.com/9.x/${user?.avatarStyle || 'notionists'}/svg?seed=${encodeURIComponent(user?.email || 'default')}`;
   const hasAvatar = avatarUrl && !avatarError;
 
   // Shared touch-target style for icon buttons

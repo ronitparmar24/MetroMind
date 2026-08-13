@@ -318,9 +318,7 @@ export default function Profile() {
   if (!user) return null;
 
   // Upgrade Google photo URL to higher resolution (s400 instead of s96)
-  const avatarUrl = user.avatar?.includes('googleusercontent.com')
-    ? user.avatar.replace(/=s\d+-c/, '=s400-c').replace(/\?sz=\d+/, '?sz=200')
-    : `https://api.dicebear.com/9.x/${user.avatarStyle || 'notionists'}/svg?seed=${encodeURIComponent(user.email || 'default')}`;
+  const avatarUrl = `https://api.dicebear.com/9.x/${user.avatarStyle || 'notionists'}/svg?seed=${encodeURIComponent(user.email || 'default')}`;
 
   const hasAvatar = avatarUrl && !avatarError;
 
@@ -328,7 +326,7 @@ export default function Profile() {
   const uniqueStations = new Set(tickets.flatMap(t => [t.source, t.destination])).size;
 
   return (
-    <div className="page" style={{ maxWidth: '960px', margin: '0 auto', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="page" style={{ maxWidth: '1400px', width: '100%', margin: '0 auto', padding: '0 24px', animation: 'fadeInUp 0.4s ease', fontFamily: "'Inter', system-ui, sans-serif" }}>
 
       <style>{`
         @keyframes profileSkeleton { 0%,100%{opacity:0.4;} 50%{opacity:0.8;} }
@@ -364,17 +362,17 @@ export default function Profile() {
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border-color)',
           borderTop: 'none',
-          padding: '60px 28px 28px 28px',
+          padding: '60px 40px 40px 40px',
         }}>
-          {/* Avatar — absolutely positioned straddling banner / card boundary */}
+          {/* Avatar */}
           <div style={{
             position: 'absolute',
-            top: '90px',   /* banner height (130) - half avatar (80/2=40) = 90 */
-            left: '28px',
-            width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden',
-            border: '4px solid var(--bg-secondary)',
-            background: 'linear-gradient(135deg,#6366f1,#a855f7)',
-            boxShadow: '0 8px 24px rgba(99,102,241,0.35)',
+            top: '70px',   /* push avatar slightly higher for a realistic look */
+            left: '40px',
+            width: '120px', height: '120px', borderRadius: '50%', overflow: 'hidden',
+            border: '6px solid var(--bg-secondary)',
+            background: 'var(--bg-tertiary)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
             zIndex: 2,
           }}>
             {hasAvatar ? (
@@ -397,9 +395,9 @@ export default function Profile() {
             )}
           </div>
 
-          {/* Name + badges — offset to the right of the avatar */}
-          <div style={{ paddingLeft: '100px', minHeight: '48px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, margin: 0 }}>{user.name}</h2>
+          {/* Name + badges */}
+          <div style={{ paddingLeft: '140px', minHeight: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, margin: 0, letterSpacing: '-0.02em' }}>{user.name}</h2>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '5px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.email}</span>
               {user.authProvider === 'google' && (
@@ -414,7 +412,7 @@ export default function Profile() {
           </div>
 
           {/* ═══ STATS ROW — Spotify Wrapped style ═══ */}
-          <div className="profile-stats-row" style={{ display: 'flex', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', marginTop: '20px' }}>
+          <div className="profile-stats-row" style={{ display: 'flex', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', marginTop: '30px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
             <StatBig value={tickets.length} label="Total Rides" icon="🎫" color="#6366f1" />
             <div className="stat-divider" style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
             <StatBig value={Math.round(totalCO2)} label="CO₂ Saved (g)" icon="🌿" color="#22c55e" />
@@ -423,9 +421,19 @@ export default function Profile() {
             <div className="stat-divider" style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
             <StatBig value={uniqueStations} label="Stations" icon="📍" color="#a855f7" />
           </div>
+        </div>
+      </div>
 
-          {/* ═══ ACCOUNT DETAILS ═══ */}
-          <div style={{ marginTop: '20px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+      {/* ═══ MAIN DASHBOARD GRID ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', alignItems: 'start' }}>
+        
+        {/* Left Column: Account Details & Cluster */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Account Details */}
+          <div style={{ borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-tertiary)' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Account Information</h3>
+            </div>
             {[
               { label: 'Full Name', value: user.name },
               { label: 'Email', value: user.email },
@@ -435,26 +443,24 @@ export default function Profile() {
               { label: 'Member Since', value: user.createdAt ? formatDate(user.createdAt) : 'N/A' },
             ].map((f, i, arr) => (
               <div key={f.label} style={{
-                display: 'flex', justifyContent: 'space-between', padding: '13px 18px',
+                display: 'flex', justifyContent: 'space-between', padding: '16px 24px',
                 borderBottom: i < arr.length - 1 ? '1px solid var(--border-color)' : 'none',
-                background: i % 2 === 0 ? 'var(--bg-tertiary)' : 'transparent',
               }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{f.label}</span>
-                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{f.value}</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 500 }}>{f.label}</span>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{f.value}</span>
               </div>
             ))}
           </div>
+          
+          <CommuterClusterCard />
+        </div>
+
+        {/* Right Column: Personality & Station Explorer */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <PersonalityBreakdown />
+          <StationExplorer />
         </div>
       </div>
-
-      {/* ═══ PERSONALITY BREAKDOWN ═══ */}
-      <PersonalityBreakdown />
-
-      {/* ═══ ML CLUSTER ═══ */}
-      <CommuterClusterCard />
-
-      {/* ═══ STATION EXPLORER ═══ */}
-      <StationExplorer />
     </div>
   );
 }
