@@ -35,7 +35,8 @@ exports.getNearbyAmenities = async (lat, lng, stationId) => {
 exports.getAreaSummary = async (placeName) => {
   try {
     const { data } = await axios.get(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(placeName)}`
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(placeName)}`,
+      { headers: { 'User-Agent': 'MetroMind/1.0 (https://metromind.vercel.app)' } }
     );
     if (data.type === 'disambiguation') return null;
     return { extract: data.extract, thumbnailUrl: data.thumbnail?.source, url: data.content_urls?.desktop?.page };
