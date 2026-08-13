@@ -201,13 +201,17 @@ function StationExplorer() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isFallback, setIsFallback] = useState(false);
 
   useEffect(() => {
-    if (!station) { setProfile(null); setError(null); return; }
-    setLoading(true); setError(null);
+    if (!station) { setProfile(null); setError(null); setIsFallback(false); return; }
+    setLoading(true); setError(null); setIsFallback(false);
     getStationProfile(station)
-      .then(r => r.data.fallback ? setError('ML analytics service offline') : setProfile(r.data.profile))
-      .catch(e => setError(e.response?.data?.error || 'Failed to load'))
+      .then(r => {
+        setIsFallback(!!r.data.fallback);
+        setProfile(r.data.profile);
+      })
+      .catch(() => setError('Failed to load station data'))
       .finally(() => setLoading(false));
   }, [station]);
 
@@ -222,8 +226,15 @@ function StationExplorer() {
 
   return (
     <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '24px', marginBottom: '16px' }}>
-      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Station Explorer</div>
-      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '14px' }}>ML crowd analysis for any station + your personal trip data</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Station Explorer</div>
+        {isFallback && (
+          <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#92400e', background: 'rgba(245,158,11,0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.25)' }}>
+            ⚡ Estimated (ML Offline)
+          </div>
+        )}
+      </div>
+      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '14px' }}>Crowd analysis for any station + your personal trip data</p>
       <StationSelector
         label=""
         value={station}
@@ -239,13 +250,14 @@ function StationExplorer() {
         <>
           <div className="card-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>
             {[
-              { label: 'Busiest Hour', value: busiestHour?.display || '—' },
-              { label: 'Busiest Day',  value: profile.busiestDay?.day || '—' },
-              { label: 'Station Rank', value: `#${profile.stationRank?.rank || '—'}` },
+              { label: 'Busiest Hour', value: busiestHour?.display || '—', estimated: isFallback },
+              { label: 'Busiest Day',  value: profile.busiestDay?.day || (isFallback ? 'Mon–Fri' : '—') },
+              { label: 'Station Rank', value: profile.stationRank?.rank ? `#${profile.stationRank.rank}` : (isFallback ? 'N/A' : '—') },
               { label: 'Your Trips',   value: profile.personalTripCount ?? 0, accent: true },
-            ].map(({ label, value, accent }) => (
+            ].map(({ label, value, accent, estimated }) => (
               <div key={label} style={{ padding: '16px', borderRadius: '12px', background: accent ? 'rgba(11,125,195,0.06)' : 'var(--bg-tertiary)', border: accent ? '1px solid rgba(11,125,195,0.2)' : '1px solid transparent', position: 'relative' }}>
                 {accent && <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.55rem', fontWeight: 700, color: '#0B7DC3', background: 'rgba(11,125,195,0.1)', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>YOU</span>}
+                {estimated && !accent && <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.55rem', fontWeight: 700, color: '#92400e', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>Est.</span>}
                 <div style={{ fontSize: '1.5rem', fontWeight: 800, color: accent ? '#0B7DC3' : 'var(--text-primary)', lineHeight: 1.2 }}>{value}</div>
                 <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>{label}</div>
               </div>
@@ -266,6 +278,26 @@ function StationExplorer() {
                   <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', width: '28px', textAlign: 'right' }}>{val}</span>
                 </div>
               ))}
+            </div>
+          )}
+          {/* Show a synthetic hourly summary bar when ML data is not available */}
+          {isFallback && profile.hourlyAvgCrowd && (
+            <div style={{ marginTop: '14px', padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Estimated Crowd Pattern</div>
+              <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', height: '40px' }}>
+                {Object.entries(profile.hourlyAvgCrowd).map(([h, v]) => {
+                  const pct = Math.min(100, (v / 200) * 100);
+                  const color = v > 150 ? '#ef4444' : v > 65 ? '#eab308' : '#22c55e';
+                  return (
+                    <div key={h} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                      <div style={{ width: '100%', height: `${pct}%`, background: color, borderRadius: '2px 2px 0 0', minHeight: '3px', opacity: 0.7 }} />
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                <span>6 AM</span><span>12 PM</span><span>10 PM</span>
+              </div>
             </div>
           )}
         </>
