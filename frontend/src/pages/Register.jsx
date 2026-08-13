@@ -2,7 +2,7 @@
 // 3-step registration: Account (all fields) → Verify (OTP) → Done
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { registerUser, googleLogin as googleLoginApi, verifyOtp, resendOtp } from '../api/auth.api';
+import { registerUser, googleLogin as googleLoginApi, verifyOtp, resendOtp, checkPasswordPwnedApi } from '../api/auth.api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
 import { useSystemTheme } from '../hooks/useSystemTheme';
@@ -312,6 +312,8 @@ export default function Register() {
   const [emailError, setEmailError] = useState(''); // inline email field error
   const [showSuccess, setShowSuccess] = useState(false);
   const [otpError, setOtpError] = useState(false);
+  const [pwnedError, setPwnedError] = useState('');
+  const pwnedTimeoutRef = useRef(null);
 
   // Resend cooldown
   const [resendTimer, setResendTimer] = useState(60);
@@ -329,6 +331,24 @@ export default function Register() {
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
   const strength = getStrength(form.password);
   const passwordsMatch = form.confirmPw.length > 0 && form.password === form.confirmPw;
+
+  // Debounced Pwned Password Check
+  useEffect(() => {
+    if (pwnedTimeoutRef.current) clearTimeout(pwnedTimeoutRef.current);
+    setPwnedError('');
+    if (form.password.length >= 6) {
+      pwnedTimeoutRef.current = setTimeout(async () => {
+        try {
+          const res = await checkPasswordPwnedApi(form.password);
+          if (res.data.isPwned) {
+            setPwnedError(`This password has appeared in ${res.data.breachCount.toLocaleString()} known data breaches — please choose a different one.`);
+          }
+        } catch (err) {
+          // fail open, ignore error
+        }
+      }, 600);
+    }
+  }, [form.password]);
 
   // Resend countdown timer
   useEffect(() => {
@@ -429,6 +449,7 @@ export default function Register() {
     if (!form.name.trim()) { setError('Please enter your name'); return; }
     if (!form.email.trim()) { setError('Please enter your email'); return; }
     if (form.password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    if (pwnedError) { setError('Please choose a different password (current is breached)'); return; }
     if (form.password !== form.confirmPw) { setError('Passwords do not match'); return; }
     if (!termsAccepted) { setError('Please accept the Terms of Service'); return; }
 
@@ -665,6 +686,18 @@ export default function Register() {
                       </span>
                     </button>
                   </div>
+                  {pwnedError && (
+                    <div style={{
+                      display: 'flex', alignItems: 'flex-start', gap: '6px',
+                      marginTop: '6px', padding: '8px 12px',
+                      background: 'rgba(239,68,68,0.08)', borderRadius: '8px',
+                      border: '1px solid rgba(239,68,68,0.2)',
+                      color: '#dc2626', fontSize: '0.8rem', lineHeight: 1.45,
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '15px', flexShrink: 0, marginTop: '1px' }}>gpp_bad</span>
+                      <span>{pwnedError}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Strength bar + checklist */}

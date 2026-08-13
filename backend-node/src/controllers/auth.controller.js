@@ -7,6 +7,7 @@ const { signToken } = require('../utils/jwt');
 const { GOOGLE_CLIENT_ID } = require('../config/env');
 const { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail } = require('../utils/emailer');
 const { validateEmail } = require('../services/emailValidator.service');
+const { checkPasswordPwned } = require('../services/pwnedCheck.service');
 
 // ─── Helper: generate 6-digit OTP and its bcrypt hash ───
 const generateOtp = async () => {
@@ -72,6 +73,16 @@ const register = async (req, res, next) => {
         success: false,
         error: 'Temporary or disposable email addresses are not allowed. Please use your real email address.',
         field: 'email',
+      });
+    }
+
+    // Check if password is pwned
+    const pwnedData = await checkPasswordPwned(password);
+    if (pwnedData.isPwned) {
+      return res.status(400).json({
+        success: false,
+        error: `This password has appeared in ${pwnedData.breachCount} known data breaches — please choose a different one.`,
+        field: 'password',
       });
     }
 
@@ -730,4 +741,16 @@ const checkUsername = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword, updateProfile, changePassword, checkUsername };
+// POST /api/auth/check-password-pwned
+const checkPwnedPassword = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.json({ isPwned: false });
+    const result = await checkPasswordPwned(password);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword, updateProfile, changePassword, checkUsername, checkPwnedPassword };
