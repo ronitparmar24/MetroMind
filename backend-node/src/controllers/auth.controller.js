@@ -7,6 +7,7 @@ const { signToken } = require('../utils/jwt');
 const { GOOGLE_CLIENT_ID } = require('../config/env');
 const { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail } = require('../utils/emailer');
 const { validateEmail } = require('../services/emailValidator.service');
+const { validatePhone } = require('../services/phoneValidator.service');
 const { checkPasswordPwned } = require('../services/pwnedCheck.service');
 
 // ─── Helper: generate 6-digit OTP and its bcrypt hash ───
@@ -74,6 +75,18 @@ const register = async (req, res, next) => {
         error: 'Temporary or disposable email addresses are not allowed. Please use your real email address.',
         field: 'email',
       });
+    }
+
+    // ── AbstractAPI phone validation ──────
+    if (phone) {
+      const phoneCheck = await validatePhone(phone);
+      if (!phoneCheck.isValid) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid format for an Indian mobile number.',
+          field: 'phone',
+        });
+      }
     }
 
     // Check if password is pwned

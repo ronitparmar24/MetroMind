@@ -91,6 +91,7 @@ app.use(auditMiddleware);
 const publicRoutes   = require('./routes/public.routes');
 
 app.use('/api/auth', authRoutes);
+app.use('/api/stations', require('./routes/stations.routes'));
 app.use('/api/public', publicRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/wallet', walletRoutes);

@@ -1,8 +1,9 @@
 // frontend/src/components/metro/StationInfoModal.jsx
 // "Know Your Station" detail panel — shows line info, facilities, neighbors
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { STATIONS, LINES, STATION_FACILITIES, FACILITY_LABELS } from '../../constants/stations';
 import { useAccessibility } from '../../hooks/useAccessibility';
+import api from '../../api';
 
 const stationById = Object.fromEntries(STATIONS.map(s => [s.id, s]));
 
@@ -25,6 +26,33 @@ export default function StationInfoModal({ station, onClose }) {
   const { prev, next, totalOnLine } = useMemo(() => getNeighbors(station), [station]);
   const facilities = STATION_FACILITIES[station.id] || {};
   const { accessible } = useAccessibility();
+
+  const [nearby, setNearby] = useState(null);
+  const [nearbyLoading, setNearbyLoading] = useState(true);
+  const [aboutData, setAboutData] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      try {
+        setNearbyLoading(true);
+        const [nearbyRes, aboutRes] = await Promise.all([
+          api.get(`/api/stations/${station.id}/nearby`).catch(() => ({ data: { data: null } })),
+          api.get(`/api/stations/${station.id}/about`).catch(() => ({ data: { data: null } }))
+        ]);
+        if (isMounted) {
+          setNearby(nearbyRes.data?.data);
+          setAboutData(aboutRes.data?.data);
+          setNearbyLoading(false);
+        }
+      } catch (err) {
+        console.error('Failed to fetch station details:', err);
+        if (isMounted) setNearbyLoading(false);
+      }
+    };
+    fetchData();
+    return () => { isMounted = false; };
+  }, [station.id]);
 
   return (
     <div
@@ -166,8 +194,44 @@ export default function StationInfoModal({ station, onClose }) {
           )}
         </div>
 
+        {/* About this area */}
+        {aboutData && (
+          <div style={{ marginBottom: '16px', background: 'var(--bg-tertiary)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
+            <p style={{
+              fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px',
+            }}>
+              About this area
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {aboutData.thumbnailUrl && (
+                <img 
+                  src={aboutData.thumbnailUrl} 
+                  alt="Wikipedia thumbnail" 
+                  style={{ width: '60px', height: '60px', borderRadius: 'var(--radius-sm)', objectFit: 'cover' }} 
+                />
+              )}
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '0.85rem', lineHeight: 1.5, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  {aboutData.extract}
+                </p>
+                {aboutData.url && (
+                  <a 
+                    href={aboutData.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '0.8rem', color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 600 }}
+                  >
+                    Read more on Wikipedia ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Facilities */}
-        <div>
+        <div style={{ marginBottom: '16px' }}>
           <p style={{
             fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
             textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px',
@@ -194,6 +258,44 @@ export default function StationInfoModal({ station, onClose }) {
               );
             })}
           </div>
+        </div>
+
+        {/* Near This Station */}
+        <div>
+          <p style={{
+            fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px',
+          }}>
+            Near This Station (400m)
+          </p>
+          {nearbyLoading ? (
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Loading nearby places...</p>
+          ) : !nearby || nearby.length === 0 ? (
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No amenities mapped nearby.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {['parking', 'atm', 'restaurant', 'cafe'].map(type => {
+                const items = nearby.filter(item => item.type === type);
+                if (items.length === 0) return null;
+                const icons = { parking: '🅿️', atm: '🏧', restaurant: '🍽️', cafe: '☕' };
+                const titles = { parking: 'Parking', atm: 'ATMs', restaurant: 'Restaurants', cafe: 'Cafés' };
+                return (
+                  <div key={type} style={{
+                    padding: '10px 14px',
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: 'var(--radius-md)',
+                  }}>
+                    <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>
+                      {icons[type]} {titles[type]}
+                    </p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      {items.map(item => item.name).join(', ')}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
