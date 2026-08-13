@@ -38,6 +38,7 @@ const commuterRoutes   = require('./routes/commuter.routes');
 const newsRoutes       = require('./routes/news.routes');
 
 const app = express();
+app.set('trust proxy', 1); // For Vercel real IP
 
 // --- Middleware stack (ORDER MATTERS) ---
 

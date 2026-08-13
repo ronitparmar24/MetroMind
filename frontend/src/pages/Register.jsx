@@ -457,8 +457,12 @@ export default function Register() {
     setEmailError('');
     setLoading(true);
     try {
+      const recaptchaToken = await window.grecaptcha.execute(
+        import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'submit' }
+      );
+
       const res = await registerUser({
-        name: form.name, email: form.email, password: form.password, phone: form.phone,
+        name: form.name, email: form.email, password: form.password, phone: form.phone, recaptchaToken
       });
       if (res.data.requiresVerification) {
         toast.success('Verification code sent to your email! 📧');

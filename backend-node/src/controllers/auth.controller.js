@@ -9,6 +9,7 @@ const { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail } = require('
 const { validateEmail } = require('../services/emailValidator.service');
 const { validatePhone } = require('../services/phoneValidator.service');
 const { checkPasswordPwned } = require('../services/pwnedCheck.service');
+const { verifyRecaptcha, getIpLocation } = require('../services/security.service');
 
 // ─── Helper: generate 6-digit OTP and its bcrypt hash ───
 const generateOtp = async () => {
@@ -49,7 +50,19 @@ const updateUserStreak = async (user) => {
 // POST /api/auth/register
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, recaptchaToken } = req.body;
+
+    if (!recaptchaToken) {
+      const err = new Error('Suspicious activity detected, please try again');
+      err.statusCode = 400;
+      return next(err);
+    }
+    const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+    if (!recaptchaResult.success || recaptchaResult.score < 0.5) {
+      const err = new Error('Suspicious activity detected, please try again');
+      err.statusCode = 400;
+      return next(err);
+    }
 
     // Check if user already exists
     const existing = await User.findOne({ email: email.toLowerCase() });
@@ -293,7 +306,19 @@ const resendOtp = async (req, res, next) => {
 // POST /api/auth/login
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, recaptchaToken } = req.body;
+
+    if (!recaptchaToken) {
+      const err = new Error('Suspicious activity detected, please try again');
+      err.statusCode = 400;
+      return next(err);
+    }
+    const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+    if (!recaptchaResult.success || recaptchaResult.score < 0.5) {
+      const err = new Error('Suspicious activity detected, please try again');
+      err.statusCode = 400;
+      return next(err);
+    }
 
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
@@ -357,11 +382,29 @@ const login = async (req, res, next) => {
       console.error('Non-fatal: failed to send login notification email', err);
     }
 
+    // IP Location check
+    const clientIp = req.ip || req.connection?.remoteAddress;
+    const ipLocation = await getIpLocation(clientIp);
+    let newLocationDetected = false;
+    let loginLocationString = null;
+
+    if (ipLocation) {
+      loginLocationString = `${ipLocation.city}, ${ipLocation.region}`;
+      if (user.lastLoginIp && user.lastLoginIp !== clientIp && user.lastLoginLocation && user.lastLoginLocation !== loginLocationString) {
+        newLocationDetected = true;
+      }
+      user.lastLoginIp = clientIp;
+      user.lastLoginLocation = loginLocationString;
+      await user.save();
+    }
+
     await updateUserStreak(user);
 
     res.json({
       success: true,
       token,
+      newLocationDetected,
+      loginLocationString,
       user: {
         id: user._id,
         name: user.name,

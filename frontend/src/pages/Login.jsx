@@ -259,7 +259,11 @@ export default function Login() {
     setLoginSteps([true, false, false]);
 
     try {
-      const res = await loginUser({ email, password });
+      const recaptchaToken = await window.grecaptcha.execute(
+        import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'submit' }
+      );
+
+      const res = await loginUser({ email, password, recaptchaToken });
       setLoginSteps([true, true, false]);
       await new Promise((r) => setTimeout(r, 400));
       setLoginSteps([true, true, true]);
@@ -267,7 +271,12 @@ export default function Login() {
       login(res.data.token, res.data.user);
       toast.success(`Welcome back, ${res.data.user.name || 'User'}!`);
       setShowSuccess(true);
-      setTimeout(() => navigate(res.data.user.role === 'admin' ? '/admin' : '/dashboard'), 1800);
+      setTimeout(() => navigate(res.data.user.role === 'admin' ? '/admin' : '/dashboard', {
+        state: { 
+          newLocationDetected: res.data.newLocationDetected,
+          loginLocationString: res.data.loginLocationString
+        }
+      }), 1800);
     } catch (err) {
       const data = err.response?.data;
 

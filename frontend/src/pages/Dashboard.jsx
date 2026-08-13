@@ -3,7 +3,7 @@
 // Signature element: "My Line Right Now" crowd strip
 // Layout: asymmetric, importance-driven (not 4 equal stat cards)
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useWallet } from '../hooks/useWallet';
 import { useTickets } from '../hooks/useTickets';
@@ -643,10 +643,22 @@ export default function Dashboard() {
   const { wallet } = useWallet();
   const { tickets } = useTickets();
   const navigate = useNavigate();
+  const location = useLocation();
   const [qrTicket, setQrTicket] = useState(null);
   const [clock, setClock] = useState(new Date());
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [isPulseOpen, setIsPulseOpen] = useState(false);
+  const [showLocationAlert, setShowLocationAlert] = useState(false);
+  const [loginLocationStr, setLoginLocationStr] = useState('');
+
+  useEffect(() => {
+    if (location.state?.newLocationDetected && location.state?.loginLocationString) {
+      setShowLocationAlert(true);
+      setLoginLocationStr(location.state.loginLocationString);
+      // Clear state to avoid showing again on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   // ── Live weather state ──
   const [weather, setWeather] = useState(null); // null = loading
@@ -838,6 +850,24 @@ export default function Dashboard() {
           .dash-hero-title { font-size: 1.8rem !important; }
         }
       `}</style>
+
+      {/* ═══ LOCATION ALERT BANNER ═══ */}
+      {showLocationAlert && (
+        <div style={{
+          background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
+          color: '#fca5a5', padding: '12px 20px', borderRadius: '16px',
+          marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px',
+          backdropFilter: 'blur(12px)', animation: 'bentoFadeIn 0.4s ease',
+          fontFamily: "'Inter', system-ui, sans-serif"
+        }}>
+          <span style={{ fontSize: '20px' }}>🛡️</span>
+          <div style={{ flex: 1, fontSize: '0.85rem' }}>
+            <strong style={{ color: '#fecaca', display: 'block', marginBottom: '2px' }}>New login location detected</strong>
+            New login from <strong>{loginLocationStr}</strong> — if this wasn't you, please <Link to="/settings" style={{ color: '#fff', textDecoration: 'underline', fontWeight: 600 }}>change your password</Link>.
+          </div>
+          <button onClick={() => setShowLocationAlert(false)} style={{ background: 'none', border: 'none', color: '#fca5a5', cursor: 'pointer', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
+        </div>
+      )}
 
       {/* ═══ 1. HERO SECTION ═══ */}
       <div style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden', marginBottom: '28px' }}>
