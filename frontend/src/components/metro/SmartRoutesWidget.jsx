@@ -27,7 +27,7 @@ export default function SmartRoutesWidget() {
           try {
             const predRes = await predictCrowd({ station: route.source, hour, day });
             crowd = predRes.data.prediction.bucket;
-            fare = calculateFare(route.source, route.destination);
+            fare = calculateFare({name: route.source}, {name: route.destination}, hour, day).fare;
           } catch (e) {
             console.error('Prediction failed', e);
           }
