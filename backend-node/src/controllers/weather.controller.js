@@ -1,19 +1,21 @@
 // backend-node/src/controllers/weather.controller.js
 // GET /api/weather — returns current Ahmedabad weather.
 //
-// Caching strategy:
-//   Module-level { data, fetchedAt } object — avoids hitting the
-//   OpenWeatherMap free-tier (60 calls/min, 1 000 calls/day) on
-//   every dashboard load.  Cache is invalidated after 10 minutes.
+// Caching strategy (upgraded from in-memory to Upstash Redis):
+//   Key  : 'weather:ahmedabad'
+//   TTL  : 600 seconds (10 minutes) — set via Redis native `ex` option.
+//
+// Why Redis instead of a module-level object?
+//   • Survives server restarts — the cache isn't lost on each deploy.
+//   • Shared across multiple server instances — correct on multi-worker or
+//     horizontally-scaled deployments (e.g. Vercel serverless functions).
+//   • TTL is enforced by Redis atomically — no manual Date.now() comparison.
 
 const { getAhmedabadWeather } = require('../services/weather.service');
+const redis = require('../config/redis');
 
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-
-let cache = {
-  data:      null,
-  fetchedAt: null,
-};
+const CACHE_KEY = 'weather:ahmedabad';
+const CACHE_TTL = 600; // seconds (10 minutes)
 
 /**
  * GET /api/weather
@@ -21,42 +23,33 @@ let cache = {
  */
 exports.getWeather = async (req, res) => {
   try {
-    const now = Date.now();
-
-    // Serve from cache if fresh
-    if (cache.data && cache.fetchedAt && now - cache.fetchedAt < CACHE_TTL_MS) {
-      return res.json({
-        ...cache.data,
-        cached:    true,
-        cachedAge: Math.round((now - cache.fetchedAt) / 1000), // seconds
-      });
+    // ── 1. Check Redis cache ─────────────────────────────────────────────
+    const cached = await redis.get(CACHE_KEY);
+    if (cached) {
+      // Upstash automatically deserialises JSON stored as a string
+      const data = typeof cached === 'string' ? JSON.parse(cached) : cached;
+      return res.json({ ...data, cached: true });
     }
 
-    // Fetch fresh data
+    // ── 2. Fetch fresh data from OpenWeatherMap ──────────────────────────
     const weather = await getAhmedabadWeather();
 
-    // Update cache
-    cache = { data: weather, fetchedAt: now };
+    // ── 3. Store in Redis with automatic TTL (no manual timestamp needed) ─
+    await redis.set(CACHE_KEY, JSON.stringify(weather), { ex: CACHE_TTL });
 
-    return res.json({ ...weather, cached: false, cachedAge: 0 });
+    return res.json({ ...weather, cached: false });
   } catch (err) {
-    // Service already handles missing key with mock data.
-    // Only real network errors reach here — serve stale cache silently.
+    // On network error, try to serve whatever is in Redis (may be stale past TTL
+    // if Redis itself failed — in that case cached will be null and we fall through).
+    try {
+      const stale = await redis.get(CACHE_KEY);
+      if (stale) {
+        const data = typeof stale === 'string' ? JSON.parse(stale) : stale;
+        return res.json({ ...data, cached: true, stale: true });
+      }
+    } catch (_) { /* Redis also unavailable — fall through to static fallback */ }
 
-    // If cache has stale data, serve it with a warning rather than
-    // returning a 500 — better UX when OWM is temporarily down.
-    if (cache.data) {
-      return res.json({
-        ...cache.data,
-        cached:    true,
-        stale:     true,
-        cachedAge: cache.fetchedAt
-          ? Math.round((Date.now() - cache.fetchedAt) / 1000)
-          : null,
-      });
-    }
-
-    // No cache at all — return a safe fallback so the frontend doesn't crash
+    // No cache at all — return a safe static fallback so the frontend doesn't crash
     return res.status(200).json({
       tempC:       31,
       feelsLike:   35,

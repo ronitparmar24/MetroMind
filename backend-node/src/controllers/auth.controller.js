@@ -10,6 +10,15 @@ const { validateEmail } = require('../services/emailValidator.service');
 const { validatePhone } = require('../services/phoneValidator.service');
 const { checkPasswordPwned } = require('../services/pwnedCheck.service');
 const { verifyRecaptcha, getIpLocation } = require('../services/security.service');
+const redis = require('../config/redis');
+
+// Redis OTP key helpers
+// otp:<email>      — bcrypt hash of the 6-digit code, expires in 10 min
+// otp_rate:<email> — rate-limit sentinel, expires in 60 s
+const OTP_KEY      = (email) => `otp:${email.toLowerCase()}`;
+const OTP_RATE_KEY = (email) => `otp_rate:${email.toLowerCase()}`;
+const OTP_TTL      = 600; // 10 minutes
+const OTP_RATE_TTL = 60;  // 60 second cooldown between resends
 
 // ─── Helper: generate 6-digit OTP and its bcrypt hash ───
 const generateOtp = async () => {
@@ -122,12 +131,9 @@ const register = async (req, res, next) => {
 
     if (existing && !existing.isVerified) {
       // User exists but never verified — update their info and resend OTP
-      existing.name = name;
+      existing.name         = name;
       existing.passwordHash = passwordHash;
-      existing.phone = phone || '';
-      existing.otpHash = otpHash;
-      existing.otpExpiresAt = otpExpiresAt;
-      existing.lastOtpSentAt = new Date();
+      existing.phone        = phone || '';
       await existing.save();
     } else {
       // Create new user (unverified)
@@ -137,11 +143,14 @@ const register = async (req, res, next) => {
         passwordHash,
         phone: phone || '',
         isVerified: false,
-        otpHash,
-        otpExpiresAt,
-        lastOtpSentAt: new Date(),
       });
     }
+
+    // Store OTP hash in Redis with automatic 10-minute TTL
+    // (OTPs are ephemeral — they don't belong in the permanent user document)
+    await redis.set(OTP_KEY(email), hash, { ex: OTP_TTL });
+    // Set rate-limit sentinel so the user must wait 60s before requesting another
+    await redis.set(OTP_RATE_KEY(email), '1', { ex: OTP_RATE_TTL });
 
     // Send OTP email
     try {
@@ -187,26 +196,31 @@ const verifyOtp = async (req, res, next) => {
       return next(err);
     }
 
-    // Check expiry
-    if (!user.otpExpiresAt || user.otpExpiresAt < Date.now()) {
+    // Fetch OTP hash from Redis (auto-expires after 10 min — no manual timestamp check needed)
+    const storedHash = await redis.get(OTP_KEY(email));
+
+    if (!storedHash) {
       const err = new Error('Verification code has expired. Please request a new one.');
       err.statusCode = 410;
       return next(err);
     }
 
-    // Compare OTP
-    const isMatch = await bcrypt.compare(otp, user.otpHash);
+    // Compare OTP against the stored bcrypt hash
+    const isMatch = await bcrypt.compare(otp, storedHash);
     if (!isMatch) {
       const err = new Error('Invalid verification code');
       err.statusCode = 401;
       return next(err);
     }
 
-    // Mark verified, clear OTP fields
-    user.isVerified = true;
-    user.otpHash = null;
+    // Verification succeeded — delete OTP from Redis immediately (one-time use)
+    await redis.del(OTP_KEY(email));
+    await redis.del(OTP_RATE_KEY(email));
+
+    // Mark verified, clear any legacy OTP fields from the User document
+    user.isVerified   = true;
+    user.otpHash      = null;
     user.otpExpiresAt = null;
-    user.lastOtpSentAt = null;
     await user.save();
 
     // Create wallet with ₹500 welcome bonus
@@ -268,22 +282,21 @@ const resendOtp = async (req, res, next) => {
       return next(err);
     }
 
-    // Rate limit: 60 seconds between resends
-    if (user.lastOtpSentAt) {
-      const elapsed = Date.now() - user.lastOtpSentAt.getTime();
-      const remaining = Math.ceil((60000 - elapsed) / 1000);
-      if (elapsed < 60000) {
-        const err = new Error(`Please wait ${remaining} seconds before requesting a new code`);
-        err.statusCode = 429;
-        return next(err);
-      }
+    // Rate limit: 60 seconds between resends (enforced by Redis TTL key)
+    const rateLimited = await redis.get(OTP_RATE_KEY(email));
+    if (rateLimited) {
+      const err = new Error('Please wait 60 seconds before requesting a new code');
+      err.statusCode = 429;
+      return next(err);
     }
 
-    // Generate fresh OTP
-    const { otp, hash: otpHash } = await generateOtp();
-    user.otpHash = otpHash;
-    user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    user.lastOtpSentAt = new Date();
+    // Generate fresh OTP and store in Redis
+    const { otp, hash } = await generateOtp();
+    await redis.set(OTP_KEY(email), hash, { ex: OTP_TTL });
+    await redis.set(OTP_RATE_KEY(email), '1', { ex: OTP_RATE_TTL });
+    // Clear any legacy OTP fields from the User document
+    user.otpHash      = null;
+    user.otpExpiresAt = null;
     await user.save();
 
     // Send email
@@ -349,10 +362,13 @@ const login = async (req, res, next) => {
       const canResend = !user.lastOtpSentAt || (Date.now() - user.lastOtpSentAt.getTime()) >= 60000;
 
       if (canResend) {
-        const { otp, hash: otpHash } = await generateOtp();
-        user.otpHash = otpHash;
-        user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-        user.lastOtpSentAt = new Date();
+        const { otp, hash } = await generateOtp();
+        // Store OTP hash in Redis (10 min TTL) instead of the User document
+        await redis.set(OTP_KEY(email), hash, { ex: OTP_TTL });
+        await redis.set(OTP_RATE_KEY(email), '1', { ex: OTP_RATE_TTL });
+        // Clear any stale OTP fields from the User document
+        user.otpHash      = null;
+        user.otpExpiresAt = null;
         await user.save();
 
         try {

@@ -2,19 +2,21 @@
 // Fetches public holidays for India (with Gujarat state coverage) via Calendarific.
 // Falls back to Nager.Date (no key required) if Calendarific key is missing or fails.
 //
-// Cache strategy: per-year in-memory Map — at most ONE real API call per calendar year
-// across ALL users and all requests. The cache resets on server restart (acceptable;
-// stale holiday names are not harmful). Check server logs for
-//   "[Holiday] Fetched N holidays for <year> from <source> — cached for the year."
-// to confirm caching is working (should appear only once per year, not per booking).
+// Cache strategy (upgraded from in-memory Map to Upstash Redis):
+//   Key  : 'holidays:<year>'   e.g. 'holidays:2026'
+//   TTL  : 31 536 000 seconds (≈ 1 year) — public holidays don't change mid-year.
+//
+// Why Redis?
+//   • Persists across server restarts — no cold-start re-fetch on every deploy.
+//   • Shared across all serverless function instances simultaneously.
+//   • Redis native TTL guarantees automatic yearly expiry with zero application code.
 
 const axios = require('axios');
-
-// { year (number) → { 'YYYY-MM-DD': holidayName (string) } }
-const _cache = new Map();
+const redis = require('../config/redis');
 
 const CALENDARIFIC_KEY = process.env.CALENDARIFIC_API_KEY || '';
 const HOLIDAY_DISCOUNT_PERCENT = 15;
+const CACHE_TTL = 365 * 24 * 60 * 60; // 1 year in seconds
 
 /**
  * Build the holiday map from Calendarific response shape:
@@ -49,12 +51,25 @@ function _parseNager(data) {
  * @returns {Promise<Object>} Map of { 'YYYY-MM-DD': holidayName }
  */
 exports.getHolidaysForYear = async (year) => {
-  if (_cache.has(year)) return _cache.get(year);
+  const cacheKey = `holidays:${year}`;
 
+  // ── 1. Try Redis cache first ──────────────────────────────────────────────
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const map = typeof cached === 'string' ? JSON.parse(cached) : cached;
+      return map;
+    }
+  } catch (redisErr) {
+    // Redis unavailable — proceed to live fetch; no data lost, just slower
+    console.warn('[Holiday] Redis read failed, fetching live:', redisErr.message?.slice(0, 60));
+  }
+
+  // ── 2. Live fetch ─────────────────────────────────────────────────────────
   let holidayMap = {};
   let source = 'unknown';
 
-  // ── Primary: Calendarific (with Gujarat state holidays) ──────────────────
+  // Primary: Calendarific (with Gujarat state holidays)
   if (CALENDARIFIC_KEY) {
     try {
       const { data } = await axios.get('https://calendarific.com/api/v2/holidays', {
@@ -73,7 +88,7 @@ exports.getHolidaysForYear = async (year) => {
     }
   }
 
-  // ── Fallback: Nager.Date (national holidays only, no API key) ───────────
+  // Fallback: Nager.Date (national holidays only, no API key)
   if (Object.keys(holidayMap).length === 0) {
     try {
       const { data } = await axios.get(
@@ -82,13 +97,13 @@ exports.getHolidaysForYear = async (year) => {
       );
       holidayMap = _parseNager(data);
       source = 'Nager.Date';
-      
+
       if (Object.keys(holidayMap).length === 0) {
         throw new Error('Nager.Date returned empty array/no data');
       }
     } catch (err) {
       console.warn(`[Holiday] Nager.Date also failed (${err.message?.slice(0, 60)}) — using hardcoded fallback list.`);
-      // Last-resort hardcoded list of major Indian public holidays (MM-DD)
+      // Last-resort hardcoded list of major Indian public holidays
       const STATIC_HOLIDAYS = {
         [`${year}-01-14`]: 'Uttarayan / Makar Sankranti',
         [`${year}-01-26`]: 'Republic Day',
@@ -104,10 +119,20 @@ exports.getHolidaysForYear = async (year) => {
     }
   }
 
-  _cache.set(year, holidayMap);
-  console.log(
-    `[Holiday] Fetched ${Object.keys(holidayMap).length} holidays for ${year} from ${source} — cached for the year.`
-  );
+  // ── 3. Store in Redis with 1-year TTL ─────────────────────────────────────
+  try {
+    await redis.set(cacheKey, JSON.stringify(holidayMap), { ex: CACHE_TTL });
+    console.log(
+      `[Holiday] Fetched ${Object.keys(holidayMap).length} holidays for ${year} from ${source} — cached in Redis for 1 year.`
+    );
+  } catch (redisErr) {
+    // Write failure is non-fatal — the data is returned correctly even without caching
+    console.warn('[Holiday] Redis write failed (non-fatal):', redisErr.message?.slice(0, 60));
+    console.log(
+      `[Holiday] Fetched ${Object.keys(holidayMap).length} holidays for ${year} from ${source} (not cached).`
+    );
+  }
+
   return holidayMap;
 };
 

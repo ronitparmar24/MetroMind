@@ -4,12 +4,14 @@
 //   2. Commuter personality description (one confident sentence)
 //   3. Feedback analysis
 //
-// Caching strategy:
-//   Module-level Map keyed by `${userId}:${date}:${type}` — regenerates at
-//   most once per day per user per generation type. Entirely in-process.
+// Caching strategy (upgraded from in-memory Map to Upstash Redis):
+//   Key  : 'ai:<userId>:<YYYY-MM-DD>:<type>'  e.g. 'ai:abc123:2026-08-14:digest'
+//   TTL  : 86 400 seconds (24 hours) — regenerates once per day per user.
+//   Why Redis: persists across restarts; shared across all serverless instances.
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Groq = require('groq-sdk');
+const redis = require('../config/redis');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
@@ -39,12 +41,25 @@ function getGroqClient() {
   return _groq;
 }
 
-// ── In-memory daily cache ─────────────────────────────────────────────────
-const _cache = new Map();
+// ── Redis cache helpers ───────────────────────────────────────────────────
+const AI_CACHE_TTL = 86400; // 24 hours in seconds
 
 function _cacheKey(userId, type) {
   const date = new Date().toISOString().slice(0, 10);
-  return `${userId}:${date}:${type}`;
+  return `ai:${userId}:${date}:${type}`;
+}
+
+async function _cacheGet(key) {
+  try {
+    const val = await redis.get(key);
+    return val ? (typeof val === 'string' ? val : JSON.stringify(val)) : null;
+  } catch (_) { return null; } // Redis unavailable — treat as cache miss
+}
+
+async function _cacheSet(key, text) {
+  try {
+    await redis.set(key, text, { ex: AI_CACHE_TTL });
+  } catch (_) { /* non-fatal — generation result is still returned */ }
 }
 
 // ── Fallback Generation Chain ─────────────────────────────────────────────
@@ -103,10 +118,11 @@ async function _generateWithFallback(prompt, fallbackText, featureName = 'AI') {
   return fallbackText;
 }
 
-// ── Weekly Digest Summary ─────────────────────────────────────────────────
+// ── Weekly Digest Summary ─────────────────────────────────────
 async function generateWeeklyDigestText(userId, stats) {
   const key = _cacheKey(userId, 'digest');
-  if (_cache.has(key)) return _cache.get(key);
+  const hit = await _cacheGet(key);
+  if (hit) return hit;
 
   const {
     tripCount, totalDistanceKm, totalSpent,
@@ -128,14 +144,15 @@ Write exactly 2-3 sentences, second person ("you"), warm and specific to these n
     : 'No trips recorded this week — hop on the metro and start building your weekly streak!';
 
   const text = await _generateWithFallback(prompt, fallback, 'Weekly Digest');
-  _cache.set(key, text);
+  await _cacheSet(key, text);
   return text;
 }
 
-// ── Commuter Personality Description ─────────────────────────────────────
+// ── Commuter Personality Description ─────────────────────────────
 async function generatePersonalityDescription(userId, personalityType, ratios) {
   const key = _cacheKey(userId, 'personality');
-  if (_cache.has(key)) return _cache.get(key);
+  const hit = await _cacheGet(key);
+  if (hit) return hit;
 
   const ratioText = Object.entries(ratios)
     .map(([k, v]) => `${k}: ${Math.round(v * 100)}%`)
@@ -146,7 +163,7 @@ async function generatePersonalityDescription(userId, personalityType, ratios) {
   const fallback = `You're classified as ${personalityType} based on your consistent travel patterns.`;
 
   const text = await _generateWithFallback(prompt, fallback, 'Personality');
-  _cache.set(key, text);
+  await _cacheSet(key, text);
   return text;
 }
 
