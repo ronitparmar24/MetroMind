@@ -1,3 +1,3 @@
 import api from './index';
 
-export const getLocalNews = () => api.get('/news/local');
+export const getLocalNews = () => api.get('/api/news/local');
