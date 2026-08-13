@@ -17,10 +17,9 @@ exports.getNearbyAmenities = async (lat, lng, stationId) => {
     );
     out body 15;
   `;
-  const { data } = await axios.post(
-    'https://overpass-api.de/api/interpreter',
-    query,
-    { headers: { 'Content-Type': 'text/plain' } }
+  const { data } = await axios.get(
+    `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
+    { headers: { 'User-Agent': 'MetroMind/1.0 (https://metromind.vercel.app)' } }
   );
   const results = data.elements
     .filter(el => el.tags?.name)

@@ -9,10 +9,15 @@ const axios = require('axios');
 exports.validatePhone = async (phone) => {
   try {
     const { data } = await axios.get(
-      'https://phonevalidation.abstractapi.com/v1/',
+      'https://phoneintelligence.abstractapi.com/v1/',
       { params: { api_key: process.env.ABSTRACT_PHONE_API_KEY, phone: `+91${phone}` } }
     );
-    return { isValid: data.valid, carrier: data.carrier, lineType: data.type };
+    
+    return { 
+      isValid: data.phone_validation?.is_valid, 
+      carrier: data.phone_carrier?.name, 
+      lineType: data.phone_carrier?.line_type 
+    };
   } catch (err) {
     console.warn('[phoneValidator] AbstractAPI call failed (fail-open):', err.message);
     return { isValid: true }; // fail open
