@@ -240,7 +240,8 @@ router.get('/dashboard', (req, res) => {
 });
 
 // Proxy helper for Python ML endpoints
-const PYTHON_API_URL = process.env.PYTHON_SERVICE_URL || 'http://127.0.0.1:8000';
+const { DJANGO_API_URL } = require('../config/env');
+const PYTHON_API_URL = DJANGO_API_URL || 'http://127.0.0.1:8000';
 
 const createProxyRoute = (path) => {
   router.get(path, async (req, res) => {
