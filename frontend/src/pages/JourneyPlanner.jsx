@@ -6,7 +6,7 @@ import CrowdBadge from '../components/booking/CrowdBadge';
 import { STATIONS } from '../constants/stations';
 import { compareRoutes } from '../api/analytics.api';
 import { fetchWeather } from '../api/weather.api';
-import { geocodeLocationRouting, getNearestStationsRouting } from '../api/routing.api';
+import { geocodeLocationRouting, getNearestStationsRouting, getShortestPath } from '../api/routing.api';
 import { haversine } from '../utils/haversine';
 import { formatCurrency } from '../utils/formatters';
 
@@ -159,6 +159,21 @@ function RouteCard({ route, idx, onSelect }) {
             borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700,
           }}>
             🔀 via {route.viaStation}
+          </div>
+        )}
+        {/* Dijkstra interchange stops: shown only on the Direct Route card */}
+        {Array.isArray(route.interchangeStations) && route.interchangeStations.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+            {route.interchangeStations.map(name => (
+              <div key={name} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                padding: '3px 10px',
+                background: 'rgba(245,158,11,0.1)', color: '#d97706',
+                borderRadius: '20px', fontSize: '0.70rem', fontWeight: 700,
+              }}>
+                🔄 Change at {name}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -409,8 +424,51 @@ export default function JourneyPlanner() {
     if (!canCompare) return;
     setLoading(true); setError(''); setRoutes([]);
     try {
-      const res = await compareRoutes(source, destination);
-      setRoutes(res.data.routes || []);
+      // Find the station objects for both selections so we have their IDs
+      const srcStation  = STATIONS.find(s => s.name === source);
+      const destStation = STATIONS.find(s => s.name === destination);
+
+      // Fire both requests in parallel:
+      //   (1) full multi-route comparison (fare, crowd, CO₂)
+      //   (2) Dijkstra shortest-path for the Direct Route card
+      const [compareRes, dijkstraRes] = await Promise.allSettled([
+        compareRoutes(source, destination),
+        srcStation && destStation
+          ? getShortestPath(srcStation.id, destStation.id)
+          : Promise.resolve(null),
+      ]);
+
+      const fetchedRoutes = compareRes.status === 'fulfilled'
+        ? (compareRes.value.data.routes || [])
+        : [];
+
+      if (compareRes.status === 'rejected') {
+        throw compareRes.reason;
+      }
+
+      // Stitch the Dijkstra result into Route 1 ("Direct Route")
+      if (
+        dijkstraRes.status === 'fulfilled' &&
+        dijkstraRes.value &&
+        !dijkstraRes.value.error
+      ) {
+        const algoResult = dijkstraRes.value;
+        const directIdx  = fetchedRoutes.findIndex(r => r.label === 'Direct Route');
+        if (directIdx !== -1) {
+          fetchedRoutes[directIdx] = {
+            ...fetchedRoutes[directIdx],
+            // Replace haversine estimate with real Dijkstra travel time
+            estimatedMinutes: algoResult.totalMinutes,
+            // Expose the interchange stations computed by the algorithm
+            interchangeCount:    algoResult.interchangeCount,
+            interchangeStations: algoResult.interchangeStations,
+            // Full ordered path (for potential future step-by-step display)
+            dijkstraPath: algoResult.stations,
+          };
+        }
+      }
+
+      setRoutes(fetchedRoutes);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to compare routes');
     } finally {

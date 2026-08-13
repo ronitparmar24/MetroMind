@@ -1,12 +1,18 @@
 // backend-node/src/controllers/routes.controller.js
 // Computes multiple route options between two stations with crowd predictions.
 // Uses the existing fare engine, CO2 calc, and Django ML prediction proxy.
+//
+// Route 1 ("Direct Route") uses Dijkstra's shortest-path over the real metro
+// network graph, yielding accurate travel times and interchange information.
+// Routes 2 and 3 (interchange / off-peak comparisons) use haversine estimates
+// so that users can still see fare and time differences across scenarios.
 
 const STATIONS = require('../constants/stations');
 const { calculateFare, haversine } = require('../utils/fareEngine');
 const { calculateCO2Saved } = require('../utils/carbonCalc');
 const axios = require('axios');
 const { DJANGO_API_URL } = require('../config/env');
+const { findShortestRoute } = require('../services/routeGraph.service');
 
 // Interchange stations connecting Blue ↔ Red lines
 const INTERCHANGE_STATIONS = ['Old High Court', 'Kalupur Railway Station'];
@@ -99,12 +105,37 @@ const compareRoutes = async (req, res, next) => {
 
     const routes = [];
 
-    // ── Route 1: Direct route (current time) ──
-    const directRoute = buildRoute(
-      'Direct Route',
-      srcStation, destStation,
-      currentHour, dayOfWeek
+    // ── Route 1: Dijkstra's shortest path (real algorithm) ──────────────────
+    // Look up station IDs so we can query the graph. Each station object in the
+    // constants file carries a unique `id` field (e.g. "old-high-court-red").
+    const dijkstraResult = findShortestRoute(srcStation.id, destStation.id);
+
+    // Derive fare + CO₂ from the straight-line distance (fare engine contract
+    // expects lat/lng pairs); real travel time comes from Dijkstra.
+    const fareResult = calculateFare(
+      { lat: srcStation.lat, lng: srcStation.lng },
+      { lat: destStation.lat, lng: destStation.lng },
+      currentHour, dayOfWeek, 1
     );
+    const directDistance = fareResult.distance;
+
+    const directRoute = {
+      label: 'Direct Route',
+      viaStation: null,
+      source: srcStation.name,
+      destination: destStation.name,
+      fare: fareResult.perPassenger,
+      distance: directDistance,
+      // Real Dijkstra time — NOT a haversine estimate
+      estimatedMinutes: Math.max(dijkstraResult.totalMinutes, 2),
+      co2Saved: calculateCO2Saved(directDistance, 1),
+      isPeak: fareResult.isPeak,
+      hour: currentHour,
+      // Dijkstra extras: expose the interchange stops along the optimal path
+      dijkstraPath: dijkstraResult.stations,
+      interchangeCount: dijkstraResult.interchangeCount,
+      interchangeStations: dijkstraResult.interchangeStations,
+    };
     routes.push(directRoute);
 
     // ── Route 2: Via interchange (if on different lines) ──
