@@ -54,7 +54,12 @@ if (url && token) {
         const numkeys = parseInt(args[1], 10);
         const keys = args.slice(2, 2 + numkeys);
         const argv = args.slice(2 + numkeys);
-        return redisClient.eval(script, { keys, arguments: argv });
+        
+        if (cmd === 'EVALSHA') {
+          return redisClient.evalsha(script, keys, argv);
+        } else {
+          return redisClient.eval(script, keys, argv);
+        }
       }
       // SCRIPT LOAD: cache a Lua script and return its SHA
       case 'SCRIPT': {
