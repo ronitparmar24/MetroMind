@@ -9,3 +9,4 @@ export const verifyOtp = (email, otp) => api.post('/api/auth/verify-otp', { emai
 export const resendOtp = (email) => api.post('/api/auth/resend-otp', { email });
 export const forgotPassword = (email) => api.post('/api/auth/forgot-password', { email });
 export const resetPassword = (email, otp, newPassword) => api.post('/api/auth/reset-password', { email, otp, newPassword });
+export const updateProfile = (data) => api.put('/api/auth/update-profile', data);

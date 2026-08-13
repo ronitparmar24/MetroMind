@@ -4,20 +4,39 @@ import { useAccessibility } from '../hooks/useAccessibility';
 import GlassCard from '../components/common/GlassCard';
 import { ACCESSIBILITY_FEATURES } from '../constants/stations';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../hooks/useAuth';
+import { updateProfile } from '../api/auth.api';
 
 export default function Settings() {
   const { theme, preference, setTheme } = useTheme();
   const { accessible, toggleAccessible } = useAccessibility();
   const { t, i18n } = useTranslation();
+  const { user, updateUser } = useAuth();
 
   const THEME_OPTIONS = [
     { value: 'light', label: t('settings.theme_light'), icon: '☀️' },
     { value: 'dark', label: t('settings.theme_dark'), icon: '🌙' },
     { value: 'system', label: t('settings.theme_system'), icon: '💻' },
   ];
+  
+  const AVATAR_STYLES = [
+    { value: 'notionists', label: 'Notionists' },
+    { value: 'avataaars', label: 'Avataaars' },
+    { value: 'personas', label: 'Personas' },
+    { value: 'lorelei', label: 'Lorelei' },
+  ];
 
   const handleLanguageChange = (e) => {
     i18n.changeLanguage(e.target.value);
+  };
+  
+  const handleAvatarStyleChange = async (style) => {
+    try {
+      updateUser({ avatarStyle: style }); // optimistic update
+      await updateProfile({ avatarStyle: style });
+    } catch (err) {
+      console.error('Failed to update avatar style:', err);
+    }
   };
 
   return (
@@ -56,6 +75,30 @@ export default function Settings() {
             {preference === 'system' && ` ${t('settings.theme_system_pref')}`}
           </p>
         </div>
+
+        {/* Avatar Style Selection */}
+        {!user?.avatar?.includes('googleusercontent.com') && (
+          <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ marginBottom: '12px' }}>
+              <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Avatar Style</h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                Choose your default avatar style
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {AVATAR_STYLES.map((opt) => (
+                <button
+                  key={opt.value}
+                  className={`btn ${(user?.avatarStyle || 'notionists') === opt.value ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => handleAvatarStyleChange(opt.value)}
+                  style={{ flex: 1, minWidth: '100px' }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Notifications */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--border-color)' }}>

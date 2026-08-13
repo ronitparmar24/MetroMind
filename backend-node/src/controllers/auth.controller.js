@@ -198,6 +198,7 @@ const verifyOtp = async (req, res, next) => {
         phone: user.phone,
         loyaltyPoints: user.loyaltyPoints,
         streakDays: user.streakDays,
+        avatarStyle: user.avatarStyle,
       },
     });
   } catch (error) {
@@ -345,6 +346,7 @@ const login = async (req, res, next) => {
         loyaltyPoints: user.loyaltyPoints,
         streakDays: user.streakDays,
         avatar: user.avatar,
+        avatarStyle: user.avatarStyle,
         role: user.role,
       },
     });
@@ -368,6 +370,7 @@ const getMe = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         avatar: user.avatar,
+        avatarStyle: user.avatarStyle,
         role: user.role,
         authProvider: user.authProvider || 'local',
         isVerified: user.isVerified,
@@ -557,6 +560,7 @@ const googleLogin = async (req, res, next) => {
         email: user.email,
         phone: user.phone || '',
         avatar: user.avatar || '',
+        avatarStyle: user.avatarStyle,
         role: user.role,
         authProvider: user.authProvider || 'google',
         isVerified: user.isVerified,
@@ -677,16 +681,17 @@ const resetPassword = async (req, res, next) => {
 // PUT /api/auth/update-profile
 const updateProfile = async (req, res, next) => {
   try {
-    const { name } = req.body;
-    if (!name) return res.status(400).json({ success: false, message: 'Name is required' });
+    const { name, avatarStyle } = req.body;
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    user.name = name;
+    if (name) user.name = name;
+    if (avatarStyle) user.avatarStyle = avatarStyle;
+    
     await user.save();
 
-    res.json({ success: true, message: 'Profile updated successfully', data: { name: user.name, email: user.email } });
+    res.json({ success: true, message: 'Profile updated successfully', data: { name: user.name, email: user.email, avatarStyle: user.avatarStyle } });
   } catch (error) {
     next(error);
   }

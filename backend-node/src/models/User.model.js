@@ -50,6 +50,11 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    avatarStyle: {
+      type: String,
+      enum: ['notionists', 'avataaars', 'personas', 'lorelei'],
+      default: 'notionists',
+    },
     loyaltyPoints: {
       type: Number,
       default: 0,
