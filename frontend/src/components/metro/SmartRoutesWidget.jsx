@@ -14,7 +14,7 @@ export default function SmartRoutesWidget() {
     async function fetchSmartRoutes() {
       try {
         const res = await getSavedRoutes();
-        const saved = res.data.routes.slice(0, 3); // Get top 3
+        const saved = (res.data.routes ?? []).slice(0, 3); // Guard: handle missing routes
 
         const now = new Date();
         const hour = now.getHours();
@@ -31,7 +31,7 @@ export default function SmartRoutesWidget() {
           } catch (e) {
             console.error('Prediction failed', e);
           }
-          return { ...route, crowd, fare };
+          return { ...route, crowd, fare, eta: Math.floor(Math.random() * 15 + 10) };
         }));
 
         setRoutes(hydrated);
@@ -113,7 +113,7 @@ export default function SmartRoutesWidget() {
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>schedule</span>
-                ~{Math.floor(Math.random() * 15 + 10)} min ETA
+                ~{route.eta} min ETA
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '12px' }}>
@@ -121,7 +121,7 @@ export default function SmartRoutesWidget() {
                   {route.source.split(' ')[0]} → {route.destination.split(' ')[0]}
                 </div>
                 <div style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>
-                  ₹{fare}
+                  ₹{route.fare}
                 </div>
               </div>
             </div>
