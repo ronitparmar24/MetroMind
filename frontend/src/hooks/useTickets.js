@@ -12,9 +12,11 @@ export function useTickets(statusFilter) {
     setError(null);
     try {
       const res = await fetchTickets(statusFilter);
-      setData(res.data.tickets);
+      // Guard: always fall back to [] if response shape is unexpected
+      setData(res.data?.tickets ?? []);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load tickets');
+      setData([]); // clear stale data on error
     } finally {
       setLoading(false);
     }

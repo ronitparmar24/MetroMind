@@ -33,4 +33,9 @@ const TransactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Compound index — covers sorted per-user queries and wallet aggregation
+TransactionSchema.index({ userId: 1, createdAt: -1 });
+// Type filter index — covers Transactions page type filter
+TransactionSchema.index({ userId: 1, type: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Transaction', TransactionSchema);

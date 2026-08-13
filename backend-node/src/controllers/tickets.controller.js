@@ -282,38 +282,70 @@ const bookTicket = async (req, res, next) => {
 const getTickets = async (req, res, next) => {
   try {
     const now = new Date();
-    const upcomingTickets = await Ticket.find({ userId: req.user._id, status: 'upcoming' });
 
-    for (const ticket of upcomingTickets) {
+    // ── Bulk-expire upcoming tickets whose travel window has passed ──
+    // Instead of loading all tickets then saving one-by-one (N+1 writes),
+    // compute the expiry cutoff and update all matching docs in one query.
+    //
+    // A ticket expires 1h after its travelDate+travelTime.
+    // We can't filter on travelTime inside MongoDB (it's a string), so we
+    // expire based on travelDate alone with a 1-hour buffer (travelDate < now - 1h).
+    // Tickets with today's date are left to the fine-grained JS check below only
+    // when the user has few upcoming tickets — this covers the 99% case cheaply.
+    const oneDayAgo = new Date(now.getTime() - 25 * 60 * 60 * 1000); // 25h buffer
+    await Ticket.updateMany(
+      {
+        userId: req.user._id,
+        status: 'upcoming',
+        travelDate: { $lt: oneDayAgo }, // clearly past — safe to mark completed
+      },
+      { $set: { status: 'completed' } }
+    );
+
+    // Fine-grained check for tickets within the last 25h (small set)
+    const recentUpcoming = await Ticket.find({
+      userId: req.user._id,
+      status: 'upcoming',
+      travelDate: { $gte: oneDayAgo },
+    });
+
+    const expiredIds = [];
+    for (const ticket of recentUpcoming) {
       if (!ticket.travelDate || !ticket.travelTime) continue;
 
       let timeParts = ticket.travelTime.split(' ');
       let time = timeParts[0];
       let modifier = timeParts[1];
-      
+
       let [hours, minutes] = time.split(':');
       hours = parseInt(hours, 10);
-      
+
       if (modifier && modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
       if (modifier && modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
-      
+
       const ticketDateTime = new Date(ticket.travelDate);
       ticketDateTime.setHours(hours, parseInt(minutes || 0, 10), 0, 0);
-      
-      // Add 1 hour
+
       const expiryTime = new Date(ticketDateTime.getTime() + 1 * 60 * 60 * 1000);
-      
+
       if (now >= expiryTime) {
-        ticket.status = 'completed';
-        await ticket.save();
+        expiredIds.push(ticket._id);
       }
+    }
+
+    if (expiredIds.length > 0) {
+      await Ticket.updateMany(
+        { _id: { $in: expiredIds } },
+        { $set: { status: 'completed' } }
+      );
     }
 
     const { status } = req.query;
     const filter = { userId: req.user._id };
     if (status) filter.status = status;
 
-    const tickets = await Ticket.find(filter).sort({ createdAt: -1 });
+    // lean() skips Mongoose document hydration — much faster for read-only responses
+    const tickets = await Ticket.find(filter).sort({ createdAt: -1 }).lean();
 
     res.json({ success: true, count: tickets.length, tickets });
   } catch (error) {

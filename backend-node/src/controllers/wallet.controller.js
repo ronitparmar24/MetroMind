@@ -7,32 +7,36 @@ const { bookingBus } = require('../events/bookingEvents');
 // GET /api/wallet
 const getWallet = async (req, res, next) => {
   try {
-    let wallet = await Wallet.findOne({ userId: req.user._id });
+    const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+
+    // ── Run all 3 DB operations in parallel ─────────────────────────────
+    const [walletDoc, recentTransactions, debitAgg] = await Promise.all([
+      Wallet.findOne({ userId: req.user._id }),
+      Transaction.find({ userId: req.user._id })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean(),
+      Transaction.aggregate([
+        {
+          $match: {
+            userId: req.user._id,
+            type: 'debit',
+            createdAt: { $gte: fourWeeksAgo },
+          },
+        },
+        { $group: { _id: null, totalDebits: { $sum: '$amount' } } },
+      ]),
+    ]);
+
+    // Auto-create wallet if first visit
+    let wallet = walletDoc;
     if (!wallet) {
       wallet = await Wallet.create({ userId: req.user._id, balance: 0 });
     }
 
-    // Get recent transactions (last 10)
-    const recentTransactions = await Transaction.find({ userId: req.user._id })
-      .sort({ createdAt: -1 })
-      .limit(10);
-
-    // ── Predictive low-balance warning ──
-    // Aggregate last 4 weeks of debit transactions
-    const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
-    const debitAgg = await Transaction.aggregate([
-      {
-        $match: {
-          userId: wallet.userId,
-          type: 'debit',
-          createdAt: { $gte: fourWeeksAgo },
-        },
-      },
-      { $group: { _id: null, totalDebits: { $sum: '$amount' } } },
-    ]);
-
+    // ── Predictive low-balance warning ─────────────────────────────────
     const totalDebits = debitAgg.length > 0 ? debitAgg[0].totalDebits : 0;
-    const avgWeeklySpend = Math.round((totalDebits / 4) * 100) / 100; // average over 4 weeks
+    const avgWeeklySpend = Math.round((totalDebits / 4) * 100) / 100;
     const dailySpendRate = avgWeeklySpend / 7;
     const daysUntilEmpty = dailySpendRate > 0
       ? Math.floor(wallet.balance / dailySpendRate)

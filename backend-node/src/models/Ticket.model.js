@@ -76,4 +76,12 @@ const TicketSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Compound indexes — critical for performance with large collections
+// Index 1: userId + status — used by getTickets with status filter
+TicketSchema.index({ userId: 1, status: 1 });
+// Index 2: userId + createdAt — used by getTickets sorted list
+TicketSchema.index({ userId: 1, createdAt: -1 });
+// Index 3: userId + travelDate — used by bulk expiry updateMany
+TicketSchema.index({ userId: 1, travelDate: 1, status: 1 });
+
 module.exports = mongoose.model('Ticket', TicketSchema);

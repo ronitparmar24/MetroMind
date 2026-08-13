@@ -14,7 +14,7 @@ const getTransactions = async (req, res, next) => {
       if (endDate) filter.createdAt.$lte = new Date(endDate);
     }
 
-    const transactions = await Transaction.find(filter).sort({ createdAt: -1 });
+    const transactions = await Transaction.find(filter).sort({ createdAt: -1 }).lean();
 
     res.json({
       success: true,
