@@ -35,6 +35,7 @@ const announcementRoutes = require('./routes/announcements.routes');
 const holidaysRoutes   = require('./routes/holidays.routes');
 const routingRoutes    = require('./routes/routing.routes');
 const commuterRoutes   = require('./routes/commuter.routes');
+const newsRoutes       = require('./routes/news.routes');
 
 const app = express();
 
@@ -112,6 +113,7 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/holidays',   holidaysRoutes);
 app.use('/api/routing',    routingRoutes);
 app.use('/api/commuter',   commuterRoutes);
+app.use('/api/news',       newsRoutes);
 app.get('/api/check-username/:username', require('./controllers/auth.controller').checkUsername);
 
 // Temporary debug endpoint — shows user identity + DB data counts to diagnose data mismatch

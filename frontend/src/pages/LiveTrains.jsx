@@ -4,6 +4,7 @@ import GlassCard from '../components/common/GlassCard';
 import CrowdBadge from '../components/booking/CrowdBadge';
 import StationSelector from '../components/booking/StationSelector';
 import { getLiveTrains } from '../api/predict.api';
+import { getLocalNews } from '../api/news.api';
 import { STATIONS, LINES } from '../constants/stations';
 
 export default function LiveTrains() {
@@ -13,6 +14,15 @@ export default function LiveTrains() {
   const [stationLine, setStationLine] = useState('');
   const [loading, setLoading] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
+  const [news, setNews] = useState([]);
+
+  useEffect(() => {
+    getLocalNews().then(res => {
+      if (res.data && res.data.length > 0) {
+        setNews(res.data);
+      }
+    }).catch(err => console.error('Failed to load local news:', err));
+  }, []);
 
   // Live clock
   useEffect(() => {
@@ -87,6 +97,35 @@ export default function LiveTrains() {
           Real-time positions & ML-powered delay predictions · <span className="mm-num">{time.toLocaleTimeString('en-IN')}</span>
         </p>
       </div>
+
+      {/* ── Local Updates ── */}
+      {news.length > 0 && (
+        <div style={{ marginBottom: 'var(--space-xl)' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.2rem', marginBottom: '12px' }}>
+            📰 Local Updates
+          </h2>
+          <div className="grid grid-3" style={{ gap: '16px' }}>
+            {news.map((item, idx) => (
+              <a
+                key={idx}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <GlassCard style={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.4, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {item.title}
+                  </h4>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
+                    {new Date(item.publishedAt).toLocaleDateString()}
+                  </span>
+                </GlassCard>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Train overview for all lines ── */}
       {allLineTrains.map(({ lineKey, line, emoji, trains }) => (
