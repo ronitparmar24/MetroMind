@@ -260,13 +260,12 @@ export default function StationInfoModal({ station, onClose }) {
           </div>
         </div>
 
-        {/* Near This Station */}
         <div>
           <p style={{
             fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
             textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px',
           }}>
-            Near This Station (400m)
+            Near This Station (1km)
           </p>
           {nearbyLoading ? (
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Loading nearby places...</p>

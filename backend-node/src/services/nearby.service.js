@@ -6,7 +6,7 @@ exports.getNearbyAmenities = async (lat, lng, stationId) => {
   if (_cache[cacheKey] && Date.now() - _cache[cacheKey].ts < 3600000) {
     return _cache[cacheKey].data;
   }
-  const radius = 400; // meters
+  const radius = 1000; // 1km radius to find more amenities
   const query = `
     [out:json][timeout:10];
     (
