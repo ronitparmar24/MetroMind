@@ -18,19 +18,28 @@ const { findShortestRoute } = require('../services/routeGraph.service');
 const INTERCHANGE_STATIONS = ['Old High Court', 'Kalupur Railway Station'];
 
 /**
- * Call Django ML service for crowd prediction; graceful fallback on error.
+ * Call Django ML service for crowd prediction; graceful fallback to Node-native ML.
  */
 const getCrowdPrediction = async (station, hour, day) => {
+  // Try Django first
   try {
     const response = await axios.post(`${DJANGO_API_URL}/api/predict/`, {
       station,
       hour: parseInt(hour, 10),
       day: parseInt(day, 10),
       passengers: 1,
-    });
+    }, { timeout: 4000 });
     return response.data.bucket || response.data.predicted_bucket || 'Medium';
-  } catch {
-    return 'Medium'; // fallback if Django is down
+  } catch (_) {}
+  // Node-native fallback
+  try {
+    const mlService = require('../services/ml.service');
+    const result = mlService.predictCrowd({
+      station, hour: parseInt(hour, 10), day: parseInt(day, 10), passengers: 1,
+    });
+    return result.bucket || 'Medium';
+  } catch (_) {
+    return 'Medium';
   }
 };
 

@@ -132,17 +132,20 @@ const getSpending = async (req, res, next) => {
   }
 };
 
-// GET /api/analytics/heatmap — proxies to Django
+// GET /api/analytics/heatmap — proxies to Django, falls back to Node ML service
 const getHeatmap = async (req, res, next) => {
+  const mlService = require('../services/ml.service');
   try {
-    const response = await axios.get(`${DJANGO_API_URL}/api/analytics/heatmap/`);
-    res.json({ success: true, heatmap: response.data });
-  } catch (error) {
-    if (error.code === 'ECONNREFUSED') {
-      return res.json({ success: true, heatmap: {}, fallback: true });
-    }
-    next(error);
+    const response = await axios.get(`${DJANGO_API_URL}/api/analytics/heatmap/`, { timeout: 5000 });
+    return res.json({ success: true, heatmap: response.data });
+  } catch (_) {
+    // Python unreachable — use Node-native ML service
   }
+  try {
+    const heatmapData = mlService.getHeatmap();
+    if (heatmapData) return res.json({ success: true, heatmap: heatmapData });
+  } catch (_) {}
+  res.json({ success: true, heatmap: {}, fallback: true });
 };
 
 // Personality type definitions
@@ -394,17 +397,20 @@ function buildSyntheticHourly() {
 }
 
 // GET /api/analytics/network-pulse
-// Pure proxy to Django — system-wide, no MongoDB writes
+// Proxy to Django, falls back to Node-native ML service
 const getNetworkPulse = async (req, res, next) => {
+  const mlService = require('../services/ml.service');
   try {
-    const response = await axios.get(`${DJANGO_API_URL}/api/analytics/network-pulse/`);
-    res.json({ success: true, pulse: response.data });
-  } catch (error) {
-    if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
-      return res.json({ success: true, pulse: {}, fallback: true });
-    }
-    next(error);
+    const response = await axios.get(`${DJANGO_API_URL}/api/analytics/network-pulse/`, { timeout: 5000 });
+    return res.json({ success: true, pulse: response.data });
+  } catch (_) {
+    // Python unreachable — use Node-native ML service
   }
+  try {
+    const pulseData = mlService.getNetworkPulse();
+    if (pulseData) return res.json({ success: true, pulse: pulseData });
+  } catch (_) {}
+  res.json({ success: true, pulse: {}, fallback: true });
 };
 
 // GET /api/analytics/carbon-passport/pdf  (protected)

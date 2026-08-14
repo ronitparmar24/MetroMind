@@ -150,15 +150,23 @@ app.get('/api/debug/me', require('./middleware/auth.middleware').protect, async 
 app.get('/api/health', async (req, res) => {
   const mongoose = require('mongoose');
   const axios = require('axios');
+  const mlService = require('./services/ml.service');
 
   const dbState = mongoose.connection.readyState; // 1 = connected
   let mlStatus = 'offline';
+  
+  // Try Python service first
   try {
     const { DJANGO_API_URL } = require('./config/env');
     const mlUrl = (DJANGO_API_URL || 'http://127.0.0.1:8000') + '/api/health/';
     const r = await axios.get(mlUrl, { timeout: 3000 });
     if (r.status === 200) mlStatus = 'online';
-  } catch (_) { /* ml offline */ }
+  } catch (_) {
+    // Python unreachable — check Node-native ML service
+    if (mlService.isAvailable()) {
+      mlStatus = 'online';
+    }
+  }
 
   res.json({
     status: 'ok',

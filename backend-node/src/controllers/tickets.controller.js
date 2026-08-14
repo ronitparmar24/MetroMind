@@ -93,7 +93,7 @@ const bookTicket = async (req, res, next) => {
       travelDate
     );
 
-    // Try to get crowd prediction from Django ML service
+    // Try to get crowd prediction from Django ML service, with Node-native fallback
     let crowdBucket = 'Medium';
     try {
       const predResponse = await axios.post(`${DJANGO_API_URL}/api/predict/`, {
@@ -101,13 +101,21 @@ const bookTicket = async (req, res, next) => {
         hour,
         day: dayOfWeek,
         passengers: passengers.length,
-      });
+      }, { timeout: 4000 });
       if (predResponse.data && predResponse.data.bucket) {
         crowdBucket = predResponse.data.bucket;
       }
     } catch (predErr) {
-      // If Django is unavailable, default to Medium — don't block booking
-      console.warn('⚠️ ML prediction service unavailable, defaulting to Medium');
+      // Django unavailable — try Node-native ML service
+      try {
+        const mlService = require('../services/ml.service');
+        const result = mlService.predictCrowd({
+          station: source, hour, day: dayOfWeek, passengers: passengers.length,
+        });
+        crowdBucket = result.bucket || 'Medium';
+      } catch (_) {
+        console.warn('⚠️ ML prediction service unavailable, defaulting to Medium');
+      }
     }
 
     // ── Metro Card lookup ──

@@ -1,0 +1,45 @@
+{
+  "random_forest": {
+    "accuracy": 0.71,
+    "weighted_f1": 0.7006,
+    "per_class": {
+      "Low": {
+        "precision": 0.5,
+        "recall": 0.2222,
+        "f1": 0.3077
+      },
+      "Medium": {
+        "precision": 0.6552,
+        "recall": 0.8085,
+        "f1": 0.7238
+      },
+      "High": {
+        "precision": 0.8158,
+        "recall": 0.7045,
+        "f1": 0.7561
+      }
+    }
+  },
+  "gradient_boosting": {
+    "accuracy": 0.75,
+    "weighted_f1": 0.7379,
+    "per_class": {
+      "Low": {
+        "precision": 0.6667,
+        "recall": 0.2222,
+        "f1": 0.3333
+      },
+      "Medium": {
+        "precision": 0.6964,
+        "recall": 0.8298,
+        "f1": 0.7573
+      },
+      "High": {
+        "precision": 0.8293,
+        "recall": 0.7727,
+        "f1": 0.8
+      }
+    }
+  },
+  "winner": "gradient_boosting"
+}

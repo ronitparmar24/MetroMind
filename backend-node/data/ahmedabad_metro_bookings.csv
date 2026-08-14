@@ -1,0 +1,501 @@
+recorded_at,station,hour,day_of_week,passengers,is_peak,is_weekend,actual_crowd,bucket
+2026-01-31T21:59:48.849325,Shahpur,18,0,5,True,False,96,Medium
+2026-04-10T21:59:48.849347,Commerce Six Roads,8,0,6,True,False,136,Medium
+2025-12-15T21:59:48.849355,Rabari Colony,8,6,2,True,True,201,High
+2026-04-19T21:59:48.849360,Vastral,11,2,3,False,False,59,Medium
+2026-05-13T21:59:48.849365,Amraiwadi,8,4,6,True,False,236,High
+2025-08-17T21:59:48.849369,Usmanpura,18,2,6,True,False,259,High
+2026-02-24T21:59:48.849373,AEC,16,6,1,False,True,106,Medium
+2025-10-18T21:59:48.849377,CTM Cross Road,14,0,2,False,False,114,Medium
+2025-12-13T21:59:48.849380,APMC,12,5,4,False,True,68,Medium
+2025-10-21T21:59:48.849383,Thaltej,14,1,2,False,False,104,Medium
+2026-05-26T21:59:48.849387,Shreyas,19,4,4,True,False,69,Medium
+2026-06-09T21:59:48.849390,GNLU,8,6,1,True,True,249,High
+2026-01-21T21:59:48.849394,Thaltej,11,6,6,False,True,35,Low
+2026-07-30T21:59:48.849397,Usmanpura,22,2,5,False,False,149,Medium
+2026-05-16T21:59:48.849401,Shahpur,14,6,6,False,True,37,Low
+2026-03-23T21:59:48.849404,Usmanpura,6,5,6,False,True,122,Medium
+2025-09-27T21:59:48.849407,Gujarat University,22,0,6,False,False,117,Medium
+2025-11-01T21:59:48.849410,Commerce Six Roads,10,2,2,True,False,136,Medium
+2026-02-28T21:59:48.849414,Motera Stadium,16,3,1,False,False,171,High
+2026-06-25T21:59:48.849418,Paldi,7,1,5,False,False,218,High
+2026-06-01T21:59:48.849421,Gheekanta,21,6,1,False,True,144,Medium
+2026-03-22T21:59:48.849426,Vadaj,21,4,2,False,False,113,Medium
+2026-01-12T21:59:48.849430,Kankaria,12,4,6,False,False,92,Medium
+2026-06-04T21:59:48.849433,Vastral,20,4,4,False,False,37,Low
+2025-10-07T21:59:48.849436,Paldi,13,0,3,False,False,237,High
+2025-09-15T21:59:48.849439,AEC,6,0,6,False,False,156,High
+2026-04-05T21:59:48.849442,Kankaria East,13,0,1,False,False,98,Medium
+2026-05-29T21:59:48.849447,Amraiwadi,21,1,5,False,False,133,Medium
+2026-06-16T21:59:48.849450,Chandkheda,13,6,4,False,True,127,Medium
+2025-12-08T21:59:48.849453,Kankaria,17,3,4,True,False,147,Medium
+2026-06-10T21:59:48.849456,Kankaria East,9,0,4,True,False,129,Medium
+2025-12-18T21:59:48.849459,Paldi,12,1,5,False,False,146,Medium
+2026-06-27T21:59:48.849462,Vadaj,19,1,3,True,False,119,Medium
+2025-11-01T21:59:48.849466,Kalupur,9,0,6,True,False,282,High
+2026-04-17T21:59:48.849469,Motera Stadium,8,6,2,True,True,174,High
+2026-08-03T21:59:48.849472,CTM Cross Road,7,1,4,False,False,137,Medium
+2025-10-24T21:59:48.849476,Odhav,14,6,4,False,True,125,Medium
+2026-04-15T21:59:48.849479,GNLU,10,1,3,True,False,288,High
+2025-11-20T21:59:48.849482,Kankaria East,7,5,3,False,True,101,Medium
+2026-05-01T21:59:48.849486,Doordarshan Kendra,7,4,1,False,False,104,Medium
+2025-10-17T21:59:48.849490,Kalupur Railway Station,8,5,2,True,True,151,High
+2026-01-02T21:59:48.849495,Paldi,7,4,1,False,False,240,High
+2026-01-14T21:59:48.849498,APMC,14,1,6,False,False,168,High
+2026-06-28T21:59:48.849501,Vadaj,15,3,3,False,False,97,Medium
+2026-04-17T21:59:48.849504,Motera Stadium,20,4,5,False,False,161,High
+2026-04-01T21:59:48.849507,Shreyas,10,2,1,True,False,136,Medium
+2025-09-25T21:59:48.849510,Vastral,15,1,4,False,False,105,Medium
+2026-05-28T21:59:48.849513,Motera Stadium,15,5,1,False,True,64,Medium
+2025-09-29T21:59:48.849516,Shreyas,9,0,6,True,False,113,Medium
+2025-09-14T21:59:48.849519,SSG Hospital,16,1,6,False,False,79,Medium
+2026-06-18T21:59:48.849522,Shreyas,22,3,3,False,False,138,Medium
+2026-02-15T21:59:48.849525,Kankaria,14,0,1,False,False,77,Medium
+2025-10-21T21:59:48.849528,Vadaj,14,1,6,False,False,75,Medium
+2026-05-20T21:59:48.849531,Motera Stadium,9,0,6,True,False,241,High
+2026-02-28T21:59:48.849535,Ranip,17,4,5,True,False,157,High
+2025-08-20T21:59:48.849538,Vastral,7,2,2,False,False,94,Medium
+2025-09-21T21:59:48.849541,Paldi,9,2,5,True,False,322,High
+2026-05-06T21:59:48.849545,Thaltej,13,6,2,False,True,24,Low
+2026-01-06T21:59:48.849548,Jivraj Mehta Hospital,6,1,6,False,False,119,Medium
+2026-06-10T21:59:48.849551,Paldi,14,1,6,False,False,176,High
+2025-12-12T21:59:48.849555,Odhav,7,6,4,False,True,145,Medium
+2026-04-12T21:59:48.849558,Nirant Cross Road,15,6,2,False,True,129,Medium
+2026-03-15T21:59:48.849561,Sabarmati,12,3,3,False,False,93,Medium
+2025-11-03T21:59:48.849564,Nirant Cross Road,22,3,6,False,False,118,Medium
+2026-03-22T21:59:48.849567,Vastral Gam,6,0,3,False,False,191,High
+2026-02-09T21:59:48.849570,Ranip,9,4,4,True,False,217,High
+2026-04-29T21:59:48.849573,APMC,19,4,5,True,False,307,High
+2026-08-04T21:59:48.849576,Shreyas,7,5,4,False,True,106,Medium
+2025-09-19T21:59:48.849580,Commerce Six Roads,17,3,1,True,False,159,High
+2025-11-18T21:59:48.849583,APMC,9,5,3,True,True,160,High
+2026-04-28T21:59:48.849586,Apparel Park,19,2,4,True,False,78,Medium
+2026-05-07T21:59:48.849589,Jivraj Mehta Hospital,18,5,6,True,True,40,Low
+2025-10-12T21:59:48.849592,Apparel Park,18,4,1,True,False,84,Medium
+2025-08-24T21:59:48.849595,APMC,20,3,4,False,False,192,High
+2025-11-14T21:59:48.849599,SSG Hospital,22,3,6,False,False,93,Medium
+2025-08-25T21:59:48.849602,Vastral Gam,8,6,2,True,True,176,High
+2025-12-04T21:59:48.849605,Apparel Park,13,6,2,False,True,48,Low
+2025-10-14T21:59:48.849608,Kalupur Railway Station,20,3,6,False,False,207,High
+2026-08-02T21:59:48.849613,Commerce Six Roads,18,3,4,True,False,97,Medium
+2025-08-13T21:59:48.849617,Old High Court,19,1,2,True,False,343,High
+2026-05-28T21:59:48.849620,Usmanpura,7,4,2,False,False,157,High
+2026-02-23T21:59:48.849625,Usmanpura,22,4,5,False,False,136,Medium
+2025-12-04T21:59:48.849629,Kalupur,22,3,5,False,False,161,High
+2025-09-12T21:59:48.849631,Kalupur,14,6,2,False,True,130,Medium
+2025-08-04T21:59:48.849634,Amraiwadi,22,3,6,False,False,144,Medium
+2026-02-22T21:59:48.849637,Rabari Colony,13,2,3,False,False,205,High
+2026-04-17T21:59:48.849640,Gheekanta,10,1,2,True,False,219,High
+2025-10-31T21:59:48.849643,Kalupur Railway Station,19,3,3,True,False,311,High
+2025-10-09T21:59:48.849646,Usmanpura,19,0,2,True,False,231,High
+2026-02-05T21:59:48.849649,Sabarmati,18,3,1,True,False,117,Medium
+2025-09-30T21:59:48.849653,Apparel Park,18,6,4,True,True,16,Low
+2025-12-24T21:59:48.849656,AEC,21,1,3,False,False,139,Medium
+2026-05-12T21:59:48.849659,GNLU,6,3,3,False,False,135,Medium
+2026-07-22T21:59:48.849662,Usmanpura,10,4,5,True,False,169,High
+2026-05-03T21:59:48.849666,CTM Cross Road,6,0,6,False,False,52,Medium
+2026-04-18T21:59:48.849668,Kankaria East,14,3,3,False,False,117,Medium
+2026-01-01T21:59:48.849671,Usmanpura,16,2,4,False,False,131,Medium
+2025-11-01T21:59:48.849674,Shreyas,8,3,1,True,False,208,High
+2026-07-15T21:59:48.849677,Kankaria East,17,1,6,True,False,205,High
+2025-09-20T21:59:48.849683,Sabarmati,13,1,1,False,False,126,Medium
+2026-04-15T21:59:48.849687,Thaltej,13,1,4,False,False,45,Low
+2026-05-11T21:59:48.849690,Usmanpura,14,6,3,False,True,67,Medium
+2025-10-14T21:59:48.849693,Shahpur,11,2,1,False,False,11,Low
+2026-06-27T21:59:48.849696,Odhav,18,5,2,True,True,170,High
+2026-06-04T21:59:48.849701,Paldi,9,5,3,True,True,233,High
+2025-08-31T21:59:48.849704,Ranip,17,4,4,True,False,114,Medium
+2025-11-27T21:59:48.849707,Vastral,8,4,6,True,False,90,Medium
+2025-12-12T21:59:48.849710,Old High Court,19,2,6,True,False,349,High
+2025-09-23T21:59:48.849713,Thaltej,19,1,6,True,False,53,Medium
+2025-10-05T21:59:48.849716,Chandkheda,20,3,6,False,False,167,High
+2025-12-17T21:59:48.849719,Amraiwadi,16,6,2,False,True,105,Medium
+2025-08-27T21:59:48.849722,Paldi,20,4,5,False,False,188,High
+2026-04-18T21:59:48.849725,Odhav,16,0,4,False,False,205,High
+2025-10-03T21:59:48.849728,Nirant Cross Road,14,2,3,False,False,92,Medium
+2025-11-27T21:59:48.849731,Amraiwadi,6,4,2,False,False,183,High
+2025-11-26T21:59:48.849734,Paldi,21,5,6,False,True,164,High
+2026-03-01T21:59:48.849737,Kalupur,6,0,3,False,False,186,High
+2026-02-09T21:59:48.849740,Vastral,21,4,5,False,False,127,Medium
+2026-04-08T21:59:48.849744,Kankaria,16,2,6,False,False,85,Medium
+2025-11-03T21:59:48.849747,Shahpur,12,2,1,False,False,79,Medium
+2025-11-09T21:59:48.849751,Gujarat University,12,1,6,False,False,82,Medium
+2026-03-06T21:59:48.849754,Rabari Colony,9,6,2,True,True,186,High
+2026-03-17T21:59:48.849757,AEC,17,1,3,True,False,263,High
+2025-08-12T21:59:48.849760,Ranip,7,4,3,False,False,101,Medium
+2025-12-22T21:59:48.849763,Vadaj,21,0,1,False,False,88,Medium
+2025-12-03T21:59:48.849766,Vastral Gam,11,0,3,False,False,142,Medium
+2026-07-08T21:59:48.849769,Shahpur,8,3,4,True,False,146,Medium
+2026-03-02T21:59:48.849772,Thaltej,10,6,5,True,True,86,Medium
+2025-09-22T21:59:48.849775,Gheekanta,13,0,5,False,False,158,High
+2025-12-21T21:59:48.849778,AEC,22,3,4,False,False,110,Medium
+2026-06-15T21:59:48.849783,Apparel Park,19,2,5,True,False,61,Medium
+2026-06-24T21:59:48.849786,SSG Hospital,12,2,6,False,False,59,Medium
+2025-12-17T21:59:48.849789,Doordarshan Kendra,13,1,5,False,False,92,Medium
+2026-03-10T21:59:48.849792,Chandkheda,15,0,2,False,False,173,High
+2025-09-18T21:59:48.849795,Rabari Colony,20,0,6,False,False,175,High
+2026-04-11T21:59:48.849798,Commerce Six Roads,19,0,5,True,False,118,Medium
+2026-02-28T21:59:48.849801,Thaltej,14,6,2,False,True,61,Medium
+2025-08-17T21:59:48.849804,Rabari Colony,20,0,4,False,False,181,High
+2025-10-02T21:59:48.849809,Apparel Park,18,2,5,True,False,60,Medium
+2025-09-29T21:59:48.849812,Ranip,19,5,3,True,True,95,Medium
+2025-10-14T21:59:48.849815,Shreyas,6,0,2,False,False,146,Medium
+2026-05-07T21:59:48.849818,Sabarmati,14,4,1,False,False,81,Medium
+2025-10-09T21:59:48.849821,Chandkheda,22,5,4,False,True,137,Medium
+2026-02-07T21:59:48.849824,Kankaria,21,0,4,False,False,100,Medium
+2026-01-06T21:59:48.849827,Jivraj Mehta Hospital,16,2,6,False,False,87,Medium
+2025-10-27T21:59:48.849830,GNLU,15,5,4,False,True,124,Medium
+2026-01-10T21:59:48.849833,Ranip,20,0,3,False,False,98,Medium
+2026-04-30T21:59:48.849836,Motera Stadium,20,3,1,False,False,164,High
+2025-10-27T21:59:48.849839,Vastral,21,5,4,False,True,58,Medium
+2025-11-29T21:59:48.849843,Vadaj,15,3,6,False,False,98,Medium
+2026-02-26T21:59:48.849846,Shahpur,6,5,5,False,True,64,Medium
+2026-06-07T21:59:48.849849,Motera Stadium,19,0,2,True,False,179,High
+2025-11-17T21:59:48.849852,Usmanpura,9,5,2,True,True,104,Medium
+2025-12-06T21:59:48.849855,Amraiwadi,19,6,4,True,True,150,Medium
+2025-11-17T21:59:48.849858,Paldi,20,4,2,False,False,149,Medium
+2026-02-11T21:59:48.849861,Vadaj,8,2,4,True,False,223,High
+2025-09-01T21:59:48.849864,Amraiwadi,6,2,6,False,False,130,Medium
+2025-11-30T21:59:48.849868,GNLU,10,3,5,True,False,281,High
+2026-04-30T21:59:48.849871,Nirant Cross Road,16,4,5,False,False,57,Medium
+2026-07-13T21:59:48.849874,Paldi,18,1,4,True,False,348,High
+2025-09-05T21:59:48.849877,APMC,21,5,4,False,True,87,Medium
+2025-11-20T21:59:48.849880,Thaltej,21,0,2,False,False,93,Medium
+2026-07-28T21:59:48.849884,Vastral Gam,9,6,4,True,True,219,High
+2026-05-17T21:59:48.849887,Thaltej,19,6,6,True,True,106,Medium
+2025-09-06T21:59:48.849890,Kalupur Railway Station,21,6,3,False,True,115,Medium
+2025-11-04T21:59:48.849893,Gheekanta,16,6,6,False,True,147,Medium
+2025-10-31T21:59:48.849896,Odhav,16,5,6,False,True,162,High
+2025-08-19T21:59:48.849899,Ranip,8,1,6,True,False,125,Medium
+2025-09-14T21:59:48.849904,Rabari Colony,13,5,1,False,True,108,Medium
+2026-03-04T21:59:48.849907,Old High Court,20,1,6,False,False,205,High
+2026-05-22T21:59:48.849910,Sabarmati,7,2,1,False,False,87,Medium
+2025-08-20T21:59:48.849913,Paldi,22,3,5,False,False,228,High
+2025-08-20T21:59:48.849916,Gujarat University,11,1,1,False,False,107,Medium
+2026-04-08T21:59:48.849919,Paldi,21,4,2,False,False,181,High
+2025-12-09T21:59:48.849922,Usmanpura,14,3,3,False,False,112,Medium
+2026-02-09T21:59:48.849926,Rabari Colony,11,0,4,False,False,117,Medium
+2026-01-20T21:59:48.849929,Apparel Park,19,5,3,True,True,39,Low
+2025-10-16T21:59:48.849933,Chandkheda,9,1,4,True,False,266,High
+2026-01-14T21:59:48.849936,Nirant Cross Road,15,5,3,False,True,131,Medium
+2026-07-10T21:59:48.849939,Amraiwadi,6,4,6,False,False,150,Medium
+2025-09-13T21:59:48.849944,GNLU,15,6,2,False,True,91,Medium
+2025-09-01T21:59:48.849947,Commerce Six Roads,14,5,6,False,True,27,Low
+2026-07-18T21:59:48.849950,Vadaj,9,5,6,True,True,176,High
+2026-02-18T21:59:48.849953,Vastral,10,0,3,True,False,135,Medium
+2026-01-29T21:59:48.849957,Jivraj Mehta Hospital,11,1,2,False,False,86,Medium
+2026-03-06T21:59:48.849960,Amraiwadi,11,2,4,False,False,82,Medium
+2025-08-23T21:59:48.849964,Vastral Gam,9,3,1,True,False,286,High
+2026-07-28T21:59:48.849967,CTM Cross Road,17,0,4,True,False,221,High
+2025-10-09T21:59:48.849970,Shreyas,9,3,3,True,False,115,Medium
+2026-04-07T21:59:48.849973,Odhav,17,0,6,True,False,251,High
+2025-09-07T21:59:48.849976,Chandkheda,6,4,5,False,False,153,High
+2025-09-06T21:59:48.849979,Kalupur Railway Station,20,5,3,False,True,176,High
+2025-11-25T21:59:48.849982,Jivraj Mehta Hospital,9,1,1,True,False,133,Medium
+2026-05-27T21:59:48.849985,Shahpur,9,1,5,True,False,99,Medium
+2025-11-01T21:59:48.849988,Odhav,20,2,6,False,False,238,High
+2026-06-15T21:59:48.849991,Jivraj Mehta Hospital,10,3,6,True,False,94,Medium
+2025-12-20T21:59:48.849996,GNLU,19,2,1,True,False,235,High
+2026-01-28T21:59:48.849998,Paldi,17,0,6,True,False,280,High
+2025-12-15T21:59:48.850002,Nirant Cross Road,7,3,3,False,False,113,Medium
+2025-10-03T21:59:48.850005,Gheekanta,12,5,6,False,True,122,Medium
+2025-10-19T21:59:48.850008,Sabarmati,7,6,3,False,True,67,Medium
+2026-04-20T21:59:48.850011,SSG Hospital,8,6,5,True,True,107,Medium
+2026-03-16T21:59:48.850015,SSG Hospital,13,2,2,False,False,97,Medium
+2026-05-07T21:59:48.850018,Thaltej,10,4,3,True,False,57,Medium
+2025-10-07T21:59:48.850021,Shahpur,6,1,1,False,False,38,Low
+2026-07-09T21:59:48.850023,APMC,6,1,3,False,False,213,High
+2026-01-31T21:59:48.850026,Vadaj,19,4,1,True,False,177,High
+2025-09-24T21:59:48.850029,Old High Court,20,4,2,False,False,165,High
+2025-12-02T21:59:48.850032,Ranip,22,2,4,False,False,93,Medium
+2025-11-26T21:59:48.850035,CTM Cross Road,19,5,1,True,True,106,Medium
+2026-03-17T21:59:48.850038,Kalupur,8,0,3,True,False,259,High
+2026-03-07T21:59:48.850042,APMC,18,4,5,True,False,252,High
+2025-09-03T21:59:48.850045,Usmanpura,22,4,4,False,False,182,High
+2026-01-05T21:59:48.850048,SSG Hospital,19,3,2,True,False,158,High
+2026-02-25T21:59:48.850051,Vastral Gam,20,3,4,False,False,154,High
+2025-12-05T21:59:48.850055,Shreyas,17,1,6,True,False,110,Medium
+2026-01-26T21:59:48.850059,Kalupur Railway Station,8,6,1,True,True,221,High
+2025-10-21T21:59:48.850062,Vadaj,7,4,5,False,False,126,Medium
+2025-12-31T21:59:48.850065,Vastral Gam,9,3,3,True,False,286,High
+2026-02-05T21:59:48.850068,Kankaria East,15,4,3,False,False,40,Low
+2026-06-10T21:59:48.850071,Old High Court,22,1,2,False,False,188,High
+2025-10-15T21:59:48.850074,Nirant Cross Road,17,0,3,True,False,143,Medium
+2025-09-24T21:59:48.850077,AEC,19,6,5,True,True,213,High
+2026-03-18T21:59:48.850080,Sabarmati,14,0,2,False,False,86,Medium
+2025-09-02T21:59:48.850083,Apparel Park,16,2,1,False,False,67,Medium
+2025-09-14T21:59:48.850086,CTM Cross Road,8,1,6,True,False,175,High
+2026-02-11T21:59:48.850089,Sabarmati,8,5,5,True,True,106,Medium
+2026-02-19T21:59:48.850092,Doordarshan Kendra,17,2,6,True,False,166,High
+2026-06-24T21:59:48.850095,Gheekanta,7,1,2,False,False,155,High
+2025-11-29T21:59:48.850099,Amraiwadi,20,5,4,False,True,90,Medium
+2025-12-27T21:59:48.850102,Kalupur,19,2,2,True,False,268,High
+2025-10-05T21:59:48.850106,Shahpur,15,5,6,False,True,35,Low
+2025-10-02T21:59:48.850110,GNLU,22,5,3,False,True,142,Medium
+2026-04-18T21:59:48.850114,Kankaria East,6,1,3,False,False,99,Medium
+2025-12-27T21:59:48.850117,Vadaj,14,2,3,False,False,144,Medium
+2025-08-09T21:59:48.850121,Gujarat University,10,3,5,True,False,220,High
+2026-07-14T21:59:48.850124,AEC,22,4,6,False,False,154,High
+2026-02-25T21:59:48.850127,Kankaria,6,3,1,False,False,99,Medium
+2026-07-25T21:59:48.850130,Kankaria,18,5,6,True,True,102,Medium
+2025-12-12T21:59:48.850133,APMC,11,6,5,False,True,128,Medium
+2025-11-09T21:59:48.850136,Vastral,8,3,1,True,False,124,Medium
+2026-02-12T21:59:48.850139,Gheekanta,18,6,3,True,True,202,High
+2025-11-06T21:59:48.850142,AEC,16,6,2,False,True,143,Medium
+2025-09-08T21:59:48.850146,Commerce Six Roads,17,2,6,True,False,115,Medium
+2026-05-18T21:59:48.850149,Thaltej,13,0,2,False,False,63,Medium
+2025-11-25T21:59:48.850152,Kalupur Railway Station,11,6,6,False,True,158,High
+2026-02-20T21:59:48.850155,Usmanpura,20,5,5,False,True,46,Low
+2025-12-07T21:59:48.850158,APMC,10,3,1,True,False,190,High
+2026-06-28T21:59:48.850161,Kalupur,15,6,3,False,True,101,Medium
+2026-07-06T21:59:48.850164,Apparel Park,20,3,1,False,False,45,Low
+2025-09-24T21:59:48.850167,Vastral,15,0,6,False,False,120,Medium
+2026-07-14T21:59:48.850171,Odhav,20,4,5,False,False,149,Medium
+2026-07-04T21:59:48.850174,Kalupur,12,2,5,False,False,161,High
+2025-08-04T21:59:48.850177,Kalupur,9,6,3,True,True,190,High
+2025-12-23T21:59:48.850180,Gheekanta,22,5,2,False,True,153,High
+2026-01-18T21:59:48.850184,Doordarshan Kendra,17,2,3,True,False,147,Medium
+2026-02-14T21:59:48.850188,Jivraj Mehta Hospital,16,5,5,False,True,91,Medium
+2025-08-22T21:59:48.850190,Kalupur Railway Station,16,0,5,False,False,213,High
+2025-09-30T21:59:48.850194,Odhav,15,2,6,False,False,240,High
+2025-08-30T21:59:48.850196,Thaltej,16,0,5,False,False,5,Low
+2025-10-04T21:59:48.850200,Thaltej,17,2,6,True,False,86,Medium
+2025-09-09T21:59:48.850203,Gheekanta,15,4,4,False,False,126,Medium
+2025-08-19T21:59:48.850206,Vastral Gam,10,5,6,True,True,189,High
+2026-07-26T21:59:48.850209,Gheekanta,19,4,3,True,False,188,High
+2026-04-28T21:59:48.850212,Vastral,15,1,2,False,False,53,Medium
+2026-03-06T21:59:48.850215,AEC,10,1,1,True,False,269,High
+2026-07-16T21:59:48.850218,Old High Court,22,6,5,False,True,171,High
+2026-05-18T21:59:48.850221,Vastral Gam,10,4,4,True,False,183,High
+2026-05-12T21:59:48.850224,Doordarshan Kendra,11,6,6,False,True,70,Medium
+2025-08-23T21:59:48.850228,Kalupur,7,3,3,False,False,124,Medium
+2026-04-07T21:59:48.850231,Paldi,20,4,3,False,False,200,High
+2026-04-27T21:59:48.850234,Paldi,15,6,4,False,True,87,Medium
+2026-01-02T21:59:48.850237,Vastral,20,3,3,False,False,88,Medium
+2026-05-26T21:59:48.850240,Doordarshan Kendra,12,6,5,False,True,28,Low
+2026-06-13T21:59:48.850244,Shreyas,7,5,4,False,True,90,Medium
+2026-03-18T21:59:48.850247,Shahpur,15,0,2,False,False,45,Low
+2025-12-17T21:59:48.850251,Kalupur,22,1,4,False,False,233,High
+2026-01-14T21:59:48.850253,Nirant Cross Road,6,3,1,False,False,143,Medium
+2026-06-15T21:59:48.850256,Vastral,13,3,1,False,False,76,Medium
+2026-03-11T21:59:48.850259,Vastral Gam,10,1,1,True,False,241,High
+2026-06-25T21:59:48.850262,Chandkheda,10,6,6,True,True,140,Medium
+2025-10-28T21:59:48.850265,Sabarmati,14,1,2,False,False,103,Medium
+2026-04-04T21:59:48.850270,Kankaria,9,6,3,True,True,117,Medium
+2025-11-22T21:59:48.850273,Jivraj Mehta Hospital,20,0,1,False,False,88,Medium
+2026-08-04T21:59:48.850276,Sabarmati,22,4,2,False,False,90,Medium
+2026-05-01T21:59:48.850280,Nirant Cross Road,13,4,4,False,False,83,Medium
+2025-11-18T21:59:48.850283,Gheekanta,22,2,1,False,False,190,High
+2026-07-13T21:59:48.850286,Sabarmati,18,6,4,True,True,89,Medium
+2026-02-09T21:59:48.850289,Odhav,17,2,6,True,False,343,High
+2026-02-15T21:59:48.850292,Paldi,9,6,5,True,True,215,High
+2025-08-19T21:59:48.850295,Vadaj,7,2,5,False,False,96,Medium
+2026-05-27T21:59:48.850299,Usmanpura,21,5,2,False,True,137,Medium
+2026-07-14T21:59:48.850302,Kalupur Railway Station,20,0,3,False,False,215,High
+2025-10-30T21:59:48.850304,APMC,15,4,4,False,False,223,High
+2026-07-11T21:59:48.850310,Chandkheda,14,0,6,False,False,183,High
+2025-12-24T21:59:48.850313,Vastral Gam,14,0,3,False,False,184,High
+2025-11-23T21:59:48.850317,CTM Cross Road,20,3,3,False,False,141,Medium
+2025-12-30T21:59:48.850320,Vastral,22,2,1,False,False,75,Medium
+2026-06-25T21:59:48.850323,Gheekanta,19,4,2,True,False,206,High
+2025-09-30T21:59:48.850326,APMC,15,2,4,False,False,165,High
+2026-02-05T21:59:48.850329,Kankaria,11,5,4,False,True,71,Medium
+2026-06-27T21:59:48.850332,Kankaria,14,5,1,False,True,84,Medium
+2026-05-23T21:59:48.850335,CTM Cross Road,17,4,6,True,False,128,Medium
+2026-04-06T21:59:48.850338,Kalupur,7,1,1,False,False,111,Medium
+2025-12-17T21:59:48.850342,Vastral,17,3,5,True,False,139,Medium
+2025-10-15T21:59:48.850344,Vastral,17,3,1,True,False,126,Medium
+2026-06-07T21:59:48.850347,Vadaj,22,2,4,False,False,109,Medium
+2026-01-18T21:59:48.850350,Sabarmati,11,3,5,False,False,117,Medium
+2025-09-25T21:59:48.850353,Shahpur,14,6,3,False,True,44,Low
+2026-05-27T21:59:48.850357,Rabari Colony,21,1,1,False,False,153,High
+2025-08-20T21:59:48.850361,Kalupur Railway Station,20,1,6,False,False,187,High
+2025-10-27T21:59:48.850364,APMC,17,5,1,True,True,185,High
+2025-09-12T21:59:48.850367,Rabari Colony,15,6,2,False,True,104,Medium
+2026-06-03T21:59:48.850371,Gujarat University,17,4,2,True,False,129,Medium
+2026-01-28T21:59:48.850375,Commerce Six Roads,10,1,4,True,False,133,Medium
+2026-07-02T21:59:48.850378,Usmanpura,10,4,1,True,False,223,High
+2026-01-07T21:59:48.850382,Apparel Park,18,5,6,True,True,33,Low
+2026-06-28T21:59:48.850385,Kalupur Railway Station,10,2,6,True,False,304,High
+2025-10-26T21:59:48.850388,Kalupur,20,5,5,False,True,90,Medium
+2026-07-07T21:59:48.850391,Gujarat University,10,3,5,True,False,247,High
+2025-08-06T21:59:48.850394,Shahpur,22,1,3,False,False,85,Medium
+2026-06-25T21:59:48.850397,AEC,17,4,3,True,False,249,High
+2025-09-24T21:59:48.850400,Shreyas,12,5,5,False,True,57,Medium
+2025-10-05T21:59:48.850403,Gheekanta,22,5,2,False,True,149,Medium
+2025-10-20T21:59:48.850406,Thaltej,11,5,5,False,True,37,Low
+2025-09-10T21:59:48.850409,Ranip,6,0,1,False,False,58,Medium
+2025-11-23T21:59:48.850412,Shreyas,12,6,5,False,True,26,Low
+2025-08-19T21:59:48.850415,Rabari Colony,15,3,2,False,False,194,High
+2026-01-04T21:59:48.850418,CTM Cross Road,15,3,1,False,False,100,Medium
+2025-09-28T21:59:48.850421,Chandkheda,20,1,3,False,False,156,High
+2026-02-09T21:59:48.850424,Thaltej,16,6,6,False,True,7,Low
+2025-11-14T21:59:48.850427,CTM Cross Road,10,6,3,True,True,193,High
+2026-05-24T21:59:48.850430,Old High Court,16,1,4,False,False,223,High
+2025-09-23T21:59:48.850434,Old High Court,7,2,4,False,False,222,High
+2026-02-25T21:59:48.850439,Jivraj Mehta Hospital,13,6,2,False,True,78,Medium
+2025-12-08T21:59:48.850442,Commerce Six Roads,11,3,5,False,False,5,Low
+2025-12-13T21:59:48.850445,GNLU,15,3,1,False,False,187,High
+2026-07-11T21:59:48.850447,Paldi,12,4,3,False,False,216,High
+2025-12-07T21:59:48.850450,Kankaria East,15,3,5,False,False,123,Medium
+2025-12-27T21:59:48.850453,Rabari Colony,6,6,1,False,True,91,Medium
+2026-01-11T21:59:48.850456,Vadaj,14,5,3,False,True,85,Medium
+2026-03-10T21:59:48.850459,Kankaria East,12,2,5,False,False,62,Medium
+2025-09-19T21:59:48.850462,Kalupur Railway Station,18,4,4,True,False,302,High
+2026-01-25T21:59:48.850465,Shahpur,10,0,4,True,False,84,Medium
+2025-11-21T21:59:48.850468,Vastral Gam,17,6,2,True,True,176,High
+2025-08-04T21:59:48.850471,Ranip,7,0,2,False,False,132,Medium
+2026-05-25T21:59:48.850474,Vastral Gam,21,4,4,False,False,195,High
+2025-09-23T21:59:48.850477,APMC,16,1,4,False,False,223,High
+2026-03-04T21:59:48.850481,Apparel Park,16,4,5,False,False,14,Low
+2025-08-25T21:59:48.850483,Chandkheda,6,2,3,False,False,163,High
+2025-08-17T21:59:48.850486,Shahpur,19,4,3,True,False,122,Medium
+2025-10-12T21:59:48.850490,Sabarmati,21,2,6,False,False,49,Low
+2025-09-21T21:59:48.850495,AEC,7,4,4,False,False,171,High
+2026-04-02T21:59:48.850498,Odhav,10,6,6,True,True,240,High
+2026-01-05T21:59:48.850502,Ranip,9,1,1,True,False,118,Medium
+2025-12-06T21:59:48.850505,SSG Hospital,19,4,5,True,False,143,Medium
+2025-12-03T21:59:48.850508,Kankaria East,10,4,2,True,False,38,Low
+2025-11-05T21:59:48.850511,Odhav,16,1,4,False,False,154,High
+2026-03-22T21:59:48.850514,Vastral Gam,17,5,6,True,True,142,Medium
+2025-10-23T21:59:48.850519,Chandkheda,12,1,3,False,False,123,Medium
+2025-11-27T21:59:48.850522,Apparel Park,13,2,3,False,False,48,Low
+2026-03-17T21:59:48.850525,APMC,21,2,5,False,False,128,Medium
+2026-01-14T21:59:48.850528,Rabari Colony,9,4,6,True,False,198,High
+2026-03-10T21:59:48.850531,Nirant Cross Road,10,2,1,True,False,144,Medium
+2026-04-23T21:59:48.850534,Gheekanta,17,3,6,True,False,230,High
+2025-09-23T21:59:48.850538,Amraiwadi,14,1,1,False,False,176,High
+2026-04-07T21:59:48.850541,Paldi,13,0,6,False,False,217,High
+2025-12-06T21:59:48.850544,Kankaria East,9,3,3,True,False,124,Medium
+2025-09-04T21:59:48.850547,Old High Court,10,0,5,True,False,317,High
+2026-03-10T21:59:48.850550,Chandkheda,21,5,2,False,True,118,Medium
+2025-10-15T21:59:48.850553,APMC,15,5,1,False,True,131,Medium
+2026-05-06T21:59:48.850556,AEC,7,1,4,False,False,143,Medium
+2026-03-09T21:59:48.850561,Ranip,18,6,4,True,True,122,Medium
+2025-09-30T21:59:48.850564,Ranip,6,2,5,False,False,144,Medium
+2025-11-25T21:59:48.850567,Old High Court,16,2,4,False,False,237,High
+2026-04-28T21:59:48.850570,Vadaj,22,3,3,False,False,116,Medium
+2026-05-01T21:59:48.850573,Shahpur,16,1,6,False,False,49,Low
+2025-10-18T21:59:48.850576,Motera Stadium,16,6,3,False,True,110,Medium
+2025-11-14T21:59:48.850579,Commerce Six Roads,11,4,6,False,False,108,Medium
+2026-06-17T21:59:48.850582,APMC,8,3,6,True,False,225,High
+2026-01-20T21:59:48.850585,Gujarat University,10,3,3,True,False,199,High
+2026-02-17T21:59:48.850588,Paldi,20,6,3,False,True,138,Medium
+2025-08-28T21:59:48.850591,Apparel Park,6,2,6,False,False,46,Low
+2026-01-09T21:59:48.850594,Shahpur,20,2,2,False,False,89,Medium
+2026-05-28T21:59:48.850599,Apparel Park,9,5,3,True,True,49,Low
+2025-09-28T21:59:48.850602,Chandkheda,10,3,6,True,False,275,High
+2025-08-29T21:59:48.850605,Vastral,19,5,5,True,True,128,Medium
+2026-06-24T21:59:48.850608,SSG Hospital,13,5,5,False,True,35,Low
+2026-07-04T21:59:48.850611,Kalupur,22,5,3,False,True,159,High
+2025-11-11T21:59:48.850614,Commerce Six Roads,10,1,3,True,False,113,Medium
+2025-11-16T21:59:48.850618,Kalupur,9,5,2,True,True,180,High
+2025-11-15T21:59:48.850622,Kalupur,7,3,2,False,False,144,Medium
+2026-02-28T21:59:48.850625,Jivraj Mehta Hospital,20,4,1,False,False,31,Low
+2026-04-15T21:59:48.850628,Sabarmati,18,2,1,True,False,126,Medium
+2026-07-05T21:59:48.850631,Kalupur Railway Station,7,3,3,False,False,188,High
+2026-01-07T21:59:48.850633,Kalupur Railway Station,21,0,3,False,False,164,High
+2026-01-01T21:59:48.850637,Gujarat University,10,6,6,True,True,180,High
+2026-01-24T21:59:48.850640,Vastral,18,3,4,True,False,116,Medium
+2026-01-15T21:59:48.850643,Gheekanta,10,5,3,True,True,231,High
+2026-07-24T21:59:48.850646,Vadaj,13,6,1,False,True,147,Medium
+2026-04-09T21:59:48.850649,Apparel Park,20,5,6,False,True,7,Low
+2026-03-16T21:59:48.850653,Paldi,20,2,2,False,False,189,High
+2026-07-27T21:59:48.850656,Commerce Six Roads,9,0,6,True,False,50,Low
+2025-10-04T21:59:48.850659,Paldi,12,0,1,False,False,224,High
+2026-07-13T21:59:48.850662,Ranip,20,4,6,False,False,95,Medium
+2026-04-15T21:59:48.850664,CTM Cross Road,20,1,5,False,False,98,Medium
+2025-10-14T21:59:48.850668,Kankaria East,10,4,3,True,False,143,Medium
+2026-05-23T21:59:48.850671,APMC,16,1,3,False,False,239,High
+2026-05-07T21:59:48.850674,AEC,19,2,3,True,False,294,High
+2025-09-09T21:59:48.850677,Kankaria,21,0,3,False,False,137,Medium
+2026-01-24T21:59:48.850680,Odhav,22,2,6,False,False,179,High
+2026-03-04T21:59:48.850685,Gujarat University,21,1,2,False,False,139,Medium
+2025-11-06T21:59:48.850688,Thaltej,20,0,5,False,False,37,Low
+2026-04-22T21:59:48.850691,Vadaj,18,1,3,True,False,194,High
+2026-04-29T21:59:48.850694,Vastral Gam,8,3,3,True,False,276,High
+2025-09-29T21:59:48.850697,Kankaria East,14,3,6,False,False,117,Medium
+2025-12-02T21:59:48.850700,Ranip,8,1,5,True,False,141,Medium
+2026-04-18T21:59:48.850703,SSG Hospital,16,2,1,False,False,49,Low
+2025-08-09T21:59:48.850706,Commerce Six Roads,9,5,4,True,True,106,Medium
+2026-02-21T21:59:48.850709,SSG Hospital,18,1,5,True,False,108,Medium
+2026-02-01T21:59:48.850712,Rabari Colony,18,3,5,True,False,244,High
+2025-12-07T21:59:48.850715,GNLU,20,0,6,False,False,141,Medium
+2026-04-13T21:59:48.850718,APMC,12,2,3,False,False,139,Medium
+2025-10-09T21:59:48.850722,Thaltej,6,2,5,False,False,84,Medium
+2026-04-01T21:59:48.850726,Jivraj Mehta Hospital,15,1,2,False,False,58,Medium
+2025-09-10T21:59:48.850729,GNLU,16,2,4,False,False,187,High
+2025-10-29T21:59:48.850732,GNLU,20,1,6,False,False,167,High
+2026-07-05T21:59:48.850735,GNLU,11,4,6,False,False,144,Medium
+2026-05-26T21:59:48.850738,Ranip,8,6,6,True,True,106,Medium
+2026-07-31T21:59:48.850741,AEC,8,5,2,True,True,159,High
+2025-09-23T21:59:48.850745,SSG Hospital,22,3,3,False,False,127,Medium
+2025-11-05T21:59:48.850748,Chandkheda,21,0,1,False,False,188,High
+2026-03-11T21:59:48.850751,Jivraj Mehta Hospital,6,0,5,False,False,66,Medium
+2025-08-24T21:59:48.850754,Sabarmati,22,6,6,False,True,30,Low
+2025-09-21T21:59:48.850757,Kankaria,11,0,1,False,False,88,Medium
+2026-06-25T21:59:48.850761,Shreyas,17,2,4,True,False,132,Medium
+2026-03-04T21:59:48.850765,Vastral,18,3,5,True,False,124,Medium
+2026-01-22T21:59:48.850768,Gheekanta,7,0,4,False,False,201,High
+2025-11-22T21:59:48.850771,Odhav,21,0,6,False,False,212,High
+2025-11-07T21:59:48.850774,Kankaria,16,4,1,False,False,111,Medium
+2026-07-12T21:59:48.850777,Ranip,13,1,6,False,False,124,Medium
+2025-09-02T21:59:48.850780,Kalupur Railway Station,14,4,5,False,False,177,High
+2026-05-23T21:59:48.850783,Ranip,11,6,3,False,True,89,Medium
+2025-10-20T21:59:48.850786,CTM Cross Road,8,2,2,True,False,162,High
+2026-05-25T21:59:48.850790,Paldi,18,5,5,True,True,185,High
+2026-07-08T21:59:48.850793,Gheekanta,22,5,3,False,True,152,High
+2025-10-04T21:59:48.850796,Old High Court,19,1,1,True,False,272,High
+2026-03-18T21:59:48.850799,CTM Cross Road,16,0,6,False,False,150,Medium
+2026-05-01T21:59:48.850802,Kalupur,21,1,3,False,False,151,High
+2026-03-06T21:59:48.850805,Odhav,8,6,5,True,True,194,High
+2025-09-14T21:59:48.850810,Paldi,8,0,3,True,False,326,High
+2026-06-11T21:59:48.850813,Thaltej,18,2,3,True,False,135,Medium
+2026-05-29T21:59:48.850816,Gheekanta,6,2,4,False,False,139,Medium
+2025-10-23T21:59:48.850819,Gheekanta,11,3,4,False,False,173,High
+2025-10-02T21:59:48.850822,Jivraj Mehta Hospital,9,0,1,True,False,101,Medium
+2026-01-05T21:59:48.850825,APMC,18,0,3,True,False,269,High
+2025-10-16T21:59:48.850828,Odhav,8,5,5,True,True,272,High
+2026-03-20T21:59:48.850832,Doordarshan Kendra,18,1,2,True,False,89,Medium
+2026-01-01T21:59:48.850835,Apparel Park,14,3,2,False,False,90,Medium
+2026-02-01T21:59:48.850837,Apparel Park,21,6,1,False,True,55,Medium
+2025-12-13T21:59:48.850840,Shreyas,13,5,6,False,True,22,Low
+2026-01-14T21:59:48.850843,Old High Court,10,2,1,True,False,301,High
+2025-09-05T21:59:48.850847,Vastral Gam,18,6,3,True,True,136,Medium
+2025-08-14T21:59:48.850850,Vadaj,15,2,5,False,False,130,Medium
+2026-03-08T21:59:48.850853,Commerce Six Roads,21,2,2,False,False,140,Medium
+2026-03-14T21:59:48.850856,GNLU,13,2,4,False,False,144,Medium
+2026-05-04T21:59:48.850859,CTM Cross Road,17,0,5,True,False,192,High
+2025-12-23T21:59:48.850862,Sabarmati,20,5,2,False,True,164,High
+2026-03-02T21:59:48.850865,Rabari Colony,8,6,4,True,True,174,High
+2025-12-31T21:59:48.850870,Paldi,14,5,2,False,True,125,Medium
+2025-11-18T21:59:48.850873,Odhav,8,3,5,True,False,260,High
+2025-08-10T21:59:48.850876,Jivraj Mehta Hospital,7,6,3,False,True,55,Medium
+2025-09-07T21:59:48.850879,Gheekanta,9,6,2,True,True,147,Medium
+2025-12-27T21:59:48.850883,Ranip,18,6,3,True,True,79,Medium
+2025-10-23T21:59:48.850886,Old High Court,6,0,3,False,False,208,High
+2025-12-10T21:59:48.850888,AEC,20,2,4,False,False,199,High
+2026-06-22T21:59:48.850892,Thaltej,17,0,4,True,False,120,Medium
+2026-02-10T21:59:48.850894,Shahpur,10,2,3,True,False,127,Medium
+2025-08-13T21:59:48.850898,Usmanpura,12,4,4,False,False,136,Medium
+2026-07-13T21:59:48.850900,Kalupur,16,0,3,False,False,189,High
+2026-05-12T21:59:48.850903,Shahpur,6,6,3,False,True,23,Low
+2026-05-15T21:59:48.850906,Paldi,22,1,5,False,False,163,High
+2026-05-01T21:59:48.850909,Vastral Gam,19,3,2,True,False,249,High
+2025-09-24T21:59:48.850912,Kankaria,18,0,6,True,False,125,Medium
+2026-04-21T21:59:48.850915,Commerce Six Roads,20,4,4,False,False,27,Low
+2025-11-03T21:59:48.850918,Amraiwadi,8,4,1,True,False,243,High
+2025-11-27T21:59:48.850923,Gujarat University,17,2,2,True,False,173,High
+2025-10-08T21:59:48.850927,APMC,18,4,4,True,False,265,High
+2025-08-08T21:59:48.850930,Shahpur,17,2,4,True,False,67,Medium
+2026-02-25T21:59:48.850934,Apparel Park,8,5,2,True,True,26,Low
+2025-11-16T21:59:48.850937,Shahpur,13,2,1,False,False,91,Medium
+2025-10-14T21:59:48.850940,Odhav,19,4,2,True,False,333,High
+2025-09-08T21:59:48.850943,Odhav,19,1,4,True,False,260,High
+2026-05-25T21:59:48.850946,Gujarat University,11,3,3,False,False,96,Medium
+2026-07-31T21:59:48.850949,Gujarat University,16,6,4,False,True,47,Low
+2025-10-21T21:59:48.850952,GNLU,10,1,4,True,False,202,High
+2025-11-27T21:59:48.850955,GNLU,19,5,4,True,True,120,Medium
+2026-04-14T21:59:48.850958,Doordarshan Kendra,8,4,1,True,False,164,High
+2025-12-13T21:59:48.850961,Rabari Colony,7,2,2,False,False,155,High
+2026-06-07T21:59:48.850964,GNLU,22,0,5,False,False,157,High

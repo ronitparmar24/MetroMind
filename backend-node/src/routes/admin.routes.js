@@ -239,30 +239,41 @@ router.get('/dashboard', (req, res) => {
   });
 });
 
-// Proxy helper for Python ML endpoints
+// ML Admin endpoints — try Python proxy first, fall back to Node-native ML service
 const { DJANGO_API_URL } = require('../config/env');
 const PYTHON_API_URL = DJANGO_API_URL || 'http://127.0.0.1:8000';
+const mlService = require('../services/ml.service');
 
-const createProxyRoute = (path) => {
+// Helper: try Python proxy, fall back to Node-native ML service
+const createMLRoute = (path, nodeFallbackFn) => {
   router.get(path, async (req, res) => {
+    // Try Python proxy first
     try {
       const response = await axios.get(`${PYTHON_API_URL}/api/analytics/admin${path}`, {
-        headers: {
-          'X-Internal-Secret': process.env.ADMIN_PROXY_SECRET
-        }
+        headers: { 'X-Internal-Secret': process.env.ADMIN_PROXY_SECRET },
+        timeout: 4000,
       });
-      res.json(response.data);
-    } catch (error) {
-      console.error(`Proxy error for ${path}:`, error.message);
-      res.status(error.response?.status || 500).json(error.response?.data || { error: 'Proxy request failed' });
+      return res.json(response.data);
+    } catch (_proxyErr) {
+      // Python unreachable — use Node-native ML service
     }
+
+    // Node-native fallback
+    try {
+      const result = nodeFallbackFn();
+      if (result) return res.json(result);
+    } catch (e) {
+      console.error(`ML fallback error for ${path}:`, e.message);
+    }
+
+    res.status(503).json({ error: 'ML data unavailable', offline: true });
   });
 };
 
-createProxyRoute('/model-performance/');
-createProxyRoute('/prediction-volume/');
-createProxyRoute('/feature-drift/');
-createProxyRoute('/network-summary/');
+createMLRoute('/model-performance/', () => mlService.getModelPerformance());
+createMLRoute('/prediction-volume/', () => mlService.getPredictionVolume());
+createMLRoute('/feature-drift/',     () => mlService.getFeatureDrift());
+createMLRoute('/network-summary/',   () => mlService.getNetworkSummary());
 
 // ==========================================
 // Announcements Management

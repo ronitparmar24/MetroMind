@@ -12,9 +12,8 @@ const CYAN    = '#22d3ee';
 const VIOLET  = '#a78bfa';
 
 const MOCK_PERF = {
-  gradient_boosting: { accuracy: 0.9214, weighted_f1: 0.9187 },
-  random_forest:     { accuracy: 0.8931, weighted_f1: 0.8905 },
-  logistic_regression:{ accuracy: 0.8421, f1: 0.8388 },
+  gradient_boosting: { accuracy: 0.75, weighted_f1: 0.7379 },
+  random_forest:     { accuracy: 0.71, weighted_f1: 0.7006 },
   winner: 'gradient_boosting',
 };
 

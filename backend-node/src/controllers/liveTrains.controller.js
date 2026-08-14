@@ -11,22 +11,31 @@ const INTERCHANGE_STATIONS = ['Old High Court', 'Kalupur Railway Station'];
 const CONNECTION_BUFFER = 4; // minutes needed to transfer at interchange
 
 /**
- * Call Django ML for crowd prediction; graceful fallback.
+ * Call Django ML for crowd prediction; graceful fallback to Node-native ML.
  * Returns { bucket, confidence }
  */
 const getCrowdPrediction = async (station, hour, day) => {
+  // Try Django first
   try {
     const res = await axios.post(`${DJANGO_API_URL}/api/predict/`, {
       station,
       hour: parseInt(hour, 10),
       day: parseInt(day, 10),
       passengers: 1,
-    });
+    }, { timeout: 4000 });
     return {
       bucket: res.data.bucket || res.data.predicted_bucket || 'Medium',
       confidence: res.data.confidence || 50,
     };
-  } catch {
+  } catch (_) {}
+  // Node-native fallback
+  try {
+    const mlService = require('../services/ml.service');
+    const result = mlService.predictCrowd({
+      station, hour: parseInt(hour, 10), day: parseInt(day, 10), passengers: 1,
+    });
+    return { bucket: result.bucket || 'Medium', confidence: result.confidence || 50 };
+  } catch (_) {
     return { bucket: 'Medium', confidence: 50 };
   }
 };
