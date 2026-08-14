@@ -6,6 +6,7 @@ import { useWallet } from '../hooks/useWallet';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useToast } from '../components/common/Toast';
 import { topupWallet } from '../api/wallet.api';
+import api from '../api/index';
 import { formatCurrency, timeAgo } from '../utils/formatters';
 import { NCMC_INFO } from '../constants/stations';
 
@@ -150,6 +151,47 @@ export default function Wallet() {
     }
   };
 
+  const handleRazorpayTopup = async (a) => {
+    const value = parseInt(a || amount);
+    if (!value || value <= 0) { toast.error('Enter a valid amount'); return; }
+    setTopupLoading(true);
+    try {
+      const { data } = await api.post('/wallet/create-order', { amount: value });
+      const rzp = new window.Razorpay({
+        key: data.keyId,
+        amount: data.amount,
+        currency: 'INR',
+        order_id: data.orderId,
+        name: 'MetroMind',
+        description: 'Wallet Top Up',
+        handler: async (response) => {
+          try {
+            await api.post('/wallet/verify-payment', {
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              amount: data.amount,
+            });
+            toast.success(`₹${value} added to wallet successfully`);
+            setAmount('');
+            refetch();
+          } catch (err) {
+            toast.error(err.response?.data?.error || 'Payment verification failed');
+          }
+        },
+        theme: { color: '#6366f1' },
+      });
+      rzp.on('payment.failed', function (response){
+        toast.error(response.error.description || 'Payment failed');
+      });
+      rzp.open();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to start payment');
+    } finally {
+      setTopupLoading(false);
+    }
+  };
+
   const quickAmounts = [100, 200, 500, 1000, 2000];
 
   if (loading) return <div className="page"><LoadingSpinner /></div>;
@@ -225,22 +267,30 @@ export default function Wallet() {
             </div>
 
             {/* Custom amount */}
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
               <input
                 type="number" value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="Custom amount"
                 min="1" max="10000"
-                style={{ flex: 1, padding: '11px 16px', borderRadius: '14px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
+                style={{ width: '100%', padding: '11px 16px', borderRadius: '14px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
               />
-              <button
-                onClick={() => handleTopup()}
-                disabled={topupLoading || !amount}
-                id="topup-submit"
-                style={{ padding: '11px 20px', borderRadius: '14px', background: 'linear-gradient(135deg,#6366f1,#a855f7)', color: '#fff', border: 'none', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', opacity: (!amount || topupLoading) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}
-              >
-                {topupLoading ? '…' : 'Add'}
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => handleTopup()}
+                  disabled={topupLoading || !amount}
+                  style={{ flex: 1, padding: '11px 10px', borderRadius: '14px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', opacity: (!amount || topupLoading) ? 0.6 : 1, transition: 'all 0.2s ease' }}
+                >
+                  Instant Test
+                </button>
+                <button
+                  onClick={() => handleRazorpayTopup()}
+                  disabled={topupLoading || !amount}
+                  style={{ flex: 1, padding: '11px 10px', borderRadius: '14px', background: 'linear-gradient(135deg,#6366f1,#a855f7)', color: '#fff', border: 'none', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', opacity: (!amount || topupLoading) ? 0.6 : 1, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}
+                >
+                  Razorpay Checkout
+                </button>
+              </div>
             </div>
           </div>
         </div>
