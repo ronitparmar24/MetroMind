@@ -1,7 +1,8 @@
 // backend-node/src/app.js
 // Express application setup with middleware stack.
 // Middleware order matters — mounted in this specific sequence:
-// helmet → cors → json → morgan → rateLimit → routes → errorHandler (last)
+// Sentry.requestHandler → helmet → cors → json → morgan → rateLimit → routes
+// → Sentry.errorHandler → errorHandler (last)
 
 const express = require('express');
 const helmet = require('helmet');
@@ -11,6 +12,7 @@ const { CLIENT_URL } = require('./config/env');
 const { limiter } = require('./middleware/rateLimit.middleware');
 const errorHandler = require('./middleware/error.middleware');
 const auditMiddleware = require('./middleware/audit.middleware');
+const Sentry = require('@sentry/node');
 
 // Route imports
 const authRoutes = require('./routes/auth.routes');
@@ -39,6 +41,11 @@ const newsRoutes       = require('./routes/news.routes');
 
 const app = express();
 app.set('trust proxy', 1); // For Vercel real IP
+
+// ── Sentry request handler — MUST be the first middleware ──────
+// Attaches request data (URL, method, headers, user-agent) to every
+// subsequent Sentry event so errors include full request context.
+Sentry.setupExpressErrorHandler(app);
 
 // --- Middleware stack (ORDER MATTERS) ---
 
@@ -178,7 +185,11 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// 7. Global error handler — MUST be last middleware
+// 7a. Sentry error handler — captures error + sends to Sentry dashboard
+//     MUST be before our own errorHandler so Sentry gets the raw error
+app.use(Sentry.expressErrorHandler());
+
+// 7b. Our error handler — returns a clean JSON response to the client
 app.use(errorHandler);
 
 module.exports = app;

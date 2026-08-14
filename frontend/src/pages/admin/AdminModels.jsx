@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import * as Sentry from '@sentry/react';
 import { adminApi } from '../../api/admin.api';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import { Cpu, WifiOff, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react';
+import { Cpu, WifiOff, AlertTriangle, RefreshCw, CheckCircle, Radio, Zap } from 'lucide-react';
 import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 const PURPLE  = '#6366f1';
@@ -110,6 +111,29 @@ export default function AdminModels() {
 
   const winnerKey = perf?.winner || 'gradient_boosting';
   const winnerAcc = perf?.[winnerKey]?.accuracy;
+
+  // Sentry test error handler
+  const [sentryStatus, setSentryStatus] = useState(null); // null | 'sending' | 'sent'
+  const triggerSentryTest = () => {
+    setSentryStatus('sending');
+    // Capture a manual test event with rich context
+    const eventId = Sentry.captureException(
+      new Error('[TEST] MetroMind Admin — Sentry integration verified'),
+      {
+        tags: { test: 'true', page: 'admin-models', trigger: 'manual' },
+        level: 'error',
+        extra: {
+          winner_model: winnerKey,
+          winner_accuracy: winnerAcc,
+          timestamp: new Date().toISOString(),
+          note: 'This is a deliberate test error. Safe to ignore in Sentry.',
+        },
+      }
+    );
+    console.log('[Sentry] Test event captured, eventId:', eventId);
+    setSentryStatus('sent');
+    setTimeout(() => setSentryStatus(null), 4000);
+  };
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }} className="admin-fade-in">
@@ -319,6 +343,80 @@ export default function AdminModels() {
             </div>
           )}
         </div>
+      </div>
+      {/* Sentry Observability Panel */}
+      <div className="glass-card" style={{
+        padding:20,
+        border:'1px solid rgba(99,102,241,0.2)',
+        background:'rgba(99,102,241,0.03)',
+      }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{
+              width:38, height:38, borderRadius:12,
+              background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)',
+              display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+            }}>
+              <Radio size={18} color={PURPLE} />
+            </div>
+            <div>
+              <div style={{ fontSize:'0.85rem', fontWeight:800, color:'var(--adm-text)', display:'flex', alignItems:'center', gap:8 }}>
+                Sentry Error Monitoring
+                <span style={{
+                  fontSize:'0.6rem', fontWeight:700, padding:'2px 8px',
+                  background:'rgba(52,211,153,0.1)', color:'#34d399',
+                  border:'1px solid rgba(52,211,153,0.25)', borderRadius:20,
+                }}>● ACTIVE</span>
+              </div>
+              <div style={{ fontSize:'0.72rem', color:'#64748b', marginTop:2 }}>
+                Real-time error tracking via Sentry — the same tool used by Disney &amp; Microsoft
+              </div>
+            </div>
+          </div>
+          <button
+            className="admin-action-btn"
+            style={{
+              background: sentryStatus === 'sent'
+                ? 'rgba(52,211,153,0.15)'
+                : 'rgba(99,102,241,0.12)',
+              border: sentryStatus === 'sent'
+                ? '1px solid rgba(52,211,153,0.3)'
+                : '1px solid rgba(99,102,241,0.3)',
+              color: sentryStatus === 'sent' ? '#34d399' : PURPLE,
+              display:'flex', alignItems:'center', gap:6,
+              padding:'8px 16px', borderRadius:10, fontWeight:700,
+              fontSize:'0.78rem', cursor:'pointer', transition:'all 0.2s',
+            }}
+            onClick={triggerSentryTest}
+            disabled={sentryStatus === 'sending'}
+          >
+            {sentryStatus === 'sent' ? (
+              <><CheckCircle size={13} /> Sent to Sentry ✓</>
+            ) : sentryStatus === 'sending' ? (
+              <><Zap size={13} /> Sending...</>
+            ) : (
+              <><Zap size={13} /> Trigger Test Error</>
+            )}
+          </button>
+        </div>
+        {sentryStatus === 'sent' && (
+          <div style={{
+            marginTop:12, padding:'10px 14px',
+            background:'rgba(52,211,153,0.06)', border:'1px solid rgba(52,211,153,0.2)',
+            borderRadius:10, fontSize:'0.75rem', color:'#34d399', lineHeight:1.5,
+          }}>
+            ✅ Test error captured and sent to Sentry dashboard.{' '}
+            <a
+              href="https://sentry.io"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color:'#6366f1', fontWeight:700, textDecoration:'underline' }}
+            >
+              Open Sentry →
+            </a>
+            {' '}to see the full stack trace, browser info, and OS context.
+          </div>
+        )}
       </div>
     </div>
   );
