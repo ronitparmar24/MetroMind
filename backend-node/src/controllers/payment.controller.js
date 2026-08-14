@@ -38,6 +38,12 @@ const createRazorpayOrder = async (req, res, next) => {
       return next(err);
     }
 
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      const err = new Error('Razorpay keys are missing in backend environment variables.');
+      err.statusCode = 500;
+      return next(err);
+    }
+
     const order = await createOrder(parsed);
 
     res.json({
