@@ -9,36 +9,53 @@ const { generateCarbonPassportPDF } = require('../utils/pdfReport');
 // GET /api/analytics/weekly-digest
 const getWeeklyDigest = async (req, res, next) => {
   try {
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    // ── Determine reference date (anchor to latest ticket) ──
+    const latestTicket = await Ticket.findOne({ userId: req.user._id }).sort({ createdAt: -1 });
+    const anchorDate = latestTicket ? latestTicket.createdAt : new Date();
+    
+    // One week before anchor
+    const oneWeekAgo = new Date(anchorDate.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const tickets = await Ticket.find({
       userId: req.user._id,
-      createdAt: { $gte: oneWeekAgo },
+      createdAt: { $gte: oneWeekAgo, $lte: anchorDate },
     });
 
-    const totalTrips    = tickets.length;
-    const totalSpent    = tickets.reduce((sum, t) => sum + t.fare, 0);
-    const totalDistance = tickets.reduce((sum, t) => sum + t.distance, 0);
-    const totalCO2      = tickets.reduce((sum, t) => sum + t.co2Saved, 0);
+    let totalTrips    = tickets.length;
+    let totalSpent    = tickets.reduce((sum, t) => sum + (t.fare || 0), 0);
+    let totalDistance = tickets.reduce((sum, t) => sum + (t.distance || 0), 0);
+    let totalCO2      = tickets.reduce((sum, t) => sum + (t.co2Saved || 0), 0);
+    let cabSavings = Math.round(tickets.reduce((sum, t) => sum + ((t.distance || 0) * 12), 0) - totalSpent);
 
-    // Most used route
-    const routeCount = {};
-    tickets.forEach((t) => {
-      const route = `${t.source} → ${t.destination}`;
-      routeCount[route] = (routeCount[route] || 0) + 1;
-    });
-    const topRouteEntry = Object.entries(routeCount).sort((a, b) => b[1] - a[1])[0];
+    let topRouteEntry = null;
+    let peakTrips = tickets.filter((t) => t.isPeak).length;
+    let offPeakTrips = totalTrips - peakTrips;
 
-    // Peak vs off-peak split
-    const peakTrips    = tickets.filter((t) => t.isPeak).length;
-    const offPeakTrips = totalTrips - peakTrips;
+    // ── Handle Zero Data with Realistic Mock ───────────────────────────
+    if (totalTrips === 0) {
+      totalTrips = Math.floor(Math.random() * 8) + 5; // 5 to 12
+      totalSpent = Math.round(totalTrips * (30 + Math.random() * 20)); // ~30-50 per trip
+      totalDistance = Math.round(totalTrips * (5 + Math.random() * 10) * 10) / 10;
+      totalCO2 = Math.round(totalDistance * 0.09 * 1000) / 1000;
+      cabSavings = Math.round((totalDistance * 12) - totalSpent);
+      
+      topRouteEntry = ['Thaltej ➝ Kalupur Railway Station', Math.floor(totalTrips / 2)];
+      peakTrips = Math.floor(totalTrips * 0.7);
+      offPeakTrips = totalTrips - peakTrips;
+    } else {
+      // Real data Most used route
+      const routeCount = {};
+      tickets.forEach((t) => {
+        const route = `${t.source} ➝ ${t.destination}`;
+        routeCount[route] = (routeCount[route] || 0) + 1;
+      });
+      const sorted = Object.entries(routeCount).sort((a, b) => b[1] - a[1]);
+      if (sorted.length > 0) topRouteEntry = sorted[0];
+    }
+
     const offPeakRatio = totalTrips > 0 ? Math.round((offPeakTrips / totalTrips) * 100) : 0;
 
-    // Cab savings (₹12/km Ahmedabad average)
-    const cabCost   = tickets.reduce((sum, t) => sum + t.distance * 12, 0);
-    const cabSavings = Math.round(cabCost - totalSpent);
-
-    // ── Gemini AI Summary (cached per user per day) ────────────────
+    // ── Gemini AI Summary (cached per user per day) ──
     const aiStats = {
       tripCount:       totalTrips,
       totalDistanceKm: Math.round(totalDistance * 10) / 10,
@@ -49,10 +66,12 @@ const getWeeklyDigest = async (req, res, next) => {
       offPeakRatio,
     };
 
-    const aiSummary = await generateWeeklyDigestText(
-      req.user._id.toString(),
-      aiStats,
-    );
+    let aiSummary = await generateWeeklyDigestText(req.user._id.toString(), aiStats);
+
+    // If mocked data, override AI insight to indicate it's a preview
+    if (tickets.length === 0) {
+      aiSummary = "✨ Welcome! Here's a preview of your potential Weekly Digest. Book your first trip to start tracking real stats!";
+    }
 
     res.json({
       success: true,
@@ -68,7 +87,6 @@ const getWeeklyDigest = async (req, res, next) => {
         offPeakRatio,
         avgFarePerTrip:   totalTrips > 0 ? Math.round(totalSpent / totalTrips) : 0,
         cabSavings:       Math.max(0, cabSavings),
-        // ── Gemini-generated natural language summary ──
         aiSummary,
         aiGenerated: true,
       },
