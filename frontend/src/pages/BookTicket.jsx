@@ -747,7 +747,7 @@ export default function BookTicket() {
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '14px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', marginBottom: '16px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>💡 Smart Tips</div>
               {[
-                { icon: '💳', tip: 'Pay with Metro Card for an instant 10% discount' },
+                { icon: '💳', tip: 'Pay with Metro Card for an instant 5% discount' },
                 { icon: '🎉', tip: 'Travel on public holidays to get a 15% discount' },
                 { icon: '👶', tip: 'Children aged 4 and under ride completely free!' },
                 { icon: '🌿', tip: 'Taking the metro saves ~90g CO₂ per km vs driving' },

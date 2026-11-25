@@ -6,12 +6,13 @@ const User   = require('../models/User.model');
 const Ticket = require('../models/Ticket.model');
 const Wallet = require('../models/Wallet.model');
 const Groq   = require('groq-sdk');
+const { GEMINI_MODEL, GROQ_MODEL, groqRequestOptions } = require('../config/ai');
 
 const isDummy = (k) => !k || k.includes('your_');
 const GEMINI_API_KEY = isDummy(process.env.GEMINI_API_KEY) ? '' : process.env.GEMINI_API_KEY;
 const GROQ_API_KEY = isDummy(process.env.GROQ_API_KEY) ? '' : process.env.GROQ_API_KEY;
-// Use v1beta endpoint with gemini-2.0-flash which is the current stable model
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+// Model name comes from config/ai.js (gemini-2.0-flash was retired and returned 404)
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
 let _groqClient = null;
 
@@ -27,7 +28,7 @@ async function callGemini(systemPrompt, userMessage, history = []) {
   const body = {
     system_instruction: { parts: [{ text: systemPrompt }] },
     contents,
-    generationConfig: { maxOutputTokens: 200, temperature: 0.75, topP: 0.9 },
+    generationConfig: { maxOutputTokens: 400, temperature: 0.75, topP: 0.9 },
     safetySettings: [
       { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_NONE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_NONE' },
@@ -48,7 +49,9 @@ async function callGemini(systemPrompt, userMessage, history = []) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(`Gemini ${res.status}: ${data.error?.message || 'unknown'}`);
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    const text = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('').trim();
+    if (!text) throw new Error('Gemini returned an empty response');
+    return text;
   } finally {
     clearTimeout(timer);
   }
@@ -84,15 +87,17 @@ async function callGroq(systemPrompt, userMessage, history = []) {
   try {
     const res = await Promise.race([
       _groqClient.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_MODEL,
         messages,
-        max_tokens: 200,
         temperature: 0.75,
+        ...groqRequestOptions(200),
       }),
       timeoutPromise,
     ]);
     
-    return res.choices[0].message.content.trim();
+    const text = (res.choices[0]?.message?.content || '').trim();
+    if (!text) throw new Error('Groq returned an empty response');
+    return text;
   } finally {
     clearTimeout(timer);
   }

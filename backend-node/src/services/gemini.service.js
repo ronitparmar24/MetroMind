@@ -1,5 +1,5 @@
 // backend-node/src/services/gemini.service.js
-// Wraps Google Gemini (gemini-2.0-flash) and Groq (llama-3.3-70b-versatile) for analytics features:
+// Wraps Google Gemini and Groq (model names in config/ai.js) for analytics features:
 //   1. Weekly digest AI summary (2-3 warm, specific sentences from real stats)
 //   2. Commuter personality description (one confident sentence)
 //   3. Feedback analysis
@@ -11,6 +11,7 @@
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Groq = require('groq-sdk');
+const { GEMINI_MODEL, GROQ_MODEL, groqRequestOptions } = require('../config/ai');
 const redis = require('../config/redis');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -28,7 +29,7 @@ function getGeminiModel() {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
   if (!_geminiModel) {
     _gemini = new GoogleGenerativeAI(GEMINI_API_KEY);
-    _geminiModel = _gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    _geminiModel = _gemini.getGenerativeModel({ model: GEMINI_MODEL });
   }
   return _geminiModel;
 }
@@ -67,7 +68,7 @@ async function _cacheSet(key, text) {
 async function _callGemini(prompt) {
   const model = getGeminiModel();
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Gemini timeout')), 4000)
+    setTimeout(() => reject(new Error('Gemini timeout')), 8000)
   );
   
   const text = await Promise.race([
@@ -80,20 +81,22 @@ async function _callGemini(prompt) {
 async function _callGroq(prompt) {
   const client = getGroqClient();
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Groq timeout')), 4000)
+    setTimeout(() => reject(new Error('Groq timeout')), 8000)
   );
 
   const response = await Promise.race([
     client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_MODEL,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 150,
       temperature: 0.7,
+      ...groqRequestOptions(150),
     }),
     timeoutPromise,
   ]);
   
-  return response.choices[0].message.content.trim();
+  const text = (response.choices[0]?.message?.content || '').trim();
+  if (!text) throw new Error('Groq returned an empty response');
+  return text;
 }
 
 async function _generateWithFallback(prompt, fallbackText, featureName = 'AI') {
