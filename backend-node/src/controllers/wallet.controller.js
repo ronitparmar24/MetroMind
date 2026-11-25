@@ -55,39 +55,52 @@ const getWallet = async (req, res, next) => {
         daysUntilEmpty: isFinite(daysUntilEmpty) ? daysUntilEmpty : null,
         lowBalanceWarning,
       },
+      instantTopupEnabled: instantTopupEnabled(),
     });
   } catch (error) {
     next(error);
   }
 };
 
+// Instant (no-payment) top-up is a testing convenience. It credits money without
+// any payment, so it is off in production unless ALLOW_INSTANT_TOPUP=true.
+const instantTopupEnabled = () => {
+  if (process.env.ALLOW_INSTANT_TOPUP === 'true') return true;
+  if (process.env.ALLOW_INSTANT_TOPUP === 'false') return false;
+  return !(process.env.NODE_ENV === 'production' || process.env.VERCEL);
+};
+
 // POST /api/wallet/topup
 const topupWallet = async (req, res, next) => {
   try {
-    const { amount } = req.body;
-
-    if (!amount || amount <= 0) {
-      const err = new Error('Amount must be greater than 0');
-      err.statusCode = 400;
+    if (!instantTopupEnabled()) {
+      const err = new Error('Instant top-up is disabled. Please add money with Razorpay checkout.');
+      err.statusCode = 403;
       return next(err);
     }
 
-    let wallet = await Wallet.findOne({ userId: req.user._id });
-    if (!wallet) {
-      wallet = await Wallet.create({ userId: req.user._id, balance: 0 });
+    const amount = Number(req.body.amount);
+    if (!Number.isInteger(amount) || amount <= 0 || amount > 10000) {
+      const err = new Error('Amount must be a whole number between ₹1 and ₹10,000');
+      err.statusCode = 400;
+      return next(err);
     }
 
     const settings = await SystemSetting.findOne();
     const maxBalance = settings ? settings.maxWalletBalance : 10000;
 
-    if (wallet.balance + amount > maxBalance) {
+    await Wallet.updateOne({ userId: req.user._id }, { $setOnInsert: { balance: 0 } }, { upsert: true });
+    // Atomic: only credits when the result stays within the limit
+    const wallet = await Wallet.findOneAndUpdate(
+      { userId: req.user._id, balance: { $lte: maxBalance - amount } },
+      { $inc: { balance: amount } },
+      { new: true }
+    );
+    if (!wallet) {
       const err = new Error(`Wallet balance cannot exceed ₹${maxBalance}`);
       err.statusCode = 400;
       return next(err);
     }
-
-    wallet.balance += amount;
-    await wallet.save();
 
     // Record transaction
     await Transaction.create({
@@ -130,10 +143,11 @@ const convertCarbonToCash = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Sum all CO2 saved
+    // Only trips actually taken earn rewards (upcoming tickets could be booked,
+    // converted to cash, then cancelled for a refund)
     const tickets = await Ticket.find({
       userId: user._id,
-      status: { $in: ['completed', 'upcoming'] }
+      status: 'completed',
     });
     
     const totalCO2 = tickets.reduce((s, t) => s + (t.co2Saved || 0), 0);
@@ -167,18 +181,28 @@ const convertCarbonToCash = async (req, res, next) => {
       });
     }
 
-    // Update Wallet
-    let wallet = await Wallet.findOne({ userId: user._id });
-    if (!wallet) {
-      wallet = await Wallet.create({ userId: user._id, balance: 0 });
+    if (!Number.isFinite(rewardCash) || rewardCash <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid amount' });
     }
-    
-    wallet.balance += rewardCash;
-    await wallet.save();
 
-    // Update User
-    user.claimedCO2 += co2ToConvert;
-    await user.save();
+    // Claim the CO2 atomically: the update only matches if nobody else changed
+    // claimedCO2 since we read it, so parallel requests can't double-claim.
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: user._id, claimedCO2: user.claimedCO2 || 0 },
+      { $inc: { claimedCO2: co2ToConvert } },
+      { new: true }
+    );
+    if (!updatedUser) {
+      return res.status(409).json({ success: false, error: 'Your reward was just updated. Please refresh and try again.' });
+    }
+    user.claimedCO2 = updatedUser.claimedCO2;
+
+    await Wallet.updateOne({ userId: user._id }, { $setOnInsert: { balance: 0 } }, { upsert: true });
+    const wallet = await Wallet.findOneAndUpdate(
+      { userId: user._id },
+      { $inc: { balance: rewardCash } },
+      { new: true }
+    );
 
     // Record Transaction
     await Transaction.create({

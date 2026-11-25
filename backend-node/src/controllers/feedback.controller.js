@@ -2,14 +2,20 @@
 const Feedback = require('../models/Feedback.model');
 const SystemSetting = require('../models/SystemSetting.model');
 const { analyzeFeedback } = require('../services/gemini.service');
-const { sendEmail } = require('../utils/emailer');
+const { sendEmail, escapeHtml } = require('../utils/emailer');
 
 // POST /api/feedback
 const submitFeedback = async (req, res, next) => {
   try {
     const { text } = req.body;
 
-    if (!text) {
+    if (typeof text === 'string' && text.length > 2000) {
+      const err = new Error('Feedback is too long (max 2000 characters).');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    if (!text || typeof text !== 'string') {
       const err = new Error('Feedback text is required');
       err.statusCode = 400;
       return next(err);
@@ -48,7 +54,7 @@ const submitFeedback = async (req, res, next) => {
       sendEmail({
         to: 'admin@metromind.in',
         subject: 'New Feedback Submitted',
-        html: `<p>New feedback received from ${req.user.name}:</p><blockquote>${text}</blockquote><p>Category: ${aiResult.category}</p>`
+        html: `<p>New feedback received from ${escapeHtml(req.user.name)}:</p><blockquote>${escapeHtml(text)}</blockquote><p>Category: ${escapeHtml(aiResult.category)}</p>`
       }).catch(err => console.error('Failed to send admin email:', err));
     }
 

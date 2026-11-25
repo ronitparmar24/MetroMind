@@ -222,7 +222,7 @@ export default function AdminAnnouncements() {
                 />
               </div>
 
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:24 }}>
+              <div className="mm-stack-mobile" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:24 }}>
                 <div>
                   <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, color:'var(--adm-text-3)', marginBottom:6 }}>PRIORITY</label>
                   <select className="admin-input" value={priority} onChange={e => setPriority(e.target.value)}>

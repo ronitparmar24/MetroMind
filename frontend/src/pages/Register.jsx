@@ -465,7 +465,8 @@ export default function Register() {
         name: form.name, email: form.email, password: form.password, phone: form.phone, recaptchaToken
       });
       if (res.data.requiresVerification) {
-        toast.success('Verification code sent to your email! 📧');
+        if (res.data?.emailSent === false) toast.warning(res.data.devNotice || 'Email could not be sent.');
+        else toast.success('Verification code sent to your email! 📧');
         setStep(2);
       }
     } catch (err) {
@@ -511,8 +512,9 @@ export default function Register() {
     if (!canResend) return;
     setError('');
     try {
-      await resendOtp(form.email);
-      toast.success('New verification code sent! 📧');
+      const r = await resendOtp(form.email);
+      if (r.data?.emailSent === false) toast.warning(r.data.devNotice || 'Email could not be sent.');
+      else toast.success('New verification code sent! 📧');
       setCanResend(false);
       setResendTimer(60);
       // Restart countdown

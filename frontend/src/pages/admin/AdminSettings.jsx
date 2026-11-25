@@ -140,7 +140,9 @@ export default function AdminSettings() {
     setPwdSaving(true);
     setPwdMsg({ type:'', text:'' });
     try {
-      await api.put('/api/auth/change-password', { currentPassword: pwdOld, newPassword: pwdNew });
+      const res = await api.put('/api/auth/change-password', { currentPassword: pwdOld, newPassword: pwdNew });
+      // Password change signs out older sessions — keep this one with the fresh token
+      if (res.data?.token) localStorage.setItem('metromind_token', res.data.token);
       setPwdMsg({ type:'success', text:'Password changed successfully.' });
       setPwdOld(''); setPwdNew(''); setPwdConf('');
     } catch(e) {

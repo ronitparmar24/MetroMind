@@ -121,7 +121,7 @@ export default function AdminAnalytics({ refreshKey }) {
       </div>
 
       {/* KPI Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+      <div className="mm-grid-2-mobile" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
         {[
           { label: 'Total Revenue',   value: fmtFull(rev?.totalRevenue),  color: PURPLE, icon: '💜' },
           { label: 'Total Bookings',  value: fmt(rev?.totalBookings),      color: CYAN,   icon: '🎫' },

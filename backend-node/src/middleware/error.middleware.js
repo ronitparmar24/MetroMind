@@ -2,22 +2,28 @@
 // Global error handler — must be mounted LAST in the middleware stack.
 // Express identifies error handlers by their 4-parameter signature (err, req, res, next).
 
-const { NODE_ENV } = require('../config/env');
+// Stack traces only when NODE_ENV is *explicitly* development and we're not on
+// Vercel — an unset NODE_ENV used to default to 'development' and leak them.
+const SHOW_DETAILS = process.env.NODE_ENV === 'development' && !process.env.VERCEL;
 
 const errorHandler = (err, req, res, next) => {
-  // Default to 500 if no status code set
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+  // Malformed JSON / oversized bodies from express.json()
+  let statusCode = err.statusCode || err.status || 500;
+  if (err.type === 'entity.too.large') statusCode = 413;
 
-  console.error(`❌ [${req.method}] ${req.originalUrl} — ${statusCode}: ${message}`);
-  if (NODE_ENV === 'development') {
-    console.error(err.stack);
-  }
+  const isServerError = statusCode >= 500;
+  // Don't expose raw database/library messages for unexpected server errors
+  const message = isServerError && !SHOW_DETAILS && !err.statusCode
+    ? 'Something went wrong. Please try again.'
+    : (err.message || 'Internal Server Error');
+
+  console.error(`❌ [${req.method}] ${req.originalUrl} — ${statusCode}: ${err.message}`);
+  if (SHOW_DETAILS) console.error(err.stack);
 
   res.status(statusCode).json({
     success: false,
     error: message,
-    ...(NODE_ENV === 'development' && { stack: err.stack }),
+    ...(SHOW_DETAILS && { stack: err.stack }),
   });
 };
 

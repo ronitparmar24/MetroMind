@@ -26,7 +26,7 @@ const { Redis } = require('@upstash/redis');
 const url   = process.env.UPSTASH_REDIS_REST_URL;
 const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-let limiter;
+let makeStore = null;
 
 if (url && token) {
   const redisClient = new Redis({ url, token });
@@ -74,34 +74,46 @@ if (url && token) {
     }
   };
 
-  const store = new RedisStore({ sendCommand });
-
-  limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10000,
-    message: {
-      success: false,
-      error: 'Too many requests from this IP, please try again after 15 minutes.',
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    store,
-  });
-
+  makeStore = (prefix) => new RedisStore({ sendCommand, prefix });
   console.log('[RateLimit] Redis-backed rate limiting active ✅');
 } else {
   // No Redis credentials — in-memory fallback (local dev)
   console.warn('[RateLimit] No Redis credentials — using in-memory rate limit store (local dev).');
-  limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10000,
-    message: {
-      success: false,
-      error: 'Too many requests from this IP, please try again after 15 minutes.',
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
 }
 
-module.exports = { limiter };
+const makeLimiter = ({ windowMs, max, message, prefix }) =>
+  rateLimit({
+    windowMs,
+    max,
+    message: { success: false, error: message },
+    standardHeaders: true,
+    legacyHeaders: false,
+    ...(makeStore ? { store: makeStore(prefix) } : {}),
+  });
+
+// Global: generous ceiling for normal API use
+const limiter = makeLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10000,
+  message: 'Too many requests from this IP, please try again after 15 minutes.',
+  prefix: 'rl:',
+});
+
+// Auth endpoints that send emails or check passwords/codes. Keeps password
+// guessing, OTP brute force and email bombing impractical.
+const authLimiter = makeLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: 'Too many attempts. Please wait 15 minutes and try again.',
+  prefix: 'rl_auth:',
+});
+
+// AI endpoints call paid APIs (Gemini/Groq)
+const aiLimiter = makeLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: 'AI request limit reached. Please try again later.',
+  prefix: 'rl_ai:',
+});
+
+module.exports = { limiter, authLimiter, aiLimiter };

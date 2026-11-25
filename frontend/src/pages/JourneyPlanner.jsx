@@ -632,7 +632,7 @@ export default function JourneyPlanner() {
 
       {/* Skeletons */}
       {loading && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+        <div className="mm-stack-tablet" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
           {[1, 2, 3].map(i => (
             <div key={i} style={{ borderRadius: '24px', padding: '24px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
               <div className="route-skeleton" style={{ width: '55%', height: '18px', marginBottom: '14px' }} />

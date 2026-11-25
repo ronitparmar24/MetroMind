@@ -87,6 +87,21 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Tokens issued before this moment are rejected (set on password change/reset)
+    passwordChangedAt: {
+      type: Date,
+      default: null,
+    },
+    // Tokens issued before this moment are rejected (set on password change/reset)
+    passwordChangedAt: {
+      type: Date,
+      default: null,
+    },
+    // Wrong-code counter for the current OTP (brute-force protection)
+    otpAttempts: {
+      type: Number,
+      default: 0,
+    },
     personalityCache: {
       result: { type: mongoose.Schema.Types.Mixed, default: null },
       computedAt: { type: Date, default: null },

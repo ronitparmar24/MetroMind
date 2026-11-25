@@ -25,6 +25,13 @@ const TransactionSchema = new mongoose.Schema(
       type: String,
       default: '', // ticketId or topup reference
     },
+    // Unique id from an external payment provider (e.g. RZP-<paymentId>).
+    // Unique + sparse so the same payment can never be credited twice.
+    externalId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     note: {
       type: String,
       default: '',

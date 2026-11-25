@@ -29,6 +29,20 @@ const auditMiddleware = (req, res, next) => {
   next();
 };
 
+// Any key that looks like a credential is redacted, at any depth.
+// (The old list missed newPassword/currentPassword, which were stored in clear,
+// and login responses' JWTs were stored too.)
+const SENSITIVE_KEY = /password|secret|token|signature|credential|authorization|^otp$|^code$|^pin$/i;
+const redact = (value, depth = 0) => {
+  if (depth > 5 || value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map((v) => redact(v, depth + 1));
+  const out = {};
+  for (const [k, v] of Object.entries(value)) {
+    out[k] = SENSITIVE_KEY.test(k) ? '***' : redact(v, depth + 1);
+  }
+  return out;
+};
+
 const logAudit = async (req, res, responseBody) => {
   // Avoid re-logging if already done (in case both send and json are called)
   if (res.locals.audited) return;
@@ -45,10 +59,8 @@ const logAudit = async (req, res, responseBody) => {
     }
 
     // Clean sensitive data from request body (e.g. passwords)
-    const requestData = { ...req.body };
-    if (requestData.password) requestData.password = '***';
-    if (requestData.token) requestData.token = '***';
-    if (requestData.otp) requestData.otp = '***';
+    const requestData = redact({ ...(req.body || {}) });
+    parsedResponse = redact(parsedResponse);
 
     await AuditLog.create({
       // If user is not logged in yet (e.g. login route), userId might be null, 

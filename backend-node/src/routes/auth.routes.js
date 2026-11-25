@@ -3,12 +3,12 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
 const { protect } = require('../middleware/auth.middleware');
+const { authLimiter } = require('../middleware/rateLimit.middleware');
 const { register, login, getMe, googleLogin, verifyOtp, resendOtp, forgotPassword, resetPassword, updateProfile, changePassword, checkPwnedPassword } = require('../controllers/auth.controller');
 
 router.post('/check-password-pwned', checkPwnedPassword);
 
-router.post(
-  '/register',
+router.post('/register', authLimiter,
   validate([
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
@@ -17,8 +17,7 @@ router.post(
   register
 );
 
-router.post(
-  '/login',
+router.post('/login', authLimiter,
   validate([
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').notEmpty().withMessage('Password is required'),
@@ -29,11 +28,10 @@ router.post(
 router.get('/me', protect, getMe);
 
 // Google OAuth — verify Google id_token and return MetroMind JWT
-router.post('/google', googleLogin);
+router.post('/google', authLimiter, googleLogin);
 
 // OTP verification
-router.post(
-  '/verify-otp',
+router.post('/verify-otp', authLimiter,
   validate([
     body('email').isEmail().withMessage('Valid email is required'),
     body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
@@ -42,8 +40,7 @@ router.post(
 );
 
 // Resend OTP
-router.post(
-  '/resend-otp',
+router.post('/resend-otp', authLimiter,
   validate([
     body('email').isEmail().withMessage('Valid email is required'),
   ]),
@@ -51,8 +48,7 @@ router.post(
 );
 
 // Forgot Password
-router.post(
-  '/forgot-password',
+router.post('/forgot-password', authLimiter,
   validate([
     body('email').isEmail().withMessage('Valid email is required'),
   ]),
@@ -60,8 +56,7 @@ router.post(
 );
 
 // Reset Password
-router.post(
-  '/reset-password',
+router.post('/reset-password', authLimiter,
   validate([
     body('email').isEmail().withMessage('Valid email is required'),
     body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),

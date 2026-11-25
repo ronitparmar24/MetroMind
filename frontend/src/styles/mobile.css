@@ -241,3 +241,15 @@ html {
     max-width: 120px;
   }
 }
+
+/* ═══ Utility overrides for inline-styled grids ═══
+   Many pages set gridTemplateColumns inline; these classes let phones
+   re-flow them (inline styles need !important to be overridden). */
+@media (max-width: 767px) {
+  .mm-grid-2-mobile { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .mm-stack-tablet  { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 479px) {
+  .mm-stack-mobile  { grid-template-columns: minmax(0, 1fr) !important; }
+  .mm-stack-mobile > * { grid-column: auto !important; }
+}

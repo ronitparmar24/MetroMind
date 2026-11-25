@@ -10,6 +10,7 @@ const LostFound = require('../models/LostFound.model');
 const Announcement = require('../models/Announcement.model');
 const SystemSetting = require('../models/SystemSetting.model');
 const Transaction = require('../models/Transaction.model');
+const MetroCard = require('../models/MetroCard.model');
 
 const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -149,27 +150,36 @@ router.patch('/tickets/:id/cancel', async (req, res) => {
     if (ticket.status === 'cancelled') return res.status(400).json({ success: false, error: 'Ticket already cancelled' });
     if (ticket.status === 'completed') return res.status(400).json({ success: false, error: 'Cannot cancel a completed ticket' });
 
-    ticket.status = 'cancelled';
-    await ticket.save();
+    // Atomic status change so a double click can't refund twice
+    const claimed = await Ticket.findOneAndUpdate(
+      { _id: ticket._id, status: 'upcoming' },
+      { $set: { status: 'cancelled' } },
+      { new: true }
+    );
+    if (!claimed) return res.status(400).json({ success: false, error: 'Ticket is no longer upcoming' });
 
     const refundAmount = ticket.fare || 0;
     let newBalance = null;
-    const wallet = await Wallet.findOne({ userId: ticket.userId });
-    if (wallet && refundAmount > 0) {
-      wallet.balance += refundAmount;
-      await wallet.save();
-      newBalance = wallet.balance;
+    if (refundAmount > 0) {
+      let target = null;
+      if (ticket.paymentMethod === 'metrocard') {
+        target = await MetroCard.findOneAndUpdate({ userId: ticket.userId, isActive: true }, { $inc: { balance: refundAmount } }, { new: true });
+      }
+      const wallet = target
+        ? await Wallet.findOne({ userId: ticket.userId })
+        : await Wallet.findOneAndUpdate({ userId: ticket.userId }, { $inc: { balance: refundAmount } }, { new: true, upsert: true });
+      newBalance = target ? target.balance : wallet.balance;
       await Transaction.create({
         userId: ticket.userId,
         type: 'credit',
         amount: refundAmount,
-        balance: wallet.balance,
+        balance: wallet ? wallet.balance : 0,
         ref: ticket.ticketId,
-        note: `Refund (cancelled by admin): ${ticket.source} → ${ticket.destination}`,
+        note: `Refund to ${target ? 'Metro Card' : 'Wallet'} (cancelled by admin): ${ticket.source} → ${ticket.destination}`,
       });
     }
 
-    res.json({ success: true, data: ticket, refundAmount, newBalance });
+    res.json({ success: true, data: claimed, refundAmount, newBalance });
   } catch (error) {
     console.error('admin cancel ticket error:', error);
     res.status(500).json({ success: false, error: 'Server Error' });

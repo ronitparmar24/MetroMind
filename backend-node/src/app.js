@@ -60,8 +60,9 @@ const corsOptions = {
     ];
     // Allow requests with no origin (mobile apps, curl, Vercel serverless-to-serverless)
     if (!origin) return callback(null, true);
-    // Allow any *.vercel.app domain (covers all preview + production deployments)
-    if (origin.endsWith('.vercel.app') || allowed.includes(origin)) {
+    // This project's production + preview deployments only (was: any *.vercel.app site)
+    const isProjectDeployment = /^https:\/\/metro-mind-[a-z0-9-]+\.vercel\.app$/.test(origin);
+    if (isProjectDeployment || allowed.includes(origin)) {
       return callback(null, true);
     }
     callback(null, false);
@@ -83,8 +84,8 @@ app.use(helmet({
 app.use(cors(corsOptions));
 
 // 3. Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '200kb' })); // no endpoint needs large bodies; limits abuse
+app.use(express.urlencoded({ extended: true, limit: '200kb' }));
 
 // 4. HTTP request logging
 app.use(morgan('dev'));
@@ -124,34 +125,6 @@ app.use('/api/routing',    routingRoutes);
 app.use('/api/commuter',   commuterRoutes);
 app.use('/api/news',       newsRoutes);
 app.get('/api/check-username/:username', require('./controllers/auth.controller').checkUsername);
-
-// Temporary debug endpoint — shows user identity + DB data counts to diagnose data mismatch
-app.get('/api/debug/me', require('./middleware/auth.middleware').protect, async (req, res) => {
-  const mongoose = require('mongoose');
-  const Ticket = require('./models/Ticket.model');
-  const Transaction = require('./models/Transaction.model');
-  const Wallet = require('./models/Wallet.model');
-
-  const [ticketCount, txCount, wallet] = await Promise.all([
-    Ticket.countDocuments({ userId: req.user._id }),
-    Transaction.countDocuments({ userId: req.user._id }),
-    Wallet.findOne({ userId: req.user._id }),
-  ]);
-
-  res.json({
-    debug: true,
-    userId: req.user._id,
-    email: req.user.email,
-    name: req.user.name,
-    dbState: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    dbName: mongoose.connection.db?.databaseName || 'unknown',
-    tickets: ticketCount,
-    transactions: txCount,
-    walletBalance: wallet?.balance ?? 'no wallet',
-    JWT_SECRET_prefix: process.env.JWT_SECRET?.slice(0, 6) + '...',
-  });
-});
-
 
 // Health check — returns DB + ML status for admin dashboard
 app.get('/api/health', async (req, res) => {

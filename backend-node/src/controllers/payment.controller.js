@@ -44,7 +44,7 @@ const createRazorpayOrder = async (req, res, next) => {
       return next(err);
     }
 
-    const order = await createOrder(parsed);
+    const order = await createOrder(parsed, req.user._id);
 
     res.json({
       success: true,
@@ -88,15 +88,6 @@ const verifyRazorpayPayment = async (req, res, next) => {
       return next(err);
     }
 
-    // Don't credit the same payment twice (replayed verify calls)
-    const ref = `RZP-${paymentId}`;
-    const alreadyCredited = await Transaction.findOne({ ref, userId: req.user._id }).lean();
-    if (alreadyCredited) {
-      const err = new Error('This payment has already been credited to your wallet');
-      err.statusCode = 409;
-      return next(err);
-    }
-
     // Amount comes from Razorpay's own order record, never from the client body
     const order = await fetchOrder(orderId);
     const creditAmount = order && order.amount ? Math.round(Number(order.amount) / 100) : 0;
@@ -106,20 +97,46 @@ const verifyRazorpayPayment = async (req, res, next) => {
       return next(err);
     }
 
-    let wallet = await Wallet.findOne({ userId: req.user._id });
-    if (!wallet) wallet = await Wallet.create({ userId: req.user._id, balance: 0 });
+    // The order must belong to this user (otherwise one payment could be
+    // "verified" from several accounts)
+    if (order.notes?.userId && order.notes.userId !== String(req.user._id)) {
+      console.error(`🚨 [SECURITY] Razorpay order ${orderId} replayed by another user ${req.user._id}`);
+      const err = new Error('This payment belongs to a different account');
+      err.statusCode = 403;
+      return next(err);
+    }
 
-    wallet.balance += creditAmount;
-    await wallet.save();
+    // Claim the payment first. externalId has a unique index, so a replayed or
+    // concurrent verify for the same payment fails here, before any money moves.
+    const ref = `RZP-${paymentId}`;
+    let txn;
+    try {
+      txn = await Transaction.create({
+        userId:     req.user._id,
+        type:       'credit',
+        amount:     creditAmount,
+        balance:    0, // filled in below
+        ref,
+        externalId: ref,
+        note:       `Razorpay wallet top-up (${paymentId})`,
+      });
+    } catch (dupErr) {
+      if (dupErr && dupErr.code === 11000) {
+        const err = new Error('This payment has already been credited');
+        err.statusCode = 409;
+        return next(err);
+      }
+      throw dupErr;
+    }
 
-    await Transaction.create({
-      userId:  req.user._id,
-      type:    'credit',
-      amount:  creditAmount,
-      balance: wallet.balance,
-      ref,
-      note:    `Razorpay wallet top-up (${paymentId})`,
-    });
+    await Wallet.updateOne({ userId: req.user._id }, { $setOnInsert: { balance: 0 } }, { upsert: true });
+    const wallet = await Wallet.findOneAndUpdate(
+      { userId: req.user._id },
+      { $inc: { balance: creditAmount } },
+      { new: true }
+    );
+    txn.balance = wallet.balance;
+    await txn.save();
 
     bookingBus.emit('topup', {
       userId:     req.user._id,

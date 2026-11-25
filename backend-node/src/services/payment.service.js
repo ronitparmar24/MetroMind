@@ -28,11 +28,13 @@ const getRazorpay = () => {
  * @param {number} amountInRupees
  * @returns {Promise<Object>} Razorpay order object
  */
-exports.createOrder = async (amountInRupees) => {
+exports.createOrder = async (amountInRupees, userId) => {
   const order = await getRazorpay().orders.create({
     amount:   Math.round(amountInRupees * 100), // Razorpay uses paise
     currency: 'INR',
     receipt:  `topup_${Date.now()}`,
+    // Ties the order to the user who created it; checked again on verify
+    notes:    { userId: String(userId || '') },
   });
   return order;
 };

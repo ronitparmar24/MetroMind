@@ -52,15 +52,29 @@ const isTestEmail = (email) => {
  * @param {string} toEmail - Recipient email
  * @param {string} otp - Plain 6-digit OTP code
  */
+const IS_PROD = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
+
+/**
+ * Resolves to true when the email was handed to SMTP.
+ * Throws when it could not be sent, so callers can tell the user instead of
+ * pretending a code was sent. (Outside production the OTP is also printed to
+ * the console so local development keeps working without SMTP.)
+ */
 const sendOTPEmail = async (toEmail, otp) => {
   if (!transporter) {
-    console.warn('⚠️  [OTP Email] Not configured — OTP for', toEmail, 'is:', otp);
-    return;
+    if (!IS_PROD) {
+      console.warn('⚠️  [OTP Email] SMTP unavailable — DEV ONLY, OTP for', toEmail, 'is:', otp);
+    } else {
+      console.error('❌ [OTP Email] SMTP unavailable — could not send OTP to', toEmail);
+    }
+    const err = new Error('EMAIL_UNAVAILABLE');
+    err.code = 'EMAIL_UNAVAILABLE';
+    throw err;
   }
-  
+
   if (isTestEmail(toEmail)) {
-    console.log(`⚠️  [OTP Email] Skipped for test domain: ${toEmail}. OTP is: ${otp}`);
-    return;
+    console.log(`⚠️  [OTP Email] Skipped for test domain: ${toEmail}.${IS_PROD ? '' : ` OTP is: ${otp}`}`);
+    return true;
   }
 
   try {
@@ -106,6 +120,7 @@ const sendOTPEmail = async (toEmail, otp) => {
     `,
     });
     console.log('📧 [OTP] Sent to', toEmail);
+    return true;
   } catch (err) {
     console.error('❌ [OTP Email] Failed to send to', toEmail, ':', err.message);
     throw err; // Re-throw so caller can handle
@@ -336,4 +351,12 @@ const sendEmail = async ({ to, subject, html }) => {
   }
 };
 
-module.exports = { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail, sendEmail };
+// Escape user-supplied text before putting it into email HTML
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+module.exports = { IS_PROD, escapeHtml, sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail, sendEmail };

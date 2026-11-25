@@ -305,8 +305,15 @@ exports.aiWithFallback = aiWithFallback;
 
 exports.voiceChat = async (req, res) => {
   try {
-    const { userMessage, history = [], context = {} } = req.body;
-    if (!userMessage?.trim()) return res.status(400).json({ success: false, error: 'userMessage required' });
+    const { userMessage, history: rawHistory = [], context: rawContext = {} } = req.body;
+    if (typeof userMessage !== 'string' || !userMessage.trim()) return res.status(400).json({ success: false, error: 'userMessage required' });
+    // Cap what we forward to paid AI APIs
+    if (userMessage.length > 1000) return res.status(400).json({ success: false, error: 'Message is too long (max 1000 characters).' });
+    const history = (Array.isArray(rawHistory) ? rawHistory : [])
+      .slice(-10)
+      .filter((h) => h && typeof h.text === 'string')
+      .map((h) => ({ role: h.role === 'user' ? 'user' : 'assistant', text: h.text.slice(0, 1000) }));
+    const context = rawContext && typeof rawContext === 'object' ? rawContext : {};
 
     // ── Enrich context with live DB data ────────────────────────────────
     let ctx = { ...context };

@@ -223,7 +223,10 @@
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* flex-start + auto margins on the inner box: centred when the form fits,
+     scrolls from the top when it doesn't (plain `center` clipped the logo /
+     step indicator above the scroll area on short screens). */
+  justify-content: flex-start;
   align-items: center;
   padding: 24px 20px;
   background: #ffffff;
@@ -242,6 +245,8 @@
 .auth-form-inner {
   width: 100%;
   max-width: 380px;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 /* Logo bar */

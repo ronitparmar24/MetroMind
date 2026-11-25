@@ -57,29 +57,43 @@ const buyPass = async (req, res, next) => {
 
     const price = PLAN_PRICES[planType];
 
-    // Check wallet
-    const wallet = await Wallet.findOne({ userId: req.user._id });
-    if (!wallet || wallet.balance < price) {
+    // Deduct atomically (only succeeds if the balance covers the price)
+    const wallet = await Wallet.findOneAndUpdate(
+      { userId: req.user._id, balance: { $gte: price } },
+      { $inc: { balance: -price } },
+      { new: true }
+    );
+    if (!wallet) {
       const err = new Error(`Insufficient balance. Required: ₹${price}`);
       err.statusCode = 402;
       return next(err);
     }
-
-    // Deduct from wallet
-    wallet.balance -= price;
-    await wallet.save();
 
     // Create pass
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + PLAN_DURATIONS[planType]);
 
-    const pass = await MonthlyPass.create({
-      userId: req.user._id,
-      planType,
-      startDate,
-      endDate,
-    });
+    let pass;
+    try {
+      // Re-check after charging: a parallel request may have created a pass
+      const raced = await MonthlyPass.findOne({ userId: req.user._id, status: 'active' });
+      if (raced) {
+        await Wallet.updateOne({ userId: req.user._id }, { $inc: { balance: price } });
+        const err = new Error('You already have an active pass');
+        err.statusCode = 400;
+        return next(err);
+      }
+      pass = await MonthlyPass.create({
+        userId: req.user._id,
+        planType,
+        startDate,
+        endDate,
+      });
+    } catch (createErr) {
+      await Wallet.updateOne({ userId: req.user._id }, { $inc: { balance: price } });
+      throw createErr;
+    }
 
     // Record transaction
     await Transaction.create({

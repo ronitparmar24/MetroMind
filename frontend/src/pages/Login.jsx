@@ -329,8 +329,9 @@ export default function Login() {
     if (!canResend) return;
     setError('');
     try {
-      await resendOtp(otpEmail);
-      toast.success('New verification code sent! 📧');
+      const r = await resendOtp(otpEmail);
+      if (r.data?.emailSent === false) toast.warning(r.data.devNotice || 'Email could not be sent.');
+      else toast.success('New verification code sent! 📧');
       setCanResend(false);
       setResendTimer(60);
       const id = setInterval(() => {
@@ -357,8 +358,9 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await forgotPassword(forgotEmail);
-      toast.success('Password reset code sent to your email 📧');
+      const r = await forgotPassword(forgotEmail);
+      if (r.data?.emailSent === false) toast.warning(r.data.devNotice || 'Email could not be sent.');
+      else toast.success('Password reset code sent to your email 📧');
       setShowForgotFlow(false);
       setShowResetFlow(true);
       setResetOtpCode('');
@@ -425,8 +427,9 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await forgotPassword(forgotEmail);
-      toast.success('New reset code sent! 📧');
+      const r = await forgotPassword(forgotEmail);
+      if (r.data?.emailSent === false) toast.warning(r.data.devNotice || 'Email could not be sent.');
+      else toast.success('New reset code sent! 📧');
       setCanResetResend(false);
       setResetResendTimer(60);
       setResetOtpCode('');
@@ -798,22 +801,6 @@ export default function Login() {
               <div className="auth-footer-link auth-anim d5">
                 Don't have an account?
                 <Link to="/register">Create one</Link>
-              </div>
-
-              <div className="auth-anim d6" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginTop: '16px' }}>
-                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px', fontWeight: 500, marginBottom: '8px' }}>
-                  Quick Access (Demo)
-                </p>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" className="auth-quick-btn"
-                    onClick={() => { setEmail('adminofmetromind@metromind.com'); setPassword('Admin@123'); }}>
-                    👑 Admin
-                  </button>
-                  <button type="button" className="auth-quick-btn"
-                    onClick={() => { setEmail('user@metromind.in'); setPassword('user123'); }}>
-                    👤 User
-                  </button>
-                </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '12px', fontSize: '10px', color: '#94a3b8' }}>

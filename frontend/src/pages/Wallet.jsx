@@ -135,7 +135,12 @@ export default function Wallet() {
   const [isCardFlipped, setIsCardFlipped] = useState(false);
   const toast = useToast();
 
+  // Instant (no-payment) top-up is only available where the backend allows it
+  // (off in production) — otherwise every add-money button uses Razorpay.
+  const instantEnabled = wallet.instantTopupEnabled !== false;
+
   const handleTopup = async (a) => {
+    if (!instantEnabled) return handleRazorpayTopup(a);
     const value = parseInt(a || amount);
     if (!value || value <= 0) { toast.error('Enter a valid amount'); return; }
     setTopupLoading(true);
@@ -276,13 +281,13 @@ export default function Wallet() {
                 style={{ width: '100%', padding: '11px 16px', borderRadius: '14px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
               />
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button
+                {instantEnabled && <button
                   onClick={() => handleTopup()}
                   disabled={topupLoading || !amount}
                   style={{ flex: 1, padding: '11px 10px', borderRadius: '14px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', opacity: (!amount || topupLoading) ? 0.6 : 1, transition: 'all 0.2s ease' }}
                 >
                   Instant Test
-                </button>
+                </button>}
                 <button
                   onClick={() => handleRazorpayTopup()}
                   disabled={topupLoading || !amount}

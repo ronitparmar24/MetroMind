@@ -324,7 +324,7 @@ export default function AdminModels() {
               {/* Station shift */}
               <div style={{ padding:'16px', background:'rgba(255,255,255,0.025)', borderRadius:12, border:'1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--adm-text-3)', marginBottom:12 }}>Top Station Shift</div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div className="mm-stack-mobile" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                   {[
                     { label:'Training', stations: drift.top_stations.training, color:'#475569' },
                     { label:'Live (7d)', stations: drift.top_stations.live_last_7d, color:CYAN },

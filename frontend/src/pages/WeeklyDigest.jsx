@@ -97,7 +97,7 @@ export default function WeeklyDigest() {
           </div>
 
           {/* ═══ CONTENT GRID ═══ */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          <div className="mm-stack-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
 
             {/* Top Route */}
             <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '22px', gridColumn: digest.topRoute ? undefined : 'span 2' }}>

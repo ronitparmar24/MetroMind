@@ -17,6 +17,7 @@ export function useWallet() {
         currency: res.data.wallet.currency,
         recentTransactions: res.data.recentTransactions,
         prediction: res.data.prediction || null,
+        instantTopupEnabled: res.data.instantTopupEnabled !== false,
       });
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load wallet');

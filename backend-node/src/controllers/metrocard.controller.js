@@ -45,32 +45,36 @@ const topUpMetroCard = async (req, res, next) => {
     const { amount } = req.body;
     const amt = Number(amount);
 
-    if (!amt || amt < 10 || amt > 5000) {
+    if (!Number.isInteger(amt) || amt < 10 || amt > 5000) {
       const err = new Error('Top-up amount must be between ₹10 and ₹5000');
       err.statusCode = 400;
       return next(err);
     }
 
-    const [card, wallet] = await Promise.all([
-      MetroCard.findOne({ userId: req.user._id }),
-      Wallet.findOne({ userId: req.user._id }),
-    ]);
-
-    if (!card) {
+    const existingCard = await MetroCard.findOne({ userId: req.user._id });
+    if (!existingCard) {
       const err = new Error('No Metro Card found. Please create one first.');
       err.statusCode = 404;
       return next(err);
     }
-    if (!wallet || wallet.balance < amt) {
-      const err = new Error(`Insufficient wallet balance. Available: ₹${wallet?.balance || 0}`);
+
+    // Move money atomically: wallet → metro card
+    const wallet = await Wallet.findOneAndUpdate(
+      { userId: req.user._id, balance: { $gte: amt } },
+      { $inc: { balance: -amt } },
+      { new: true }
+    );
+    if (!wallet) {
+      const current = await Wallet.findOne({ userId: req.user._id }).lean();
+      const err = new Error(`Insufficient wallet balance. Available: ₹${current?.balance || 0}`);
       err.statusCode = 402;
       return next(err);
     }
-
-    // Move money: wallet → metro card
-    wallet.balance -= amt;
-    card.balance += amt;
-    await Promise.all([wallet.save(), card.save()]);
+    const card = await MetroCard.findOneAndUpdate(
+      { _id: existingCard._id },
+      { $inc: { balance: amt } },
+      { new: true }
+    );
 
     // Record transaction
     await Transaction.create({

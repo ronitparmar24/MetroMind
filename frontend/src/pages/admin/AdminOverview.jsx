@@ -500,7 +500,7 @@ export default function AdminOverview({ refreshKey, setSupportCount }) {
       </div>
 
       {/* Top Routes + Recent Tickets */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
+      <div className="mm-stack-tablet" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
         <TopRoutesCard routes={rev?.topRoutes} loading={loading} />
         <RecentTicketsCard tickets={tickets} loading={loading} />
       </div>

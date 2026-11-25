@@ -50,6 +50,12 @@ const TicketSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // Where the fare was paid from — refunds go back to the same place
+    paymentMethod: {
+      type: String,
+      enum: ['wallet', 'metrocard'],
+      default: 'wallet',
+    },
     status: {
       type: String,
       enum: ['upcoming', 'completed', 'cancelled'],

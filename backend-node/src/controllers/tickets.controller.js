@@ -57,8 +57,36 @@ const bookTicket = async (req, res, next) => {
       return next(err);
     }
 
-    if (passengers.length < 1 || passengers.length > 6) {
+    if (!Array.isArray(passengers) || passengers.length < 1 || passengers.length > 6) {
       const err = new Error('1 to 6 passengers allowed per booking');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    if (paymentMethod !== 'wallet' && paymentMethod !== 'metrocard') {
+      const err = new Error('Invalid payment method');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    // Validate every passenger: a real name and an integer age 0–120.
+    // (Client-supplied ages decide the fare, so they must be sane.)
+    const invalidPassenger = passengers.some((p) => {
+      if (!p || typeof p.name !== 'string' || !p.name.trim() || p.name.length > 60) return true;
+      const age = Number(p.age);
+      return !Number.isInteger(age) || age < 0 || age > 120;
+    });
+    if (invalidPassenger) {
+      const err = new Error('Each passenger needs a name (max 60 characters) and an age between 0 and 120');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    // Children 4 and under ride free, but only with a paying passenger —
+    // otherwise free child-only tickets could be booked endlessly (and earn CO₂ rewards).
+    const payingPassengers = passengers.filter((p) => Number(p.age) > 4).length;
+    if (payingPassengers === 0) {
+      const err = new Error('Children aged 4 and under must travel with an adult or older child');
       err.statusCode = 400;
       return next(err);
     }
@@ -131,33 +159,61 @@ const bookTicket = async (req, res, next) => {
 
     // Combine discounts: Metro Card applied first, then holiday on top
     const discountAmount = metroCardDiscountAmount;
-    // Only enforce ₹1 minimum when base fare is non-zero — children-only bookings should stay free
-    const finalFare = fareResult.fare === 0
-      ? 0
-      : Math.max(1, fareResult.fare - discountAmount - holidayDiscountAmount);
+    const finalFare = Math.max(1, fareResult.fare - discountAmount - holidayDiscountAmount);
 
 
-    // ── Payment source check ──
-    const wallet = await Wallet.findOne({ userId: req.user._id });
-
+    // ── Charge the fare atomically ──
+    // A conditional $inc only succeeds when the balance covers the fare, so two
+    // simultaneous bookings can't both pass a read-then-save balance check.
+    let wallet = null;
+    let chargedCard = null;
     if (paymentMethod === 'metrocard') {
-      // Pay from Metro Card balance
       if (!metroCard) {
         const err = new Error('No active Metro Card found. Please get a Metro Card first.');
         err.statusCode = 402; return next(err);
       }
-      if (metroCard.balance < finalFare) {
+      chargedCard = await MetroCard.findOneAndUpdate(
+        { _id: metroCard._id, isActive: true, balance: { $gte: finalFare } },
+        { $inc: { balance: -finalFare, totalSaved: discountAmount, totalTrips: 1 }, $set: { lastUsed: new Date() } },
+        { new: true }
+      );
+      if (!chargedCard) {
         const err = new Error(`Insufficient Metro Card balance. Required: \u20b9${finalFare}, Available: \u20b9${metroCard.balance}`);
         err.statusCode = 402; return next(err);
       }
+      wallet = await Wallet.findOne({ userId: req.user._id });
     } else {
-      // Pay from Wallet
-      if (!wallet || wallet.balance < finalFare) {
-        const err = new Error(`Insufficient wallet balance. Required: \u20b9${finalFare}, Available: \u20b9${wallet ? wallet.balance : 0}`);
+      wallet = await Wallet.findOneAndUpdate(
+        { userId: req.user._id, balance: { $gte: finalFare } },
+        { $inc: { balance: -finalFare } },
+        { new: true }
+      );
+      if (!wallet) {
+        const current = await Wallet.findOne({ userId: req.user._id }).lean();
+        const err = new Error(`Insufficient wallet balance. Required: \u20b9${finalFare}, Available: \u20b9${current ? current.balance : 0}`);
         err.statusCode = 402; return next(err);
+      }
+      // Wallet payment with an active card still gets the card discount — update its stats
+      if (useMetroCard && metroCard) {
+        await MetroCard.updateOne(
+          { _id: metroCard._id },
+          { $inc: { totalSaved: discountAmount, totalTrips: 1 }, $set: { lastUsed: new Date() } }
+        );
       }
     }
 
+    // If anything below fails, give the money back
+    const refundCharge = async () => {
+      try {
+        if (chargedCard) {
+          await MetroCard.updateOne({ _id: chargedCard._id }, { $inc: { balance: finalFare, totalSaved: -discountAmount, totalTrips: -1 } });
+        } else {
+          await Wallet.updateOne({ userId: req.user._id }, { $inc: { balance: finalFare } });
+        }
+      } catch (refundErr) {
+        console.error('CRITICAL: failed to roll back booking charge', String(req.user._id), finalFare, refundErr.message);
+      }
+    };
 
     // Generate QR codes for each passenger with split fare
     const ticketId = generateTicketId();
@@ -179,11 +235,13 @@ const bookTicket = async (req, res, next) => {
       })
     );
 
-    // Calculate CO2 savings
-    const co2Saved = calculateCO2Saved(fareResult.distance, passengers.length);
+    // CO₂ savings only for paying passengers
+    const co2Saved = calculateCO2Saved(fareResult.distance, payingPassengers);
 
-    // Create ticket
-    const ticket = await Ticket.create({
+    // Create ticket (roll the charge back if this fails)
+    let ticket;
+    try {
+    ticket = await Ticket.create({
       userId: req.user._id,
       ticketId,
       source,
@@ -197,27 +255,11 @@ const bookTicket = async (req, res, next) => {
       co2Saved,
       distance: fareResult.distance,
       coachPref: coachPref || 'general',
+      paymentMethod,
     });
-
-    // ── Deduct payment ──
-    if (paymentMethod === 'metrocard') {
-      // Deduct fare from Metro Card balance
-      metroCard.balance -= finalFare;
-      metroCard.lastUsed = new Date();
-      metroCard.totalSaved = (metroCard.totalSaved || 0) + discountAmount;
-      metroCard.totalTrips = (metroCard.totalTrips || 0) + 1;
-      await metroCard.save();
-    } else {
-      // Deduct from wallet
-      wallet.balance -= finalFare;
-      await wallet.save();
-      // Update Metro Card stats if discount was applied via active card
-      if (useMetroCard && metroCard) {
-        metroCard.lastUsed = new Date();
-        metroCard.totalSaved = (metroCard.totalSaved || 0) + discountAmount;
-        metroCard.totalTrips = (metroCard.totalTrips || 0) + 1;
-        await metroCard.save();
-      }
+    } catch (createErr) {
+      await refundCharge();
+      throw createErr;
     }
 
     // Record transaction
@@ -238,7 +280,7 @@ const bookTicket = async (req, res, next) => {
 
     // Update user loyalty points and streak
     const user = await User.findById(req.user._id);
-    user.loyaltyPoints += Math.floor(fareResult.fare / 10); // 1 point per ₹10 spent
+    user.loyaltyPoints += Math.floor(finalFare / 10); // 1 point per ₹10 spent
     const now = new Date();
     const today = now.toDateString();
     const yesterday = new Date(now);
@@ -417,17 +459,43 @@ const cancelTicket = async (req, res, next) => {
       }
     }
 
-    // Cancel and refund
+    // Cancel atomically: only one request can move this ticket out of 'upcoming',
+    // so concurrent cancel calls can't each issue a refund.
+    const claimed = await Ticket.findOneAndUpdate(
+      { _id: ticket._id, userId: req.user._id, status: 'upcoming' },
+      { $set: { status: 'cancelled' } },
+      { new: true }
+    );
+    if (!claimed) {
+      const err = new Error('Ticket already cancelled');
+      err.statusCode = 400;
+      return next(err);
+    }
     ticket.status = 'cancelled';
-    await ticket.save();
 
-    // Refund to wallet
+    // Refund to where the fare was paid from
     let wallet = await Wallet.findOne({ userId: req.user._id });
     if (!wallet) wallet = await Wallet.create({ userId: req.user._id, balance: 0 });
-    wallet.balance += refundAmount;
-    await wallet.save();
-
+    let refundedTo = 'wallet';
     if (refundAmount > 0) {
+      let creditedCard = null;
+      if (ticket.paymentMethod === 'metrocard') {
+        creditedCard = await MetroCard.findOneAndUpdate(
+          { userId: req.user._id, isActive: true },
+          { $inc: { balance: refundAmount } },
+          { new: true }
+        );
+      }
+      if (creditedCard) {
+        refundedTo = 'metrocard';
+      } else {
+        wallet = await Wallet.findOneAndUpdate(
+          { userId: req.user._id },
+          { $inc: { balance: refundAmount } },
+          { new: true }
+        );
+      }
+
       // Record refund transaction
       await Transaction.create({
         userId: req.user._id,
@@ -435,7 +503,7 @@ const cancelTicket = async (req, res, next) => {
         amount: refundAmount,
         balance: wallet.balance,
         ref: ticket.ticketId,
-        note: `Refund: ${ticket.source} → ${ticket.destination} (${Math.round((refundAmount/ticket.fare)*100)}%)`,
+        note: `Refund to ${refundedTo === 'metrocard' ? 'Metro Card' : 'Wallet'}: ${ticket.source} → ${ticket.destination} (${Math.round((refundAmount/ticket.fare)*100)}%)`,
       });
     }
 
@@ -448,7 +516,7 @@ const cancelTicket = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: refundAmount > 0 ? `Ticket cancelled. ₹${refundAmount} refunded to wallet.` : 'Ticket cancelled. No refund is available for this ticket.',
+      message: refundAmount > 0 ? `Ticket cancelled. ₹${refundAmount} refunded to ${refundedTo === 'metrocard' ? 'Metro Card' : 'wallet'}.` : 'Ticket cancelled. No refund is available for this ticket.',
       ticket,
       newBalance: wallet.balance,
     });

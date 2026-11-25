@@ -27,6 +27,20 @@ const protect = async (req, res, next) => {
       return next(err);
     }
 
+    // A password change/reset signs out every session issued before it
+    if (user.passwordChangedAt && decoded.iat && decoded.iat * 1000 < user.passwordChangedAt.getTime() - 1000) {
+      const err = new Error('Session expired — please log in again');
+      err.statusCode = 401;
+      return next(err);
+    }
+
+    // A password change/reset signs out every session issued before it
+    if (user.passwordChangedAt && decoded.iat && decoded.iat * 1000 < user.passwordChangedAt.getTime() - 1000) {
+      const err = new Error('Session expired — please log in again');
+      err.statusCode = 401;
+      return next(err);
+    }
+
     if (user.isActive === false) {
       const err = new Error('This account has been deactivated');
       err.statusCode = 401;

@@ -5,7 +5,31 @@ const User = require('../models/User.model');
 const Wallet = require('../models/Wallet.model');
 const { signToken } = require('../utils/jwt');
 const { GOOGLE_CLIENT_ID } = require('../config/env');
-const { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail } = require('../utils/emailer');
+const { IS_PROD, sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail } = require('../utils/emailer');
+
+const EMAIL_FAIL_MSG = "We couldn't send the verification email right now. Please try again in a few minutes.";
+const DEV_EMAIL_NOTICE = 'Email could not be sent (SMTP login failed). DEV ONLY: the code is printed in the backend console.';
+
+// Sends the OTP; returns { sent } and never throws.
+const deliverOtp = async (email, otp) => {
+  try {
+    await sendOTPEmail(email.toLowerCase(), otp);
+    return { sent: true };
+  } catch (e) {
+    console.error('OTP email failed:', e.message);
+    return { sent: false };
+  }
+};
+
+// Production: a 503 so the user isn't told a code was sent when it wasn't.
+// Development: let the flow continue (code is in the console) but say so.
+const emailFailureResponse = async (res, email) => {
+  if (IS_PROD) {
+    try { await redis.del(OTP_RATE_KEY(email)); } catch (_) { /* best effort */ }
+    return res.status(503).json({ success: false, error: EMAIL_FAIL_MSG });
+  }
+  return null;
+};
 const { validateEmail } = require('../services/emailValidator.service');
 const { validatePhone } = require('../services/phoneValidator.service');
 const { checkPasswordPwned } = require('../services/pwnedCheck.service');
@@ -19,6 +43,11 @@ const OTP_KEY      = (email) => `otp:${email.toLowerCase()}`;
 const OTP_RATE_KEY = (email) => `otp_rate:${email.toLowerCase()}`;
 const OTP_TTL      = 600; // 10 minutes
 const OTP_RATE_TTL = 60;  // 60 second cooldown between resends
+
+// Max wrong guesses per issued code. A 6-digit code has 900k values, so without
+// a cap it can be brute-forced inside its 10-minute lifetime.
+const MAX_OTP_ATTEMPTS = 5;
+const TOO_MANY_ATTEMPTS_MSG = 'Too many incorrect attempts. Please request a new code.';
 
 // ─── Helper: generate 6-digit OTP and its bcrypt hash ───
 const generateOtp = async () => {
@@ -129,6 +158,7 @@ const register = async (req, res, next) => {
       existing.name         = name;
       existing.passwordHash = passwordHash;
       existing.phone        = phone || '';
+      existing.otpAttempts  = 0;
       await existing.save();
     } else {
       // Create new user (unverified)
@@ -148,16 +178,14 @@ const register = async (req, res, next) => {
     await redis.set(OTP_RATE_KEY(email), '1', { ex: OTP_RATE_TTL });
 
     // Send OTP email
-    try {
-      await sendOTPEmail(email.toLowerCase(), otp);
-    } catch (emailErr) {
-      console.error('Failed to send OTP email:', emailErr.message);
-      // Don't block registration — OTP is logged in console by emailer fallback
-    }
+    const delivery = await deliverOtp(email, otp);
+    if (!delivery.sent && (await emailFailureResponse(res, email))) return;
 
     // Return requiresVerification — no JWT yet
     res.status(201).json({
       success: true,
+      emailSent: delivery.sent,
+      ...(delivery.sent ? {} : { devNotice: DEV_EMAIL_NOTICE }),
       requiresVerification: true,
       email: email.toLowerCase(),
     });
@@ -180,8 +208,8 @@ const verifyOtp = async (req, res, next) => {
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
-      const err = new Error('No account found with this email');
-      err.statusCode = 404;
+      const err = new Error('Invalid or expired verification code');
+      err.statusCode = 400;
       return next(err);
     }
 
@@ -200,13 +228,29 @@ const verifyOtp = async (req, res, next) => {
       return next(err);
     }
 
-    // Compare OTP against the stored bcrypt hash
-    const isMatch = await bcrypt.compare(otp, storedHash);
-    if (!isMatch) {
-      const err = new Error('Invalid verification code');
-      err.statusCode = 401;
+    if ((user.otpAttempts || 0) >= MAX_OTP_ATTEMPTS) {
+      await redis.del(OTP_KEY(email));
+      const err = new Error(TOO_MANY_ATTEMPTS_MSG);
+      err.statusCode = 429;
       return next(err);
     }
+
+    // Compare OTP against the stored bcrypt hash
+    const isMatch = await bcrypt.compare(String(otp), storedHash);
+    if (!isMatch) {
+      user.otpAttempts = (user.otpAttempts || 0) + 1;
+      await user.save();
+      if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+        await redis.del(OTP_KEY(email)); // burn the code
+        const err = new Error(TOO_MANY_ATTEMPTS_MSG);
+        err.statusCode = 429;
+        return next(err);
+      }
+      const err = new Error('Invalid verification code');
+      err.statusCode = 400;
+      return next(err);
+    }
+    user.otpAttempts = 0;
 
     // Verification succeeded — delete OTP from Redis immediately (one-time use)
     await redis.del(OTP_KEY(email));
@@ -267,8 +311,8 @@ const resendOtp = async (req, res, next) => {
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
-      const err = new Error('No account found with this email');
-      err.statusCode = 404;
+      const err = new Error('Invalid or expired verification code');
+      err.statusCode = 400;
       return next(err);
     }
 
@@ -288,6 +332,7 @@ const resendOtp = async (req, res, next) => {
 
     // Generate fresh OTP and store in Redis
     const { otp, hash } = await generateOtp();
+    user.otpAttempts = 0;
     await redis.set(OTP_KEY(email), hash, { ex: OTP_TTL });
     await redis.set(OTP_RATE_KEY(email), '1', { ex: OTP_RATE_TTL });
     // Clear any legacy OTP fields from the User document
@@ -296,14 +341,13 @@ const resendOtp = async (req, res, next) => {
     await user.save();
 
     // Send email
-    try {
-      await sendOTPEmail(email.toLowerCase(), otp);
-    } catch (emailErr) {
-      console.error('Failed to resend OTP email:', emailErr.message);
-    }
+    const delivery = await deliverOtp(email, otp);
+    if (!delivery.sent && (await emailFailureResponse(res, email))) return;
 
     res.json({
       success: true,
+      emailSent: delivery.sent,
+      ...(delivery.sent ? {} : { devNotice: DEV_EMAIL_NOTICE }),
       message: 'Verification code sent',
       retryAfter: 60,
     });
@@ -360,6 +404,7 @@ const login = async (req, res, next) => {
 
       if (canResend) {
         const { otp, hash } = await generateOtp();
+        user.otpAttempts = 0;
         // Store OTP hash in Redis (10 min TTL) instead of the User document
         await redis.set(OTP_KEY(email), hash, { ex: OTP_TTL });
         await redis.set(OTP_RATE_KEY(email), '1', { ex: OTP_RATE_TTL });
@@ -368,12 +413,7 @@ const login = async (req, res, next) => {
         user.otpExpiresAt = null;
         await user.save();
 
-        try {
-          await sendOTPEmail(email.toLowerCase(), otp);
-          otpSent = true;
-        } catch (emailErr) {
-          console.error('Failed to send OTP email on login:', emailErr.message);
-        }
+        otpSent = (await deliverOtp(email, otp)).sent;
       }
 
       return res.status(403).json({
@@ -510,68 +550,57 @@ const googleLogin = async (req, res, next) => {
       }
     }
 
-    // 1. If token looks like an access_token (not a JWT), fetch userinfo from Google
-    const isAccessToken = !idToken.includes('.') || idToken.split('.').length !== 3;
-    if (isAccessToken && !code) {
-      try {
-        const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
-        if (response.ok) {
-          payload = await response.json();
-        }
-      } catch (fetchErr) {
-        console.warn('Google userinfo fetch failed:', fetchErr.message);
-      }
+    if (!GOOGLE_CLIENT_ID) {
+      return next(new Error('Server misconfiguration: missing Google Client ID'));
     }
-
-    // 2. Try official Google verifyIdToken if credential looks like a JWT id_token
-    if (!payload && GOOGLE_CLIENT_ID && !isAccessToken) {
-      try {
-        const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-        const ticket = await client.verifyIdToken({
-          idToken: idToken,
-          audience: GOOGLE_CLIENT_ID,
-        });
-        payload = ticket.getPayload();
-      } catch (verifyErr) {
-        console.warn('Google verifyIdToken failed, using fallback:', verifyErr.message);
-      }
-    }
-
-    // 3. Fallback: decode JWT payload directly if credential is a valid JWT string
-    if (!payload && typeof idToken === 'string' && !isAccessToken) {
-      try {
-        const parts = idToken.split('.');
-        if (parts.length === 3) {
-          const base64Url = parts[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(
-            Buffer.from(base64, 'base64')
-              .toString('ascii')
-              .split('')
-              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-              .join('')
-          );
-          const decoded = JSON.parse(jsonPayload);
-          if (decoded && (decoded.email || decoded.sub)) {
-            payload = decoded;
-          }
-        }
-      } catch (parseErr) {
-        console.warn('JWT payload decoding fallback failed:', parseErr.message);
-      }
-    }
-
-    if (!payload || (!payload.email && !payload.sub)) {
+    if (typeof idToken !== 'string' || !idToken) {
       const err = new Error('Invalid Google credential');
       err.statusCode = 401;
       return next(err);
     }
 
+    // SECURITY: every path below verifies with Google that the token was issued
+    // to *this* app. (Previously a failed verification fell back to decoding the
+    // JWT payload without checking its signature, so anyone could forge a token
+    // for any email — including the admin's — and get logged in.)
+    const isAccessToken = idToken.split('.').length !== 3;
 
-    const googleId = payload.sub || payload.id || `google_${Date.now()}`;
-    const email = payload.email ? payload.email.toLowerCase() : `google_user_${googleId}@metromind.in`;
+    if (isAccessToken) {
+      // 1. OAuth access token: confirm it belongs to our client, then read the profile
+      try {
+        const infoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(idToken)}`);
+        const info = infoRes.ok ? await infoRes.json() : null;
+        if (info && (info.aud === GOOGLE_CLIENT_ID || info.azp === GOOGLE_CLIENT_ID)) {
+          const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${idToken}` },
+          });
+          if (response.ok) payload = await response.json();
+        } else {
+          console.warn('Google access token rejected: wrong audience or invalid token');
+        }
+      } catch (fetchErr) {
+        console.warn('Google token check failed:', fetchErr.message);
+      }
+    } else {
+      // 2. ID token (JWT): verify signature, expiry and audience
+      try {
+        const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+        const ticket = await client.verifyIdToken({ idToken, audience: GOOGLE_CLIENT_ID });
+        payload = ticket.getPayload();
+      } catch (verifyErr) {
+        console.warn('Google verifyIdToken failed:', verifyErr.message);
+      }
+    }
+
+    const emailVerified = payload && (payload.email_verified === true || payload.email_verified === 'true');
+    if (!payload || !payload.sub || !payload.email || !emailVerified) {
+      const err = new Error('Invalid Google credential');
+      err.statusCode = 401;
+      return next(err);
+    }
+
+    const googleId = payload.sub;
+    const email = payload.email.toLowerCase();
     const name = payload.name || payload.given_name || email.split('@')[0];
     const picture = payload.picture || '';
 
@@ -685,19 +714,25 @@ const forgotPassword = async (req, res, next) => {
     // Generate OTP
     const { otp, hash: otpHash } = await generateOtp();
     user.otpHash = otpHash;
+    user.otpAttempts = 0;
     user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
     user.lastOtpSentAt = new Date();
     await user.save();
 
     // Send email
-    try {
-      await sendOTPEmail(email.toLowerCase(), otp);
-    } catch (emailErr) {
-      console.error('Failed to send forgot password OTP email:', emailErr.message);
+    const delivery = await deliverOtp(email, otp);
+    if (!delivery.sent) {
+      if (IS_PROD) {
+        user.lastOtpSentAt = null; // allow an immediate retry
+        await user.save();
+        return res.status(503).json({ success: false, error: EMAIL_FAIL_MSG });
+      }
     }
 
     res.json({
       success: true,
+      emailSent: delivery.sent,
+      ...(delivery.sent ? {} : { devNotice: DEV_EMAIL_NOTICE }),
       message: 'Verification code sent',
     });
   } catch (error) {
@@ -716,6 +751,12 @@ const resetPassword = async (req, res, next) => {
       return next(err);
     }
 
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      const err = new Error('New password must be at least 6 characters');
+      err.statusCode = 400;
+      return next(err);
+    }
+
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       const err = new Error('Invalid email or code');
@@ -730,17 +771,34 @@ const resetPassword = async (req, res, next) => {
       return next(err);
     }
 
-    // Compare OTP
-    const isMatch = await bcrypt.compare(otp, user.otpHash);
-    if (!isMatch) {
-      const err = new Error('Invalid verification code');
-      err.statusCode = 401;
+    if (!user.otpHash || (user.otpAttempts || 0) >= MAX_OTP_ATTEMPTS) {
+      user.otpHash = null;
+      user.otpExpiresAt = null;
+      await user.save();
+      const err = new Error(TOO_MANY_ATTEMPTS_MSG);
+      err.statusCode = 429;
       return next(err);
     }
+
+    // Compare OTP
+    const isMatch = await bcrypt.compare(String(otp), user.otpHash);
+    if (!isMatch) {
+      user.otpAttempts = (user.otpAttempts || 0) + 1;
+      if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+        user.otpHash = null; // burn the code
+        user.otpExpiresAt = null;
+      }
+      await user.save();
+      const err = new Error(user.otpHash ? 'Invalid verification code' : TOO_MANY_ATTEMPTS_MSG);
+      err.statusCode = user.otpHash ? 400 : 429;
+      return next(err);
+    }
+    user.otpAttempts = 0;
 
     // Hash new password
     const salt = await bcrypt.genSalt(12);
     user.passwordHash = await bcrypt.hash(newPassword, salt);
+    user.passwordChangedAt = new Date();
     
     // Make sure they are verified
     user.isVerified = true;
@@ -800,11 +858,17 @@ const changePassword = async (req, res, next) => {
     // 400, not 401: a 401 makes the frontend interceptor wipe the session on a simple typo
     if (!isMatch) return res.status(400).json({ success: false, message: 'Incorrect current password', error: 'Incorrect current password' });
 
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters', error: 'New password must be at least 6 characters' });
+    }
+
     const salt = await bcrypt.genSalt(12);
     user.passwordHash = await bcrypt.hash(newPassword, salt);
+    user.passwordChangedAt = new Date();
     await user.save();
 
-    res.json({ success: true, message: 'Password updated successfully' });
+    // Other sessions are now invalid; give this one a fresh token
+    res.json({ success: true, message: 'Password updated successfully', token: signToken(user._id) });
   } catch (error) {
     next(error);
   }

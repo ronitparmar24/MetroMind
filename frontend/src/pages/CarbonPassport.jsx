@@ -24,7 +24,11 @@ export default function CarbonPassport() {
 
   // Carbon Reward Logic (1kg = ₹5)
   const claimedCO2 = user?.claimedCO2 || 0;
-  const unclaimedCO2 = Math.max(0, totalCO2 - claimedCO2);
+  // Only completed trips can be converted to cash (matches the server rule)
+  const claimableTotal = tickets
+    .filter((t) => t.status === 'completed')
+    .reduce((sum, t) => sum + (t.co2Saved || 0), 0);
+  const unclaimedCO2 = Math.max(0, claimableTotal - claimedCO2);
   const rewardCash = Number((unclaimedCO2 * 5).toFixed(2));
   const canConvert = unclaimedCO2 >= 0.4;
 
