@@ -196,11 +196,11 @@ export default function AdminSupport({ setSupportCount }) {
                     )}
                   </div>
                 </div>
-                {item.queueType === 'lost_found' && (
+                {(item.queueType === 'lost_found' || item.queueType === 'feedback') && (
                   <button
                     className="admin-action-btn admin-action-btn-primary"
                     style={{ fontSize:'0.72rem', padding:'5px 12px' }}
-                    onClick={() => handleResolveLostFound(item._id)}
+                    onClick={() => item.queueType === 'feedback' ? handleResolveFeedback(item._id) : handleResolveLostFound(item._id)}
                     disabled={resolving === item._id}
                   >
                     <CheckCircle2 size={11} />

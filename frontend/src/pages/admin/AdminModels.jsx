@@ -49,6 +49,7 @@ export default function AdminModels() {
   const [data, setData]         = useState({ perf:null, volume:null, drift:null });
   const [loading, setLoading]   = useState(true);
   const [offline, setOffline]   = useState(false);
+  const [sentryStatus, setSentryStatus] = useState(null); // null | 'sending' | 'sent'
 
   const load = () => {
     setLoading(true);
@@ -113,7 +114,6 @@ export default function AdminModels() {
   const winnerAcc = perf?.[winnerKey]?.accuracy;
 
   // Sentry test error handler
-  const [sentryStatus, setSentryStatus] = useState(null); // null | 'sending' | 'sent'
   const triggerSentryTest = () => {
     setSentryStatus('sending');
     // Capture a manual test event with rich context

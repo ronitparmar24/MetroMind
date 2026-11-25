@@ -130,11 +130,9 @@ export default function AdminUsers() {
 
   const load = useCallback(() => {
     setLoading(true);
-    adminApi.getUsers({ page, limit: 15, search: query })
+    adminApi.getUsers({ page, limit: 15, search: query, role: role || undefined })
       .then(r => {
-        let data = r.data.data || [];
-        if (role) data = data.filter(u => u.role === role);
-        setUsers(data);
+        setUsers(r.data.data || []);
         setTotal(r.data.pagination.total || 0);
         setPages(r.data.pagination.totalPages || 1);
       })

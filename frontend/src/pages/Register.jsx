@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
 import { useSystemTheme } from '../hooks/useSystemTheme';
 import '../styles/auth.css';
+import { getRecaptchaToken, preloadRecaptcha } from '../utils/recaptcha';
 
 /* ═══ Password Strength ═══ */
 function getStrength(pw) {
@@ -301,6 +302,7 @@ function OtpInput({ length = 6, onComplete, hasError }) {
 
 /* ═══ Main Component ═══ */
 export default function Register() {
+  useEffect(() => { preloadRecaptcha(); }, []);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPw: '' });
   const [showPw, setShowPw] = useState(false);
@@ -457,9 +459,7 @@ export default function Register() {
     setEmailError('');
     setLoading(true);
     try {
-      const recaptchaToken = await window.grecaptcha.execute(
-        import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'submit' }
-      );
+      const recaptchaToken = await getRecaptchaToken('submit');
 
       const res = await registerUser({
         name: form.name, email: form.email, password: form.password, phone: form.phone, recaptchaToken

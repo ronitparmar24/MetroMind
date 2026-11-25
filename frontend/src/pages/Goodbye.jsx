@@ -10,35 +10,33 @@ export default function Goodbye() {
   const [timeLeft, setTimeLeft] = useState(3);
   const [timeOfDay, setTimeOfDay] = useState('afternoon');
 
+  // Runs once on mount: capture the name, then clear the session.
+  // (Depending on `user` here re-ran the effect after logout() and started a
+  // second countdown interval.)
   useEffect(() => {
-    // Capture the name before logging out, so it doesn't disappear
     if (user?.name) {
       setFirstName(user.name.split(' ')[0]);
     }
-    
-    // Determine time of day
+
     const hour = new Date().getHours();
     if (hour < 12) setTimeOfDay('morning');
     else if (hour < 17) setTimeOfDay('afternoon');
     else setTimeOfDay('evening');
-    
-    // Clear user session in the background
+
     logout();
 
-    // Countdown timer
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          navigate('/login');
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [logout, navigate, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Navigate outside the state updater (calling navigate during render is a React error).
+  useEffect(() => {
+    if (timeLeft === 0) navigate('/login');
+  }, [timeLeft, navigate]);
 
   return (
     <div style={{

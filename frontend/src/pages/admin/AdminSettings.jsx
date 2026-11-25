@@ -144,7 +144,7 @@ export default function AdminSettings() {
       setPwdMsg({ type:'success', text:'Password changed successfully.' });
       setPwdOld(''); setPwdNew(''); setPwdConf('');
     } catch(e) {
-      setPwdMsg({ type:'error', text: e.response?.data?.message || 'Failed to change password.' });
+      setPwdMsg({ type:'error', text: e.response?.data?.message || e.response?.data?.error || 'Failed to change password.' });
     } finally { setPwdSaving(false); }
   };
 
@@ -157,7 +157,7 @@ export default function AdminSettings() {
       updateUser({ name: displayName });
       setNameMsg({ type:'success', text:'Display name updated.' });
     } catch(e) {
-      setNameMsg({ type:'error', text: e.response?.data?.message || 'Failed to update name.' });
+      setNameMsg({ type:'error', text: e.response?.data?.message || e.response?.data?.error || 'Failed to update name.' });
     } finally { setNameSaving(false); }
   };
 

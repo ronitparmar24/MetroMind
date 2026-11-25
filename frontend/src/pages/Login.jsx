@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/common/Toast';
 import { useSystemTheme } from '../hooks/useSystemTheme';
 import '../styles/auth.css';
+import { getRecaptchaToken, preloadRecaptcha } from '../utils/recaptcha';
 
 /* ═══ Floating particles ═══ */
 function Particles() {
@@ -120,6 +121,7 @@ function OtpInput({ length = 6, onComplete, hasError }) {
 }
 
 export default function Login() {
+  useEffect(() => { preloadRecaptcha(); }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -259,9 +261,7 @@ export default function Login() {
     setLoginSteps([true, false, false]);
 
     try {
-      const recaptchaToken = await window.grecaptcha.execute(
-        import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'submit' }
-      );
+      const recaptchaToken = await getRecaptchaToken('submit');
 
       const res = await loginUser({ email, password, recaptchaToken });
       setLoginSteps([true, true, false]);

@@ -63,7 +63,7 @@ export default function LostFound() {
       setTicketId(id);
       setSubmitted(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit report. Please try again.');
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to submit report. Please try again.');
     } finally {
       setLoading(false);
     }

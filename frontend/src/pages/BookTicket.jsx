@@ -255,7 +255,12 @@ function JourneySummary({ source, destination, travelDate, travelHour }) {
 export default function BookTicket() {
   const location = useLocation();
   const passengersRef = useRef(null);
-  const prefilled = location.state || {};
+  const query = new URLSearchParams(location.search);
+  const prefilled = {
+    ...(query.get('from') ? { source: query.get('from') } : {}),
+    ...(query.get('to') ? { destination: query.get('to') } : {}),
+    ...(location.state || {}),
+  };
 
   const [source, setSource] = useState(prefilled.source || '');
   const [destination, setDestination] = useState(prefilled.destination || '');
@@ -280,8 +285,10 @@ export default function BookTicket() {
   const [metroCard, setMetroCard] = useState(null); // null = not loaded yet
   const navigate = useNavigate();
   const toast = useToast();
-  const { wallet } = useWallet();
-  const balance = wallet?.balance;
+  const { wallet, loading: walletLoading, error: walletError } = useWallet();
+  // null while loading / on error so the client-side check doesn't report a bogus ₹0
+  // balance (the backend still enforces the real balance with a 402).
+  const balance = walletLoading || walletError ? null : wallet?.balance ?? null;
 
   const toastShownRef = useRef(false);
   useEffect(() => {

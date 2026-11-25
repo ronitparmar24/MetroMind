@@ -1,5 +1,5 @@
 // frontend/src/pages/Analytics.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import GlassCard from '../components/common/GlassCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { getHeatmap } from '../api/analytics.api';
@@ -117,7 +117,7 @@ export default function Analytics() {
               </div>
             ))}
             {stations.slice(0, 15).map((station) => (
-              <>
+              <Fragment key={station}>
                 <div key={station} style={{
                   padding: '6px 4px', fontSize: '0.7rem', whiteSpace: 'nowrap',
                   overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-secondary)',
@@ -147,7 +147,7 @@ export default function Analytics() {
                     </div>
                   );
                 })}
-              </>
+              </Fragment>
             ))}
           </div>
         </div>

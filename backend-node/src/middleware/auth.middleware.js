@@ -27,6 +27,12 @@ const protect = async (req, res, next) => {
       return next(err);
     }
 
+    if (user.isActive === false) {
+      const err = new Error('This account has been deactivated');
+      err.statusCode = 401;
+      return next(err);
+    }
+
     req.user = user;
     next();
   } catch (error) {

@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { getSavedRoutes } from '../../api/analytics.api';
 import { predictCrowd } from '../../api/predict.api';
 import { calculateFare } from '../../utils/fareEngine';
+import { STATIONS } from '../../constants/stations';
+
+const findStation = (name) => STATIONS.find((st) => st.name === name) || { name };
 
 export default function SmartRoutesWidget() {
   const [routes, setRoutes] = useState([]);
@@ -23,11 +26,17 @@ export default function SmartRoutesWidget() {
         // Hydrate with ML predictions & live fare
         const hydrated = await Promise.all(saved.map(async (route) => {
           let crowd = 'Medium';
+          // Real station coordinates (name-only objects fell back to a fixed 5 km fare)
+          // and JS getDay() (what calculateFare expects), computed even if the ML call fails.
           let fare = 0;
+          try {
+            fare = calculateFare(findStation(route.source), findStation(route.destination), hour, now.getDay()).fare;
+          } catch (e) {
+            console.error('Fare calculation failed', e);
+          }
           try {
             const predRes = await predictCrowd({ station: route.source, hour, day });
             crowd = predRes.data.prediction.bucket;
-            fare = calculateFare({name: route.source}, {name: route.destination}, hour, day).fare;
           } catch (e) {
             console.error('Prediction failed', e);
           }

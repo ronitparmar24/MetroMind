@@ -7,7 +7,7 @@ const Wallet = require('../models/Wallet.model');
 const Transaction = require('../models/Transaction.model');
 const SystemSetting = require('../models/SystemSetting.model');
 const { bookingBus } = require('../events/bookingEvents');
-const { createOrder, verifyPaymentSignature } = require('../services/payment.service');
+const { createOrder, fetchOrder, verifyPaymentSignature } = require('../services/payment.service');
 
 /**
  * POST /api/wallet/create-order
@@ -68,7 +68,7 @@ const createRazorpayOrder = async (req, res, next) => {
  */
 const verifyRazorpayPayment = async (req, res, next) => {
   try {
-    const { orderId, paymentId, signature, amount } = req.body;
+    const { orderId, paymentId, signature } = req.body;
 
     if (!orderId || !paymentId || !signature) {
       const err = new Error('Missing orderId, paymentId, or signature');
@@ -88,8 +88,18 @@ const verifyRazorpayPayment = async (req, res, next) => {
       return next(err);
     }
 
-    // Derive credited amount from paise (Razorpay) → rupees
-    const creditAmount = amount ? Math.round(Number(amount) / 100) : 0;
+    // Don't credit the same payment twice (replayed verify calls)
+    const ref = `RZP-${paymentId}`;
+    const alreadyCredited = await Transaction.findOne({ ref, userId: req.user._id }).lean();
+    if (alreadyCredited) {
+      const err = new Error('This payment has already been credited to your wallet');
+      err.statusCode = 409;
+      return next(err);
+    }
+
+    // Amount comes from Razorpay's own order record, never from the client body
+    const order = await fetchOrder(orderId);
+    const creditAmount = order && order.amount ? Math.round(Number(order.amount) / 100) : 0;
     if (creditAmount <= 0) {
       const err = new Error('Invalid payment amount');
       err.statusCode = 400;
@@ -107,7 +117,7 @@ const verifyRazorpayPayment = async (req, res, next) => {
       type:    'credit',
       amount:  creditAmount,
       balance: wallet.balance,
-      ref:     `RZP-${paymentId}`,
+      ref,
       note:    `Razorpay wallet top-up (${paymentId})`,
     });
 

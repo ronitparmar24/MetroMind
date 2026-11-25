@@ -231,7 +231,7 @@ const bookTicket = async (req, res, next) => {
       amount: finalFare,
       balance: newBalance,
       ref: ticketId,
-      note: `Ticket: ${source} \u2192 ${destination} (${passengers.length} pax) | ${payLabel}${discountAmount > 0 ? ` | Metro Card \u221210% \u2212\u20b9${discountAmount}` : ''}${holidayDiscountAmount > 0 ? ` | ${holidayCheck.holidayName} \u221215% \u2212\u20b9${holidayDiscountAmount}` : ''}`,
+      note: `Ticket: ${source} \u2192 ${destination} (${passengers.length} pax) | ${payLabel}${discountAmount > 0 ? ` | Metro Card \u22125%\u2212\u20b9${discountAmount}` : ''}${holidayDiscountAmount > 0 ? ` | ${holidayCheck.holidayName} \u221215% \u2212\u20b9${holidayDiscountAmount}` : ''}`,
     });
 
 
@@ -422,7 +422,8 @@ const cancelTicket = async (req, res, next) => {
     await ticket.save();
 
     // Refund to wallet
-    const wallet = await Wallet.findOne({ userId: req.user._id });
+    let wallet = await Wallet.findOne({ userId: req.user._id });
+    if (!wallet) wallet = await Wallet.create({ userId: req.user._id, balance: 0 });
     wallet.balance += refundAmount;
     await wallet.save();
 

@@ -9,7 +9,7 @@ const { sendOTPEmail, sendLoginNotificationEmail, sendWelcomeEmail } = require('
 const { validateEmail } = require('../services/emailValidator.service');
 const { validatePhone } = require('../services/phoneValidator.service');
 const { checkPasswordPwned } = require('../services/pwnedCheck.service');
-const { verifyRecaptcha, getIpLocation } = require('../services/security.service');
+const { checkRecaptcha, getIpLocation } = require('../services/security.service');
 const redis = require('../config/redis');
 
 // Redis OTP key helpers
@@ -61,14 +61,9 @@ const register = async (req, res, next) => {
   try {
     const { name, email, password, phone, recaptchaToken } = req.body;
 
-    if (!recaptchaToken) {
-      const err = new Error('Suspicious activity detected, please try again');
-      err.statusCode = 400;
-      return next(err);
-    }
-    const recaptchaResult = await verifyRecaptcha(recaptchaToken);
-    if (!recaptchaResult.success || recaptchaResult.score < 0.5) {
-      const err = new Error('Suspicious activity detected, please try again');
+    const captcha = await checkRecaptcha(recaptchaToken);
+    if (!captcha.ok) {
+      const err = new Error(captcha.message);
       err.statusCode = 400;
       return next(err);
     }
@@ -148,7 +143,7 @@ const register = async (req, res, next) => {
 
     // Store OTP hash in Redis with automatic 10-minute TTL
     // (OTPs are ephemeral — they don't belong in the permanent user document)
-    await redis.set(OTP_KEY(email), hash, { ex: OTP_TTL });
+    await redis.set(OTP_KEY(email), otpHash, { ex: OTP_TTL });
     // Set rate-limit sentinel so the user must wait 60s before requesting another
     await redis.set(OTP_RATE_KEY(email), '1', { ex: OTP_RATE_TTL });
 
@@ -249,6 +244,7 @@ const verifyOtp = async (req, res, next) => {
         phone: user.phone,
         loyaltyPoints: user.loyaltyPoints,
         streakDays: user.streakDays,
+        claimedCO2: user.claimedCO2 || 0,
         avatarStyle: user.avatarStyle,
       },
     });
@@ -321,14 +317,9 @@ const login = async (req, res, next) => {
   try {
     const { email, password, recaptchaToken } = req.body;
 
-    if (!recaptchaToken) {
-      const err = new Error('Suspicious activity detected, please try again');
-      err.statusCode = 400;
-      return next(err);
-    }
-    const recaptchaResult = await verifyRecaptcha(recaptchaToken);
-    if (!recaptchaResult.success || recaptchaResult.score < 0.5) {
-      const err = new Error('Suspicious activity detected, please try again');
+    const captcha = await checkRecaptcha(recaptchaToken);
+    if (!captcha.ok) {
+      const err = new Error(captcha.message);
       err.statusCode = 400;
       return next(err);
     }
@@ -352,6 +343,12 @@ const login = async (req, res, next) => {
     if (!isMatch) {
       const err = new Error('Invalid email or password');
       err.statusCode = 401;
+      return next(err);
+    }
+
+    if (user.isActive === false) {
+      const err = new Error('This account has been deactivated. Please contact support.');
+      err.statusCode = 403;
       return next(err);
     }
 
@@ -428,6 +425,7 @@ const login = async (req, res, next) => {
         phone: user.phone,
         loyaltyPoints: user.loyaltyPoints,
         streakDays: user.streakDays,
+        claimedCO2: user.claimedCO2 || 0,
         avatar: user.avatar,
         avatarStyle: user.avatarStyle,
         role: user.role,
@@ -649,6 +647,7 @@ const googleLogin = async (req, res, next) => {
         isVerified: user.isVerified,
         loyaltyPoints: user.loyaltyPoints || 0,
         streakDays: user.streakDays || 0,
+        claimedCO2: user.claimedCO2 || 0,
       },
     });
   } catch (error) {
@@ -791,8 +790,15 @@ const changePassword = async (req, res, next) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
+    // Google-only accounts have no password hash — bcrypt.compare would throw (500)
+    if (!user.passwordHash) {
+      const msg = 'This account uses Google Sign-In and has no password. Use "Forgot password" on the login page to set one.';
+      return res.status(400).json({ success: false, message: msg, error: msg });
+    }
+
     const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isMatch) return res.status(401).json({ success: false, message: 'Incorrect current password' });
+    // 400, not 401: a 401 makes the frontend interceptor wipe the session on a simple typo
+    if (!isMatch) return res.status(400).json({ success: false, message: 'Incorrect current password', error: 'Incorrect current password' });
 
     const salt = await bcrypt.genSalt(12);
     user.passwordHash = await bcrypt.hash(newPassword, salt);

@@ -89,7 +89,7 @@ export default function MetroCard() {
     try {
       const res = await createMetroCard();
       setCard(res.data.card);
-      toast.success('Metro Card created! You now get 10% off every ticket 🎉');
+      toast.success('Metro Card created! You now get 5% off every ticket 🎉');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to create card');
     } finally { setCreating(false); }
@@ -124,7 +124,7 @@ export default function MetroCard() {
       <div style={{ marginBottom: '14px' }}>
         <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Metro Card 💳</h1>
         <p style={{ color: 'var(--text-muted)', marginTop: '2px', fontSize: '0.82rem' }}>
-          Your smart transit card — <span style={{ color: '#6366f1', fontWeight: 700 }}>10% off every ticket</span> automatically
+          Your smart transit card — <span style={{ color: '#6366f1', fontWeight: 700 }}>5% off every ticket</span> automatically
         </p>
       </div>
 
@@ -171,7 +171,7 @@ export default function MetroCard() {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px' }}>Discount</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbbf24', lineHeight: 1 }}>10% OFF</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbbf24', lineHeight: 1 }}>5% OFF</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -224,7 +224,7 @@ export default function MetroCard() {
               Card Benefits
             </div>
             <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <BenefitRow icon="🏷️" title="10% Off Every Ticket" desc="Automatically applied on all ticket bookings — no coupon needed" highlight />
+              <BenefitRow icon="🏷️" title="5% Off Every Ticket" desc="Automatically applied on all ticket bookings — no coupon needed" highlight />
               <BenefitRow icon="🪪" title="NCMC Compatible" desc="Works on metro systems in Delhi, Mumbai, Chennai, Bengaluru & more" />
               <BenefitRow icon="⚡" title="Instant QR Boarding" desc="Tap your QR at the gate — no cash, no queue" />
               <BenefitRow icon="📊" title="Savings Tracker" desc="See exactly how much you've saved with your Metro Card" />
@@ -243,14 +243,14 @@ export default function MetroCard() {
           <div style={{ fontSize: '4rem', marginBottom: '16px' }}>💳</div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>Get Your Metro Card</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px', lineHeight: 1.6 }}>
-            Unlock <strong style={{ color: '#6366f1' }}>10% off on every ticket booking</strong> automatically.<br />
+            Unlock <strong style={{ color: '#6366f1' }}>5% off on every ticket booking</strong> automatically.<br />
             NCMC-enabled — works across all Indian metro cities.
           </p>
 
           {/* Benefits preview */}
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', margin: '24px 0' }}>
             {[
-              { icon: '🏷️', label: '10% off tickets' },
+              { icon: '🏷️', label: '5% off tickets' },
               { icon: '🪪', label: 'NCMC enabled' },
               { icon: '⚡', label: 'Instant boarding' },
               { icon: '📊', label: 'Savings tracker' },

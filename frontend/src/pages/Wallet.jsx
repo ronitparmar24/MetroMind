@@ -156,7 +156,7 @@ export default function Wallet() {
     if (!value || value <= 0) { toast.error('Enter a valid amount'); return; }
     setTopupLoading(true);
     try {
-      const { data } = await api.post('/wallet/create-order', { amount: value });
+      const { data } = await api.post('/api/wallet/create-order', { amount: value });
       const rzp = new window.Razorpay({
         key: data.keyId,
         amount: data.amount,
@@ -166,7 +166,7 @@ export default function Wallet() {
         description: 'Wallet Top Up',
         handler: async (response) => {
           try {
-            await api.post('/wallet/verify-payment', {
+            await api.post('/api/wallet/verify-payment', {
               orderId: response.razorpay_order_id,
               paymentId: response.razorpay_payment_id,
               signature: response.razorpay_signature,

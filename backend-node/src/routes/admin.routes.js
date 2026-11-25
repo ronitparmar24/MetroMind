@@ -9,6 +9,9 @@ const Feedback = require('../models/Feedback.model');
 const LostFound = require('../models/LostFound.model');
 const Announcement = require('../models/Announcement.model');
 const SystemSetting = require('../models/SystemSetting.model');
+const Transaction = require('../models/Transaction.model');
+
+const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Apply both auth and admin check to ALL routes in this file
 router.use(protect, requireAdmin);
@@ -21,10 +24,12 @@ router.get('/users', async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
     const search = req.query.search || '';
+    const role = req.query.role || '';
 
-    const query = search 
-      ? { $or: [{ name: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }] }
+    const query = search
+      ? { $or: [{ name: { $regex: escapeRegex(search), $options: 'i' } }, { email: { $regex: escapeRegex(search), $options: 'i' } }] }
       : {};
+    if (role === 'user' || role === 'admin') query.role = role;
 
     const users = await User.find(query)
       .select('name email role isActive createdAt')
@@ -35,7 +40,7 @@ router.get('/users', async (req, res) => {
     const total = await User.countDocuments(query);
 
     const enrichedUsers = await Promise.all(users.map(async (user) => {
-      const rideCount = await Ticket.countDocuments({ userId: user._id, status: { $in: ['used', 'active', 'completed'] } });
+      const rideCount = await Ticket.countDocuments({ userId: user._id, status: { $in: ['upcoming', 'completed'] } });
       const wallet = await Wallet.findOne({ userId: user._id }).lean();
       return { ...user, rideCount, walletBalance: wallet ? wallet.balance : 0 };
     }));
@@ -45,6 +50,32 @@ router.get('/users', async (req, res) => {
       data: enrichedUsers,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
     });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+});
+
+// 1b. Export users as CSV
+router.get('/users/export', async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select('name email phone role isActive isVerified authProvider createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+    const csvCell = (v) => {
+      const str = v === undefined || v === null ? '' : String(v);
+      // Quote everything and neutralise spreadsheet formula injection
+      const safe = /^[=+\-@]/.test(str) ? `'${str}` : str;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const header = ['Name', 'Email', 'Phone', 'Role', 'Active', 'Verified', 'Auth Provider', 'Joined'];
+    const rows = users.map((u) => [
+      u.name, u.email, u.phone, u.role, u.isActive !== false, u.isVerified, u.authProvider,
+      u.createdAt ? new Date(u.createdAt).toISOString() : '',
+    ].map(csvCell).join(','));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="metromind_users.csv"');
+    res.send([header.map(csvCell).join(','), ...rows].join('\r\n'));
   } catch (error) {
     res.status(500).json({ success: false, error: 'Server Error' });
   }
@@ -67,10 +98,20 @@ router.get('/tickets', async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
-    const { status, dateFrom, dateTo } = req.query;
+    const { status, dateFrom, dateTo, search } = req.query;
 
     let query = {};
     if (status) query.status = status;
+    if (search && search.trim()) {
+      const rx = { $regex: escapeRegex(search.trim()), $options: 'i' };
+      const matchedUsers = await User.find({ $or: [{ name: rx }, { email: rx }] }).select('_id').lean();
+      query.$or = [
+        { userId: { $in: matchedUsers.map((u) => u._id) } },
+        { ticketId: rx },
+        { source: rx },
+        { destination: rx },
+      ];
+    }
     if (dateFrom || dateTo) {
       query.travelDate = {};
       if (dateFrom) query.travelDate.$gte = new Date(dateFrom);
@@ -96,6 +137,41 @@ router.get('/tickets', async (req, res) => {
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
     });
   } catch (error) {
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+});
+
+// 3b. Admin cancel ticket — full refund to the passenger's wallet
+router.patch('/tickets/:id/cancel', async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+    if (ticket.status === 'cancelled') return res.status(400).json({ success: false, error: 'Ticket already cancelled' });
+    if (ticket.status === 'completed') return res.status(400).json({ success: false, error: 'Cannot cancel a completed ticket' });
+
+    ticket.status = 'cancelled';
+    await ticket.save();
+
+    const refundAmount = ticket.fare || 0;
+    let newBalance = null;
+    const wallet = await Wallet.findOne({ userId: ticket.userId });
+    if (wallet && refundAmount > 0) {
+      wallet.balance += refundAmount;
+      await wallet.save();
+      newBalance = wallet.balance;
+      await Transaction.create({
+        userId: ticket.userId,
+        type: 'credit',
+        amount: refundAmount,
+        balance: wallet.balance,
+        ref: ticket.ticketId,
+        note: `Refund (cancelled by admin): ${ticket.source} → ${ticket.destination}`,
+      });
+    }
+
+    res.json({ success: true, data: ticket, refundAmount, newBalance });
+  } catch (error) {
+    console.error('admin cancel ticket error:', error);
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 });
@@ -194,7 +270,7 @@ router.get('/revenue-summary', async (req, res) => {
 // 5. Support Queue
 router.get('/support-queue', async (req, res) => {
   try {
-    const pendingFeedback = await Feedback.find()
+    const pendingFeedback = await Feedback.find({ resolved: { $ne: true } })
       .populate('userId', 'name email')
       .sort({ createdAt: -1 })
       .limit(50)
@@ -221,6 +297,21 @@ router.patch('/lostfound/:id/resolve', async (req, res) => {
   try {
     const item = await LostFound.findByIdAndUpdate(req.params.id, { status: 'closed' }, { new: true });
     if (!item) return res.status(404).json({ success: false, error: 'Item not found' });
+    res.json({ success: true, data: item });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+});
+
+// 6b. Resolve Feedback
+router.patch('/feedback/:id/resolve', async (req, res) => {
+  try {
+    const item = await Feedback.findByIdAndUpdate(
+      req.params.id,
+      { resolved: true, resolvedAt: new Date() },
+      { new: true }
+    );
+    if (!item) return res.status(404).json({ success: false, error: 'Feedback not found' });
     res.json({ success: true, data: item });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Server Error' });

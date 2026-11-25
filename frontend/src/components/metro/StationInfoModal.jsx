@@ -19,9 +19,14 @@ function getNeighbors(station) {
   };
 }
 
+// Wrapper keeps the early return outside the component that uses hooks
+// (calling hooks after a conditional return breaks React's rules of hooks).
 export default function StationInfoModal({ station, onClose }) {
   if (!station) return null;
+  return <StationInfoModalContent key={station.id} station={station} onClose={onClose} />;
+}
 
+function StationInfoModalContent({ station, onClose }) {
   const line = LINES[station.line];
   const { prev, next, totalOnLine } = useMemo(() => getNeighbors(station), [station]);
   const facilities = STATION_FACILITIES[station.id] || {};

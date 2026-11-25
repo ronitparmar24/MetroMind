@@ -16,8 +16,10 @@ export default function CarbonPassport() {
   const [converting, setConverting] = useState(false);
   const [convertMessage, setConvertMessage] = useState({ type: '', text: '' });
 
-  const totalCO2 = tickets.reduce((sum, t) => sum + (t.co2Saved || 0), 0);
-  const totalDistance = tickets.reduce((sum, t) => sum + (t.distance || 0), 0);
+  // Match the backend: cancelled tickets earn no CO2 reward
+  const validTickets = tickets.filter((t) => t.status !== 'cancelled');
+  const totalCO2 = validTickets.reduce((sum, t) => sum + (t.co2Saved || 0), 0);
+  const totalDistance = validTickets.reduce((sum, t) => sum + (t.distance || 0), 0);
   const treesEquivalent = (totalCO2 / 21).toFixed(1); // ~21 kg CO2 per tree per year
 
   // Carbon Reward Logic (1kg = ₹5)
@@ -39,6 +41,7 @@ export default function CarbonPassport() {
       if (res.data.success) {
         setConvertMessage({ type: 'success', text: `Success! Added ₹${res.data.rewardCash} to your wallet.` });
         updateUser({ claimedCO2: res.data.claimedCO2 });
+        setSliderValue(null); // max changed — don't resend the old selection
       }
     } catch (err) {
       setConvertMessage({ 
